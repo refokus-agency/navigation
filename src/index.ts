@@ -1,1 +1,1 @@
-export { exampleFunction } from './example/index.ts';
+export { initNavAnim } from './nav-anim/index.ts';
