@@ -2,7 +2,7 @@
   "name": "@refokus-agency/navigation",
   "version": "0.0.0-development",
   "type": "module",
-  "description": "A template repository for Refokus typescript packages",
+  "description": "A TypeScript package for GSAP-powered navbar animations with scroll-based show/hide behavior",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,12 +20,12 @@
   ],
   "author": "",
   "keywords": [
-    "webflow",
-    "cms",
-    "sync",
-    "api",
-    "data-import",
-    "typescript"
+    "navbar",
+    "animation",
+    "gsap",
+    "scroll",
+    "typescript",
+    "webflow"
   ],
   "repository": {
     "type": "git",
