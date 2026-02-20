@@ -1,11 +1,15 @@
-# @refokus-agency/typescript-package-tmp
+# @refokus-agency/navigation
 
-A TypeScript package template for Refokus Agency focused on Webflow CMS sync tools.
+A TypeScript package for implementing smooth navbar animations with GSAP, featuring scroll-based show/hide behavior and customizable animation settings.
 
 ## Features
 
-- 🔧 Modern TypeScript configuration with strict mode
+- ✨ Smooth GSAP-powered animations
+- 📜 Scroll-based navbar show/hide behavior
+- ⚙️ Configurable animation settings
+- 🎯 Attribute-based element selection
 - 📦 ES Module support with CommonJS compatibility
+- 🔧 Modern TypeScript configuration with strict mode
 - 🧪 Testing setup with Vitest
 - 🎨 Code formatting with Prettier
 - 🔍 Linting with ESLint (flat config)
@@ -16,24 +20,46 @@ A TypeScript package template for Refokus Agency focused on Webflow CMS sync too
 
 - Node.js >= 22.0.0
 
-> [!WARNING]
-
-This package is not meant to be published or installed. You need to copy this template and setup properly first
-
-
 ## Installation
 
 ```bash
-npm install @refokus-agency/typescript-package-tmp
+npm install @refokus-agency/navigation
 ```
 
 ## Usage
 
-```typescript
-import { exampleFunction } from '@refokus-agency/typescript-package-tmp';
+### Basic Setup
 
-exampleFunction(); // Outputs: Hello World
+1. Add the `r-navbar` attribute to your navbar element(s):
+
+```html
+<nav r-navbar>
+  <!-- Your navbar content -->
+</nav>
 ```
+
+2. Initialize the navbar animation system:
+
+```typescript
+import { initNavbarAnimation } from '@refokus-agency/navigation';
+
+// Initialize with custom options
+const success = initNavbarAnimation({
+  animationDuration: 0.3,
+  animationEasing: 'power2.inOut'
+});
+
+if (success) {
+  console.log('Navbar animation initialized');
+}
+```
+
+### How It Works
+
+- **Initial Animation**: Navbar slides in smoothly on page load
+- **Scroll Down**: Navbar hides when scrolling down past threshold (50px)
+- **Scroll Up**: Navbar shows when scrolling up
+- **Multiple Navbars**: Supports multiple navbar elements with the same attribute
 
 ## Development
 
@@ -65,9 +91,33 @@ npm run format         # Format code
 
 ```
 src/
-├── index.ts           # Main entry point
-└── example/
-    └── index.ts       # Example implementations
+├── index.ts                    # Main entry point
+└── nav-anim/
+    ├── index.ts                # Navbar animation initialization
+    ├── config.ts               # Configuration constants
+    ├── initial-animation.ts    # Initial slide-in animation
+    ├── scroll-behaviour.ts     # Scroll-based show/hide logic
+    └── __tests__/
+        └── index.test.ts       # Unit tests
+```
+
+## Configuration
+
+The package uses the following default configuration:
+
+```typescript
+{
+  position: {
+    hidden: '-100%',   // Y position when hidden
+    visible: '0%'      // Y position when visible
+  },
+  scroll: {
+    threshold: 50      // Minimum scroll distance to trigger animation
+  },
+  selectors: {
+    navbar: '[r-navbar]' // Attribute selector for navbar elements
+  }
+}
 ```
 
 ## Publishing
