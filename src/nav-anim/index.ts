@@ -1,4 +1,4 @@
-import { NAVBAR_CONFIG } from './config.js';
+import { NAVBAR_CONFIG } from './config.ts';
 import { performInitialAnimation } from './initial-animation.ts';
 import { initScrollBehavior } from './scroll-behaviour.ts';
 
