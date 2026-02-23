@@ -1,6 +1,6 @@
-# @refokus-agency/typescript-package-tmp
+# @refokus-agency/navigation
 
-A TypeScript package template for Refokus Agency focused on Webflow CMS sync tools.
+Custom navigation component with functionality such as: Slide in animations, dropdown controls, scroll based animations, and text animations
 
 ## Features
 
@@ -24,13 +24,13 @@ This package is not meant to be published or installed. You need to copy this te
 ## Installation
 
 ```bash
-npm install @refokus-agency/typescript-package-tmp
+npm install @refokus-agency/navigation
 ```
 
 ## Usage
 
 ```typescript
-import { exampleFunction } from '@refokus-agency/typescript-package-tmp';
+import { exampleFunction } from '@refokus-agency/navigation';
 
 exampleFunction(); // Outputs: Hello World
 ```
