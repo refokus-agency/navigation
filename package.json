@@ -36,8 +36,9 @@
   },
   "homepage": "https://github.com/refokus-agency/navigation#readme",
   "scripts": {
-    "build": "tsc",
-    "build:clean": "rm -rf dist && npm run build",
+    "build": "tsc && npm run build:browser",
+    "build:browser": "vite build",
+    "build:clean": "rimraf dist && npm run build",
     "build:watch": "tsc --watch",
     "prepublishOnly": "npm run check-types && npm run lint && npm run build:clean",
     "check-types": "tsc --noEmit --strict --skipLibCheck",
@@ -63,11 +64,12 @@
     "@vitest/ui": "^3.2.4",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "3.3.0",
-    "eslint": "^10.0.3",    
+    "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-n": "^17.21.0",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3",
+    "vite": "^7.3.1",
     "vitest": "^3.2.4"
   },
   "engines": {
