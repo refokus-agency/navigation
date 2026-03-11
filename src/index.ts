@@ -1,1 +1,5 @@
-export { initNavAnim } from './nav-anim/index.ts';
+export {
+  initNavbarAnimation,
+  initNavbarAnimation as initNavAnim,
+  type InitNavbarAnimationOptions,
+} from './nav-anim/index.ts';
