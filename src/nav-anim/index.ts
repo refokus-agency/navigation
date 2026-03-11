@@ -7,6 +7,11 @@ export type InitNavbarAnimationOptions = {
   animationEasing: string;
 };
 
+const DEFAULT_OPTIONS: InitNavbarAnimationOptions = {
+  animationDuration: 0.3,
+  animationEasing: 'power2.inOut',
+};
+
 export let cachedNavbarElements: Element[] = [];
 
 /**
@@ -14,7 +19,7 @@ export let cachedNavbarElements: Element[] = [];
  * @returns Whether initialization was successful
  */
 export function initNavbarAnimation(
-  options: InitNavbarAnimationOptions,
+  options: InitNavbarAnimationOptions = DEFAULT_OPTIONS,
 ): boolean {
   const navbarElements = document.querySelectorAll(
     NAVBAR_CONFIG.selectors.navbar,
