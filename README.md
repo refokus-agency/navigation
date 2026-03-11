@@ -8,7 +8,7 @@ A TypeScript package for implementing smooth navbar animations with GSAP, featur
 - 📜 Scroll-based navbar show/hide behavior
 - ⚙️ Configurable animation settings
 - 🎯 Attribute-based element selection
-- 📦 ES Module support with CommonJS compatibility
+- 📦 ES Module-only package (no CommonJS support)
 - 🔧 Modern TypeScript configuration with strict mode
 - 🧪 Testing setup with Vitest
 - 🎨 Code formatting with Prettier
@@ -101,7 +101,8 @@ src/
     ├── initial-animation.ts    # Initial slide-in animation
     ├── scroll-behaviour.ts     # Scroll-based show/hide logic
     └── __tests__/
-        └── index.test.ts       # Unit tests
+      ├── index.test.ts             # Initialization tests
+      └── scroll-behaviour.test.ts  # Scroll behavior tests
 ```
 
 ## Configuration
@@ -129,16 +130,17 @@ This package uses automated semantic versioning and publishing through GitHub Ac
 
 ### Release Process
 
-The publishing workflow (`workflows/release-package-version.yml`) handles the following:
+The publishing workflow (`.github/workflows/release-package-version.yml`) handles the following:
 
-1. **Automatic Triggering**: Releases check are triggered on:
+1. **Automatic Triggering**: Release checks are triggered on:
    - Push to `main` branch
 
-2. **Environment**: Runs in the `Production` Github repository environment with required permissions
-   - Accesess `GH_PAT_TOKEN` secret inside `Production` environment
-     - Its value should be a [PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with the following access
-       - **repo**: all
-       - **packages**: all
+2. **Environment**: Runs in the `Production` GitHub repository environment with required permissions
+
+- Accesses the `GH_PAT_TOKEN` secret inside the `Production` environment
+  - Its value should be a [PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with the following access:
+    - **repo**: all
+    - **packages**: all
 
 ### Semantic Versioning
 
@@ -150,7 +152,7 @@ The publishing workflow (`workflows/release-package-version.yml`) handles the fo
 > To trigger a release, push to the `main` branch or use the GitHub Actions workflow manually.
 >
 > Ensure your commits follow [Conventional Commits](https://www.conventionalcommits.org/) to enable correct versioning and changelog generation.
-> In order to do that, you MUST run use `npm run commit` to run the commitizen wizzard and be compliant with our versioning standards
+> In order to do that, you MUST run `npm run commit` to use the Commitizen wizard and stay compliant with our versioning standards.
 
 The project uses [semantic-release](https://semantic-release.gitbook.io/) for automated version management based on conventional commits:
 
