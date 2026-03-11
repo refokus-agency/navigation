@@ -1,25 +1,23 @@
 import { NAVBAR_CONFIG } from './config.ts';
 import { createNavbarAnimation } from './initial-animation.ts';
-import {
-  cachedNavbarElements,
-  type InitNavbarAnimationOptions,
-} from './index.ts';
+import type { NavbarAnimationOptions } from './index.ts';
 
 let lastScrollY = 0;
 let isNavbarVisible = true;
 let scrollHandlerBound: (() => void) | null = null;
-let getInitOptions: () => InitNavbarAnimationOptions;
+let currentOptions: NavbarAnimationOptions | null = null;
+let navbarElements: Element[] = [];
 
 /**
  * Shows the navbar by sliding it down
  */
 function showNavbar(): void {
-  if (isNavbarVisible || !cachedNavbarElements) return;
+  if (isNavbarVisible || navbarElements.length === 0 || !currentOptions) return;
 
   createNavbarAnimation(
-    cachedNavbarElements,
+    navbarElements,
     NAVBAR_CONFIG.position.visible,
-    getInitOptions(),
+    currentOptions,
   );
   isNavbarVisible = true;
 }
@@ -28,12 +26,13 @@ function showNavbar(): void {
  * Hides the navbar by sliding it up
  */
 function hideNavbar(): void {
-  if (!isNavbarVisible || !cachedNavbarElements) return;
+  if (!isNavbarVisible || navbarElements.length === 0 || !currentOptions)
+    return;
 
   createNavbarAnimation(
-    cachedNavbarElements,
+    navbarElements,
     NAVBAR_CONFIG.position.hidden,
-    getInitOptions(),
+    currentOptions,
   );
   isNavbarVisible = false;
 }
@@ -86,14 +85,20 @@ export function cleanupNavbarAnimation(): void {
     window.removeEventListener('scroll', scrollHandlerBound);
     scrollHandlerBound = null;
   }
+
+  navbarElements = [];
+  currentOptions = null;
 }
 
 /**
  * Initializes navbar scroll behavior
  */
-export function initScrollBehavior(options: InitNavbarAnimationOptions): void {
-  // TODO: Refactor to avoid closure and allow dynamic option updates
-  getInitOptions = () => options;
+export function initScrollBehavior(
+  elements: Element[],
+  options: NavbarAnimationOptions,
+): void {
+  currentOptions = options;
+  navbarElements = elements;
 
   lastScrollY = window.scrollY;
   scrollHandlerBound = handleScroll;

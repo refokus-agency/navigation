@@ -2,24 +2,24 @@ import { NAVBAR_CONFIG } from './config.ts';
 import { performInitialAnimation } from './initial-animation.ts';
 import { initScrollBehavior } from './scroll-behaviour.ts';
 
-export type InitNavbarAnimationOptions = {
+export type NavbarAnimationOptions = {
   animationDuration: number;
   animationEasing: string;
 };
 
-const DEFAULT_OPTIONS: InitNavbarAnimationOptions = {
+export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
+
+const DEFAULT_OPTIONS: NavbarAnimationOptions = {
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
 };
-
-export let cachedNavbarElements: Element[] = [];
 
 /**
  * Initializes navbar animation system
  * @returns Whether initialization was successful
  */
 export function initNavbarAnimation(
-  options: InitNavbarAnimationOptions = DEFAULT_OPTIONS,
+  options: InitNavbarAnimationOptions = {},
 ): boolean {
   const navbarElements = document.querySelectorAll(
     NAVBAR_CONFIG.selectors.navbar,
@@ -27,9 +27,14 @@ export function initNavbarAnimation(
 
   if (!navbarElements.length) return false;
 
-  cachedNavbarElements = Array.from(navbarElements);
-  performInitialAnimation(cachedNavbarElements, options);
-  initScrollBehavior(options);
+  const resolvedOptions: NavbarAnimationOptions = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  };
+
+  const elements = Array.from(navbarElements);
+  performInitialAnimation(elements, resolvedOptions);
+  initScrollBehavior(elements, resolvedOptions);
 
   return true;
 }
