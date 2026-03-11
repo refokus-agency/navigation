@@ -6,9 +6,9 @@ let scrollHandlerBound: (() => void) | null = null;
 
 /**
  * Creates navbar slide animation
- * @param {Element[]} elements - Navbar elements to animate
- * @param {string} targetY - Target Y position
- * @returns {gsap.core.Tween} GSAP tween instance
+ * @param elements - Navbar elements to animate
+ * @param targetY - Target Y position
+ * @returns GSAP tween instance
  */
 export function createNavbarAnimation(
   elements: Element[],
