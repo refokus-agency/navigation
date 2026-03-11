@@ -10,7 +10,6 @@ vi.mock('../scroll-behaviour.ts', () => ({
 
 import { NAVBAR_CONFIG } from '../config.ts';
 import {
-  cachedNavbarElements,
   initNavbarAnimation,
   type InitNavbarAnimationOptions,
 } from '../index.ts';
@@ -58,12 +57,14 @@ describe('initNavbarAnimation', () => {
     mockNavbarQuery([navbarA, navbarB]);
 
     expect(initNavbarAnimation(options)).toBe(true);
-    expect(cachedNavbarElements).toEqual([navbarA, navbarB]);
     expect(mockedPerformInitialAnimation).toHaveBeenCalledWith(
       [navbarA, navbarB],
       options,
     );
-    expect(mockedInitScrollBehavior).toHaveBeenCalledWith(options);
+    expect(mockedInitScrollBehavior).toHaveBeenCalledWith(
+      [navbarA, navbarB],
+      options,
+    );
   });
 
   it('should use default options when no options are provided', () => {
@@ -80,10 +81,27 @@ describe('initNavbarAnimation', () => {
       }),
     );
     expect(mockedInitScrollBehavior).toHaveBeenCalledWith(
+      [navbar],
       expect.objectContaining({
         animationDuration: 0.3,
         animationEasing: 'power2.inOut',
       }),
     );
+  });
+
+  it('should merge partial options with defaults', () => {
+    const navbar = { id: 'only' } as unknown as Element;
+
+    mockNavbarQuery([navbar]);
+
+    expect(initNavbarAnimation({ animationDuration: 0.8 })).toBe(true);
+    expect(mockedPerformInitialAnimation).toHaveBeenCalledWith([navbar], {
+      animationDuration: 0.8,
+      animationEasing: 'power2.inOut',
+    });
+    expect(mockedInitScrollBehavior).toHaveBeenCalledWith([navbar], {
+      animationDuration: 0.8,
+      animationEasing: 'power2.inOut',
+    });
   });
 });
