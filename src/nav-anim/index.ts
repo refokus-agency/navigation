@@ -33,5 +33,3 @@ export function initNavbarAnimation(
 
   return true;
 }
-
-export const initNavAnim = initNavbarAnimation;

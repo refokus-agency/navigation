@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { initNavAnim } from '../index.ts';
+import { initNavbarAnimation } from '../index.ts';
 
-describe('initNavAnim', () => {
+describe('initNavbarAnimation', () => {
   it('should return false when navbar elements are not found', () => {
     Object.defineProperty(globalThis, 'document', {
       value: {
@@ -10,6 +10,6 @@ describe('initNavAnim', () => {
       configurable: true,
     });
 
-    expect(initNavAnim()).toBe(false);
+    expect(initNavbarAnimation()).toBe(false);
   });
 });
