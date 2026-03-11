@@ -1,6 +1,6 @@
 # @refokus-agency/navigation
 
-Custom navigation component with functionality such as: Slide in animations, dropdown controls, scroll based animations, and text animations
+A TypeScript package for implementing smooth navbar animations with GSAP, featuring scroll-based show/hide behavior and customizable animation settings.
 
 ## Features
 
