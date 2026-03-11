@@ -1,8 +1,6 @@
 import { gsap } from 'gsap';
 import { NAVBAR_CONFIG } from './config.ts';
-import type { InitNavbarAnimationOptions } from './index.ts';
-
-let scrollHandlerBound: (() => void) | null = null;
+import type { NavbarAnimationOptions } from './index.ts';
 
 /**
  * Creates navbar slide animation
@@ -13,7 +11,7 @@ let scrollHandlerBound: (() => void) | null = null;
 export function createNavbarAnimation(
   elements: Element[],
   targetY: string,
-  options: InitNavbarAnimationOptions,
+  options: NavbarAnimationOptions,
 ): gsap.core.Tween {
   return gsap.to(elements, {
     y: targetY,
@@ -24,23 +22,13 @@ export function createNavbarAnimation(
 }
 
 /**
- * Removes scroll event listener for cleanup
- */
-export function cleanupNavbarAnimation(): void {
-  if (scrollHandlerBound) {
-    window.removeEventListener('scroll', scrollHandlerBound);
-    scrollHandlerBound = null;
-  }
-}
-
-/**
  * Performs initial navbar slide-in animation
  * @param navbarElements - Navbar elements to animate
  * @param options - Animation options
  */
 export function performInitialAnimation(
   navbarElements: Element[],
-  options: InitNavbarAnimationOptions,
+  options: NavbarAnimationOptions,
 ): void {
   gsap.set(navbarElements, { y: NAVBAR_CONFIG.position.hidden });
   createNavbarAnimation(
