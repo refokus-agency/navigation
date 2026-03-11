@@ -1,1 +1,4 @@
-export { exampleFunction } from './example/index.ts';
+export {
+  initNavbarAnimation,
+  type InitNavbarAnimationOptions,
+} from './nav-anim/index.ts';
