@@ -1,0 +1,22 @@
+# CI + semantic-release on push to main (for npm libraries).
+# Copy to .github/workflows/main-release.yml in your repo.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: refokus-agency/platform/.github/workflows/ci.yml@main
+    secrets: inherit
+
+  release:
+    needs: ci
+    uses: refokus-agency/platform/.github/workflows/release.yml@main
+    secrets: inherit
