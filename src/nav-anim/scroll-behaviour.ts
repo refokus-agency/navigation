@@ -97,9 +97,13 @@ export function initScrollBehavior(
   elements: Element[],
   options: NavbarAnimationOptions,
 ): void {
+  if (scrollHandlerBound) {
+    window.removeEventListener('scroll', scrollHandlerBound);
+  }
+
   currentOptions = options;
   navbarElements = elements;
-
+  isNavbarVisible = true;
   lastScrollY = window.scrollY;
   scrollHandlerBound = handleScroll;
   window.addEventListener('scroll', scrollHandlerBound, { passive: true });
