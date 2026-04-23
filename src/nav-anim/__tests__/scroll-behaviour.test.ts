@@ -108,6 +108,34 @@ describe('scroll behavior', () => {
     expect(createNavbarAnimationMock).not.toHaveBeenCalled();
   });
 
+  it('should hide on scroll-down after re-initialization even if previously hidden', async () => {
+    const module = await import('../scroll-behaviour.ts');
+    const navbarElement = { id: 'nav' } as unknown as Element;
+    const options = {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+    };
+
+    module.initScrollBehavior([navbarElement], options);
+
+    globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
+    globalThis.window.dispatchEvent(new Event('scroll'));
+
+    globalThis.window.scrollY = 0;
+    module.initScrollBehavior([navbarElement], options);
+
+    createNavbarAnimationMock.mockClear();
+
+    globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
+    globalThis.window.dispatchEvent(new Event('scroll'));
+
+    expect(createNavbarAnimationMock).toHaveBeenCalledWith(
+      [navbarElement],
+      NAVBAR_CONFIG.position.hidden,
+      options,
+    );
+  });
+
   it('should use latest options on re-initialization', async () => {
     const module = await import('../scroll-behaviour.ts');
     const navbarElement = { id: 'nav' } as unknown as Element;
