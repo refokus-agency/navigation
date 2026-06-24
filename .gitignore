@@ -55,4 +55,7 @@ dist
 datasources/
 *.csv
 
+# cothinker session artifacts
+.cothinker/
+
 .npmrc

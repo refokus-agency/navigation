@@ -126,21 +126,15 @@ The package uses the following default configuration:
 
 ## Publishing
 
-This package uses automated semantic versioning and publishing through GitHub Actions. The release process is triggered automatically on pushes to the `main` branch or manually through GitHub Actions.
+This package uses automated semantic versioning and publishing through GitHub Actions. The release process is triggered automatically on pushes to the `main` branch (or manually via the **Release** workflow's `workflow_dispatch`) and publishes to the **public npm registry** (`registry.npmjs.org`) under the `@refokus-agency` scope.
 
 ### Release Process
 
-The publishing workflow (`.github/workflows/release-package-version.yml`) handles the following:
+The publishing workflow (`.github/workflows/main-release.yml`, named **Release**) calls the `refokus-agency/platform` reusable workflows (`ci.yml` then `release.yml`) and handles:
 
-1. **Automatic Triggering**: Release checks are triggered on:
-   - Push to `main` branch
+1. **Automatic Triggering**: Release checks run on push to the `main` branch.
 
-2. **Environment**: Runs in the `Production` GitHub repository environment with required permissions
-
-- Accesses the `GH_PAT_TOKEN` secret inside the `Production` environment
-  - Its value should be a [PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with the following access:
-    - **repo**: all
-    - **packages**: all
+2. **Authentication**: Publishing to npm uses **OIDC Trusted Publishing** — there is **no `NPM_TOKEN`** secret. The caller grants `permissions: id-token: write`, which lets npm mint a short-lived credential at publish time. For this to work, a **Trusted Publisher** must be configured for `@refokus-agency/navigation` on [npmjs.com](https://docs.npmjs.com/trusted-publishers) (Package settings → Trusted Publisher), pointing at this repository (`refokus-agency/navigation`) with the **workflow filename `release.yml`**. Note: `release.yml` is the **reusable workflow in the `refokus-agency/platform` repo** — *not* a file in this repo (this repo only has `main-release.yml`). npm matches the OIDC token's `job_workflow_ref` claim, which for a reusable workflow resolves to the reusable's path, so enter exactly `release.yml`.
 
 ### Semantic Versioning
 
@@ -193,21 +187,24 @@ perf: improve performance
 test: add unit tests
 ```
 
-### Publishing to GitHub Packages
+### Publishing to public npm
 
-The package is published to GitHub Packages under the `@refokus-agency` scope. The workflow:
+The package is published to the **public npm registry** under the `@refokus-agency` scope, so consumers can `npm install @refokus-agency/navigation` with no auth or registry configuration. The release:
 
-- Uses GitHub Packages registry (`https://npm.pkg.github.com`)
-- Publishes under `@refokus-agency` scope
-- Requires `GITHUB_TOKEN` and `GH_PAT_TOKEN` secrets
+- Targets the public npm registry (`https://registry.npmjs.org`) via `publishConfig`
+- Publishes as a **public** scoped package (`access: public`)
+- Authenticates with **OIDC Trusted Publishing** — no `NPM_TOKEN` secret; the workflow requires `id-token: write`
+- Keeps npm **provenance disabled** because the repository is currently private (provenance requires a public repo). When the repo is made public, flip `provenance: true` on the `release.yml` caller to enable signed provenance
+
+> **Peer dependency:** `gsap` is a **peer dependency** and is not bundled. Consumers must install it themselves (`npm install gsap`), or provide it globally as Webflow/CDN setups already do.
 
 ### Manual Release
 
 To trigger a release manually:
 
 1. Go to the GitHub repository
-2. Navigate to **Actions** tab
-3. Select **Release Package Version** workflow
+2. Navigate to the **Actions** tab
+3. Select the **Release** workflow
 4. Click **Run workflow**
 5. Choose the branch (usually `main`)
 6. Click **Run workflow**

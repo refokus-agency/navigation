@@ -13,9 +13,9 @@ on:
 
 permissions:
   contents: write
-  packages: write
   issues: write
   pull-requests: write
+  id-token: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,5 +28,7 @@ jobs:
 
   release:
     needs: ci
-    uses: refokus-agency/platform/.github/workflows/release.yml@v1
+    uses: refokus-agency/platform/.github/workflows/release.yml@v1.4.0
+    with:
+      registry: npm
     secrets: inherit

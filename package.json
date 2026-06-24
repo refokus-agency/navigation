@@ -19,7 +19,7 @@
     "README.md",
     "LICENSE"
   ],
-  "author": "",
+  "author": "Refokus Agency",
   "keywords": [
     "navbar",
     "animation",
@@ -30,7 +30,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/refokus-agency/navigation.git"
+    "url": "git+https://github.com/refokus-agency/navigation.git"
   },
   "bugs": {
     "url": "https://github.com/refokus-agency/navigation/issues"
@@ -53,7 +53,7 @@
     "test:ui": "vitest --ui",
     "commit": "cz"
   },
-  "dependencies": {
+  "peerDependencies": {
     "gsap": "^3.14.2"
   },
   "devDependencies": {
@@ -69,6 +69,7 @@
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-n": "^17.21.0",
+    "gsap": "^3.14.2",
     "jsdom": "^29.0.0",
     "prettier": "^3.6.2",
     "rimraf": "^6.1.3",
@@ -80,6 +81,7 @@
     "node": ">=22.0.0"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   }
 }
