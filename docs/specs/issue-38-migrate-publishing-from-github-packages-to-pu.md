@@ -11,13 +11,13 @@ created_at: "2026-06-24T14:51:27Z"
 
 # Implementation Plan: #38 — migrate publishing from GitHub Packages to public npm via OIDC Trusted Publishing
 
-> **Key reframe from platform PR #32 (MERGED):** the public-npm path shipped **additively on `release.yml@v1`** — there is **no `@v2`**. The caller stays pinned to `@v1` and only gains `with: registry: npm` + `permissions: id-token: write`. This overrides the issue's "bump to `@v2`" and "replace `secrets: inherit` with explicit secret mapping" items (decided during cothinker discovery — see Acceptance Criteria AC-1 and AC-9).
+> **Key reframe from platform PR #32 (MERGED):** the public-npm path shipped **additively on `release.yml@v1`** — there is **no `@v2`**. The caller stays on the v1 line — pinned here to `release.yml@v1.4.0` (the release that introduced the npm path) — and only gains `with: registry: npm` + `permissions: id-token: write`. This overrides the issue's "bump to `@v2`" and "replace `secrets: inherit` with explicit secret mapping" items (decided during cothinker discovery — see Acceptance Criteria AC-1 and AC-9).
 
 ## Files
 
 | File | Change |
 |---|---|
-| `.github/workflows/main-release.yml` | Add `id-token: write` to `permissions`; **drop `packages: write`**; add `with: registry: npm` to the `release` job. Keep `@v1`, keep `secrets: inherit`. |
+| `.github/workflows/main-release.yml` | Add `id-token: write` to `permissions`; **drop `packages: write`**; add `with: registry: npm` to the `release` job. Pin `release.yml@v1.4.0`, keep `secrets: inherit`. |
 | `package.json` | `publishConfig` → `{ "registry": "https://registry.npmjs.org", "access": "public" }`; move `gsap` from `dependencies` → `peerDependencies`; set `author`; `repository.url` from `git+ssh://` → `git+https://`. |
 | `README.md` | Rewrite Publishing sections (L127–232): remove `GH_PAT_TOKEN`/`Production`/PAT scopes, fix nonexistent `release-package-version.yml` → `main-release.yml` (workflow name "Release"), replace GitHub-Packages framing with public-npm + OIDC, note gsap peer requirement. |
 | `.gitignore` | Append `.cothinker/` (cothinker session artifacts). |
@@ -44,7 +44,7 @@ created_at: "2026-06-24T14:51:27Z"
 
 ## Steps
 
-1. **`main-release.yml` — workflow wiring.** Add `id-token: write` to the top-level `permissions` block, remove `packages: write`, and add `with:` / `registry: npm` under the `release` job. Keep `@v1` on both `ci` and `release`, keep `secrets: inherit`.
+1. **`main-release.yml` — workflow wiring.** Add `id-token: write` to the top-level `permissions` block, remove `packages: write`, and add `with:` / `registry: npm` under the `release` job. Keep `ci.yml@v1`; pin `release.yml@v1.4.0`; keep `secrets: inherit`.
    **Done when:** the caller matches platform's `main-release-npm.yml@v1` (minus `packages: write`) and `actionlint` is clean.
 
 2. **`package.json` — publishConfig.** Set `publishConfig` to `{ "registry": "https://registry.npmjs.org", "access": "public" }`.
@@ -81,7 +81,7 @@ permissions:
 jobs:
   release:
     needs: ci
-    uses: refokus-agency/platform/.github/workflows/release.yml@v1
+    uses: refokus-agency/platform/.github/workflows/release.yml@v1.4.0
     with:
       registry: npm         # added — selects the public-npm OIDC path
     secrets: inherit        # kept — platform invariant
@@ -99,7 +99,7 @@ N/A — no application code changes. All edits are to configuration manifests (`
 
 ## Acceptance Criteria (EARS)
 
-- **AC-1** — When a push to `main` triggers the release, the system shall call `refokus-agency/platform/.github/workflows/release.yml@v1` with `registry: npm`. *(reframed from the issue's `@v2`; no `@v2` exists — PR #32 shipped additively on v1.)*
+- **AC-1** — When a push to `main` triggers the release, the system shall call `refokus-agency/platform/.github/workflows/release.yml@v1.4.0` with `registry: npm`. *(reframed from the issue's `@v2`; no `@v2` exists — PR #32 shipped the npm path additively on the v1 line, first released as v1.4.0.)*
 - **AC-2** — The release caller workflow shall declare `permissions: id-token: write` so npm can mint the short-lived OIDC credential.
 - **AC-3** — The release shall authenticate via OIDC Trusted Publishing, with no `NPM_TOKEN` secret present in the repo.
 - **AC-4** — The `package.json` `publishConfig` shall equal `{ "registry": "https://registry.npmjs.org", "access": "public" }`.
