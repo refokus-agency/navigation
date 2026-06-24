@@ -134,7 +134,7 @@ The publishing workflow (`.github/workflows/main-release.yml`, named **Release**
 
 1. **Automatic Triggering**: Release checks run on push to the `main` branch.
 
-2. **Authentication**: Publishing to npm uses **OIDC Trusted Publishing** — there is **no `NPM_TOKEN`** secret. The caller grants `permissions: id-token: write`, which lets npm mint a short-lived credential at publish time. For this to work, a **Trusted Publisher** must be configured for `@refokus-agency/navigation` on [npmjs.com](https://docs.npmjs.com/trusted-publishers) (Package settings → Trusted Publisher), pointing at this repository (`refokus-agency/navigation`) with the **workflow filename `release.yml`**. Note: `release.yml` is the **reusable workflow in the `refokus-agency/platform` repo** — *not* a file in this repo (this repo only has `main-release.yml`). npm matches the OIDC token's `job_workflow_ref` claim, which for a reusable workflow resolves to the reusable's path, so enter exactly `release.yml`.
+2. **Authentication**: Publishing to npm uses **OIDC Trusted Publishing** — there is **no `NPM_TOKEN`** secret. The caller grants `permissions: id-token: write`, which lets npm mint a short-lived credential at publish time. For this to work, a **Trusted Publisher** must be configured for `@refokus-agency/navigation` on [npmjs.com](https://docs.npmjs.com/trusted-publishers) (Package settings → Trusted Publisher), pointing at this repository (`refokus-agency/navigation`) with the **workflow filename `main-release.yml`**. Note: even though the publish step runs inside the `refokus-agency/platform` reusable workflow (`release.yml`), npm authorizes the **entry-point (caller) workflow** — the one that triggers the run and holds `id-token: write` — so enter exactly `main-release.yml` (the file in *this* repo), **not** `release.yml`.
 
 ### Semantic Versioning
 
@@ -194,7 +194,7 @@ The package is published to the **public npm registry** under the `@refokus-agen
 - Targets the public npm registry (`https://registry.npmjs.org`) via `publishConfig`
 - Publishes as a **public** scoped package (`access: public`)
 - Authenticates with **OIDC Trusted Publishing** — no `NPM_TOKEN` secret; the workflow requires `id-token: write`
-- Keeps npm **provenance disabled** because the repository is currently private (provenance requires a public repo). When the repo is made public, flip `provenance: true` on the `release.yml` caller to enable signed provenance
+- Keeps npm **provenance disabled** because the repository is currently private (provenance requires a public repo). When the repo is made public, pass `provenance: true` from the `main-release.yml` caller to enable signed provenance
 
 > **Peer dependency:** `gsap` is a **peer dependency** and is not bundled. Consumers must install it themselves (`npm install gsap`), or provide it globally as Webflow/CDN setups already do.
 
