@@ -3,6 +3,7 @@
   "version": "0.0.0-development",
   "type": "module",
   "description": "A TypeScript package for GSAP-powered navbar animations with scroll-based show/hide behavior",
+  "license": "Apache-2.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +18,8 @@
     "!dist/**/*.map",
     "!dist/**/__tests__/**",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "author": "Refokus Agency",
   "keywords": [
