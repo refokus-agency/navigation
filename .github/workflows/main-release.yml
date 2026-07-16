@@ -32,4 +32,9 @@ jobs:
     uses: refokus-agency/platform/.github/workflows/release.yml@v1.4.0
     with:
       registry: npm
+      # @semantic-release/npm gained OIDC Trusted Publishing support in v13, which ships
+      # with semantic-release v25. The platform reusable workflow defaults to v24 (npm
+      # plugin v12), whose verifyConditions aborts with ENONPMTOKEN before the npm CLI can
+      # do the OIDC exchange. Pin v25 on the npm registry path.
+      semantic-release-version: '25'
     secrets: inherit
