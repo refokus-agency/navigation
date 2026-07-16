@@ -83,7 +83,7 @@
     "node": ">=22.0.0"
   },
   "publishConfig": {
-    "registry": "https://registry.npmjs.org",
+    "registry": "https://registry.npmjs.org/",
     "access": "public"
   }
 }
