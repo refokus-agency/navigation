@@ -1,6 +1,6 @@
 import { NAVBAR_CONFIG } from './config.ts';
-import { createNavbarAnimation } from './initial-animation.ts';
 import type { NavbarAnimationOptions } from './index.ts';
+import { createNavbarAnimation } from './initial-animation.ts';
 
 let lastScrollY = 0;
 let isNavbarVisible = true;

@@ -10,8 +10,8 @@ vi.mock('../scroll-behaviour.ts', () => ({
 
 import { NAVBAR_CONFIG } from '../config.ts';
 import {
-  initNavbarAnimation,
   type InitNavbarAnimationOptions,
+  initNavbarAnimation,
 } from '../index.ts';
 import { performInitialAnimation } from '../initial-animation.ts';
 import { initScrollBehavior } from '../scroll-behaviour.ts';
