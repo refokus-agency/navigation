@@ -14,8 +14,9 @@ pnpm test               # vitest run (jsdom env, globals enabled)
 pnpm test:watch         # vitest watch
 vitest run path/to/file.test.ts   # run a single test file
 pnpm check-types        # tsc --noEmit --strict
-pnpm lint               # eslint src --ext .ts --fix
-pnpm format             # prettier write over src/
+pnpm lint               # biome lint --write ./src
+pnpm lint:report        # biome lint ./src (no fixes, CI-safe check)
+pnpm format             # biome format --write ./src
 pnpm build              # tsc (types + esm) then vite build (browser bundle)
 pnpm build:clean        # rimraf dist + full rebuild
 pnpm commit             # commitizen — REQUIRED for commits (see Releases below)
