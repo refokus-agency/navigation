@@ -2,7 +2,7 @@
   "name": "@refokus-agency/navigation",
   "version": "0.0.0-development",
   "type": "module",
-  "description": "A TypeScript package for GSAP-powered navbar animations with scroll-based show/hide behavior",
+  "description": "Lightweight GSAP-powered navbar animations with scroll-based show/hide behavior for Webflow and custom-code sites",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -27,7 +27,11 @@
     "animation",
     "gsap",
     "scroll",
+    "scroll-animation",
+    "scroll-behavior",
+    "web-animation",
     "typescript",
+    "esm",
     "webflow"
   ],
   "repository": {
