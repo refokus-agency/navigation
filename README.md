@@ -1,5 +1,9 @@
 # @refokus-agency/navigation
 
+[![CI](https://github.com/refokus-agency/navigation/actions/workflows/pr-ci.yml/badge.svg)](https://github.com/refokus-agency/navigation/actions/workflows/pr-ci.yml)
+[![npm version](https://img.shields.io/npm/v/@refokus-agency/navigation.svg)](https://www.npmjs.com/package/@refokus-agency/navigation)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 A TypeScript package for implementing smooth navbar animations with GSAP, featuring scroll-based show/hide behavior and customizable animation settings.
 
 ## Features
@@ -11,8 +15,7 @@ A TypeScript package for implementing smooth navbar animations with GSAP, featur
 - 📦 ES Module-only package (no CommonJS support)
 - 🔧 Modern TypeScript configuration with strict mode
 - 🧪 Testing setup with Vitest
-- 🎨 Code formatting with Prettier
-- 🔍 Linting with ESLint (flat config)
+- 🎨 Formatting and linting with Biome
 - 🏗️ Build pipeline with TypeScript compiler
 - 📝 Source maps for debugging
 
@@ -68,26 +71,26 @@ if (success) {
 #### Building
 
 ```bash
-npm run build          # Compile TypeScript
-npm run build:clean    # Clean and rebuild
-npm run build:watch    # Watch mode
+pnpm build             # Build types + ESM + browser bundle
+pnpm build:clean       # Clean and rebuild
+pnpm build:watch       # Watch mode
 ```
 
 #### Testing
 
 ```bash
-npm test               # Run tests
-npm run test:watch     # Watch mode
-npm run test:coverage  # With coverage
-npm run test:ui        # With UI
+pnpm test              # Run tests
+pnpm test:watch        # Watch mode
+pnpm test:coverage     # With coverage
+pnpm test:ui           # With UI
 ```
 
 #### Code Quality
 
 ```bash
-npm run check-types    # Type checking
-npm run lint           # Lint and fix
-npm run format         # Format code
+pnpm check-types       # Type checking
+pnpm lint              # Lint with Biome (--write)
+pnpm format            # Format with Biome (--write)
 ```
 
 ## Project Structure
@@ -146,7 +149,7 @@ The publishing workflow (`.github/workflows/main-release.yml`, named **Release**
 > To trigger a release, push to the `main` branch or use the GitHub Actions workflow manually.
 >
 > Ensure your commits follow [Conventional Commits](https://www.conventionalcommits.org/) to enable correct versioning and changelog generation.
-> In order to do that, you MUST run `npm run commit` to use the Commitizen wizard and stay compliant with our versioning standards.
+> In order to do that, you MUST run `pnpm commit` to use the Commitizen wizard and stay compliant with our versioning standards.
 
 The project uses [semantic-release](https://semantic-release.gitbook.io/) for automated version management based on conventional commits:
 
@@ -213,10 +216,10 @@ To trigger a release manually:
 
 Before publishing, ensure:
 
-- All tests pass (`npm test`)
-- Code is properly formatted (`npm run format`)
-- Linting passes (`npm run lint`)
-- Type checking passes (`npm run check-types`)
+- All tests pass (`pnpm test`)
+- Code is properly formatted (`pnpm format`)
+- Linting passes (`pnpm lint`)
+- Type checking passes (`pnpm check-types`)
 - Commit messages follow conventional commits format
 
 ### Release Notes
@@ -228,6 +231,22 @@ Semantic-release automatically:
 - Tags releases in Git
 - Updates package version in `package.json`
 
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
+and [Code of Conduct](CODE_OF_CONDUCT.md) before opening an issue or pull
+request.
+
+## Security
+
+To report a security vulnerability, please follow our
+[Security Policy](SECURITY.md) — do not open a public issue.
+
+## Changelog
+
+Release notes are published automatically on the
+[GitHub Releases](https://github.com/refokus-agency/navigation/releases) page.
+
 ## License
 
-See [LICENSE](LICENSE) file.
+Licensed under the [Apache License 2.0](LICENSE). See also [NOTICE](NOTICE).
