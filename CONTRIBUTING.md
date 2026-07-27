@@ -28,7 +28,8 @@ pnpm install          # install dependencies
 pnpm test             # run the test suite (Vitest, jsdom)
 pnpm test:watch       # tests in watch mode
 pnpm check-types      # strict type checking (tsc --noEmit)
-pnpm lint             # Biome lint (with --write)
+pnpm lint             # Biome lint, applies fixes (--write)
+pnpm lint:report      # Biome lint, read-only — same check CI runs
 pnpm format           # Biome format (with --write)
 pnpm build            # types + ESM + browser bundle
 ```
@@ -43,6 +44,10 @@ Include the package version, your environment (Node.js and GSAP versions,
 browser), and clear steps to reproduce.
 
 ## Submitting Pull Requests
+
+Opening a PR fills in our
+[pull request template](.github/pull_request_template.md) — please complete it
+rather than deleting it, so reviewers get the context up front.
 
 - CI must pass (lint + type check + tests + build).
 - Add or update tests for any behavior change.
@@ -62,9 +67,18 @@ automated by semantic-release on merge to `main`.
 - **TypeScript** in strict mode.
 - **Biome** for linting and formatting.
 
-Run `pnpm lint && pnpm format` before opening your PR.
+Run `pnpm lint && pnpm format && pnpm check-types` before opening your PR —
+`lint` and `format` apply fixes in place. To check without modifying your
+working tree, run `pnpm lint:report`.
 
 ## Response Time
 
 This project is maintained alongside client work. We aim to respond to issues
 and PRs within roughly one to two weeks. Thanks for your patience.
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE). Unless you
+explicitly state otherwise, any contribution you intentionally submit for
+inclusion in this project shall be under the terms and conditions of that
+license, without any additional terms or conditions.
