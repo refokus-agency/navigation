@@ -63,7 +63,7 @@
     "gsap": "^3.14.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.4",
+    "@biomejs/biome": "2.5.5",
     "@total-typescript/tsconfig": "^1.0.4",
     "@types/node": "^26.1.1",
     "@types/webidl-conversions": "^7.0.3",
