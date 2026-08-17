@@ -63,9 +63,9 @@
     "gsap": "^3.14.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.7",
+    "@biomejs/biome": "2.5.8",
     "@total-typescript/tsconfig": "^1.0.4",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.2.0",
     "@types/webidl-conversions": "^7.0.3",
     "@vitest/ui": "^4.1.10",
     "commitizen": "^4.3.1",
