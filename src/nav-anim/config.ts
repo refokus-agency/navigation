@@ -9,4 +9,7 @@ export const NAVBAR_CONFIG = {
   selectors: {
     navbar: '[r-navbar]',
   },
+  attributes: {
+    behaviour: 'r-navbar-behaviour',
+  },
 };

@@ -1,6 +1,6 @@
 import { gsap } from 'gsap';
 import { NAVBAR_CONFIG } from './config.ts';
-import type { NavbarAnimationOptions } from './index.ts';
+import type { NavbarAnimationOptions } from './types.ts';
 
 /**
  * Creates navbar slide animation
@@ -17,7 +17,7 @@ export function createNavbarAnimation(
     y: targetY,
     duration: options.animationDuration,
     ease: options.animationEasing,
-    overwrite: true,
+    overwrite: 'auto',
   });
 }
 

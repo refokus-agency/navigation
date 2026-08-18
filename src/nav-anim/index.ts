@@ -1,11 +1,18 @@
+import { createHideBehaviour } from './behaviours/hide.ts';
 import { NAVBAR_CONFIG } from './config.ts';
-import { performInitialAnimation } from './initial-animation.ts';
-import { initScrollBehavior } from './scroll-behaviour.ts';
+import { subscribeToScroll } from './scroll-source.ts';
+import type {
+  NavbarAnimationHandle,
+  NavbarAnimationOptions,
+  NavbarBehaviour,
+  NavbarBehaviourName,
+} from './types.ts';
 
-export type NavbarAnimationOptions = {
-  animationDuration: number;
-  animationEasing: string;
-};
+export type {
+  NavbarAnimationHandle,
+  NavbarAnimationOptions,
+  NavbarBehaviourName,
+} from './types.ts';
 
 export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
 
@@ -15,26 +22,114 @@ const DEFAULT_OPTIONS: NavbarAnimationOptions = {
 };
 
 /**
- * Initializes navbar animation system
- * @returns Whether initialization was successful
+ * Merges caller options over the defaults.
+ *
+ * Done per key rather than by spreading, because a spread lets an explicitly
+ * `undefined` property overwrite the default with nothing — a consumer
+ * forwarding a value from their own config that happens to be undefined would
+ * otherwise end up with no default at all.
+ *
+ * @param options - Caller-supplied options
+ * @returns Fully resolved options
+ */
+function resolveOptions(
+  options: InitNavbarAnimationOptions,
+): NavbarAnimationOptions {
+  return {
+    animationDuration:
+      options.animationDuration ?? DEFAULT_OPTIONS.animationDuration,
+    animationEasing: options.animationEasing ?? DEFAULT_OPTIONS.animationEasing,
+  };
+}
+
+/**
+ * Reads the behaviour a navbar element opts into.
+ *
+ * An absent, empty, or unrecognised attribute resolves to `none`, which leaves
+ * the element completely alone.
+ *
+ * @param element - The navbar element
+ * @returns The resolved behaviour name
+ */
+function resolveBehaviourName(element: Element): NavbarBehaviourName {
+  const value = element.getAttribute(NAVBAR_CONFIG.attributes.behaviour);
+
+  if (value === null) return 'none';
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === 'hide') return 'hide';
+
+  if (normalized !== '') {
+    console.warn(
+      `[r-navbar] Unrecognised ${NAVBAR_CONFIG.attributes.behaviour}="${value}". Expected "hide". Falling back to no behaviour.`,
+    );
+  }
+
+  return 'none';
+}
+
+/**
+ * Builds the behaviour a navbar element asked for.
+ *
+ * @param element - The navbar element
+ * @param options - Resolved animation options
+ * @returns The behaviour, or null when the element opted out
+ */
+function createBehaviour(
+  element: Element,
+  options: NavbarAnimationOptions,
+): NavbarBehaviour | null {
+  switch (resolveBehaviourName(element)) {
+    case 'hide':
+      return createHideBehaviour(element, options);
+    default:
+      return null;
+  }
+}
+
+/**
+ * Initializes the navbar animation system.
+ *
+ * Every `[r-navbar]` element is inspected independently and gets its own
+ * behaviour, selected by its `r-navbar-behaviour` attribute. Elements without
+ * the attribute are left untouched.
+ *
+ * @param options - Animation options
+ * @returns A handle exposing `destroy()`, or `false` when no navbar was found
  */
 export function initNavbarAnimation(
   options: InitNavbarAnimationOptions = {},
-): boolean {
+): NavbarAnimationHandle | false {
   const navbarElements = document.querySelectorAll(
     NAVBAR_CONFIG.selectors.navbar,
   );
 
   if (!navbarElements.length) return false;
 
-  const resolvedOptions: NavbarAnimationOptions = {
-    ...DEFAULT_OPTIONS,
-    ...options,
+  const resolvedOptions = resolveOptions(options);
+
+  const behaviours: NavbarBehaviour[] = [];
+  const unsubscribes: Array<() => void> = [];
+
+  for (const element of Array.from(navbarElements)) {
+    const behaviour = createBehaviour(element, resolvedOptions);
+
+    if (!behaviour) continue;
+
+    behaviours.push(behaviour);
+    unsubscribes.push(subscribeToScroll(behaviour.onScroll));
+  }
+
+  return {
+    destroy(): void {
+      for (const unsubscribe of unsubscribes.splice(0)) {
+        unsubscribe();
+      }
+
+      for (const behaviour of behaviours.splice(0)) {
+        behaviour.destroy();
+      }
+    },
   };
-
-  const elements = Array.from(navbarElements);
-  performInitialAnimation(elements, resolvedOptions);
-  initScrollBehavior(elements, resolvedOptions);
-
-  return true;
 }
