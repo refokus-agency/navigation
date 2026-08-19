@@ -32,4 +32,5 @@ jobs:
     uses: refokus-agency/platform/.github/workflows/release.yml@v1.7.1
     with:
       registry: npm
+      provenance: true
     secrets: inherit
