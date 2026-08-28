@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>@refokus-agency/navigation — manual test</title>
+
+<script type="importmap">
+{ "imports": { "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.15.0/+esm" } }
+</script>
+
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #0e1116; --panel: #171c24; --line: #2a323d;
+    --text: #e6edf3; --dim: #8b949e; --accent: #58a6ff; --ok: #3fb950;
+  }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  /* ---------- the nav under test ---------- */
+  .w-nav { position: fixed; inset: 0 0 auto 0; z-index: 50; }
+
+  [data-nav-menu] {
+    position: relative;
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 20px;
+    background: rgba(23,28,36,.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 650; margin-right: 18px; letter-spacing: -.01em; }
+
+  [data-nav-list] { display: flex; align-items: center; gap: 4px; }
+  [data-nav-item] { position: relative; }
+
+  [data-nav-trigger], [data-nav-link] {
+    appearance: none; background: none; border: 0; cursor: pointer;
+    color: var(--text); font: inherit; text-decoration: none;
+    padding: 8px 12px; border-radius: 8px;
+  }
+  [data-nav-trigger]:hover, [data-nav-link]:hover { background: #212936; }
+  [data-nav-trigger]:focus-visible, [data-nav-link]:focus-visible,
+  [data-nav-content] a:focus-visible, [data-nav-back]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  /* [data-state] is set by the library */
+  [data-nav-trigger][data-state='open'] { background: #263041; color: var(--accent); }
+
+  /* ---------- viewport: size driven by the library's custom properties ---------- */
+  [data-nav-viewport] {
+    position: absolute; top: calc(100% + 8px); left: 20px;
+    width: var(--nav-viewport-width); height: var(--nav-viewport-height);
+    overflow: hidden;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,.5);
+    transition: width .28s cubic-bezier(.2,.8,.2,1),
+                height .28s cubic-bezier(.2,.8,.2,1);
+  }
+  /* top/left only — NEVER bottom/right or height:100%. The viewport's size is
+     derived from this element's scrollHeight, so imposing a height here makes
+     the measurement circular: it would settle on the tallest panel and the
+     ResizeObserver would chase the transition. */
+  [data-nav-content] { position: absolute; top: 0; left: 0; padding: 18px; width: max-content; }
+  [data-nav-content] h4 { margin: 0 0 10px; font-size: 12px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--dim); }
+  [data-nav-content] ul { list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 2px; }
+  [data-nav-content] a { display: block; padding: 8px 10px; border-radius: 7px;
+    color: var(--text); text-decoration: none; white-space: nowrap; }
+  [data-nav-content] a:hover { background: #212936; color: var(--accent); }
+  .wide { display: grid; grid-template-columns: repeat(3, minmax(150px,1fr)); gap: 22px; }
+
+  /* ---------- animations driven by [data-motion] / [data-state] ---------- */
+  @keyframes vpIn  { from { opacity:0; transform: translateY(-6px) scale(.985); }
+                     to   { opacity:1; transform: none; } }
+  @keyframes vpOut { from { opacity:1; transform: none; }
+                     to   { opacity:0; transform: translateY(-6px) scale(.985); } }
+  [data-nav-viewport][data-state='open']   { animation: vpIn  .20s ease both; }
+  [data-nav-viewport][data-state='closed'] { animation: vpOut .16s ease both; }
+
+  @keyframes inFromEnd   { from { opacity:0; transform: translateX(26px);  } to { opacity:1; transform:none; } }
+  @keyframes inFromStart { from { opacity:0; transform: translateX(-26px); } to { opacity:1; transform:none; } }
+  @keyframes outToEnd    { from { opacity:1; transform:none; } to { opacity:0; transform: translateX(26px);  } }
+  @keyframes outToStart  { from { opacity:1; transform:none; } to { opacity:0; transform: translateX(-26px); } }
+  [data-nav-content][data-state='open'][data-motion='from-end']    { animation: inFromEnd   .22s ease both; }
+  [data-nav-content][data-state='open'][data-motion='from-start']  { animation: inFromStart .22s ease both; }
+  [data-nav-content][data-state='closed'][data-motion='to-end']    { animation: outToEnd    .18s ease both; }
+  [data-nav-content][data-state='closed'][data-motion='to-start']  { animation: outToStart  .18s ease both; }
+
+  /* ---------- Webflow burger mock (tests the mobile layer) ---------- */
+  .w-nav-button { display: none; margin-left: auto; }
+  [data-nav-back] { display: none; }
+
+  @media (max-width: 767px) {
+    .w-nav-button { display: inline-flex; }
+    [data-nav-menu][data-nav-mode='mobile'] [data-nav-list] {
+      display: none; flex-direction: column; align-items: stretch;
+    }
+    .w-nav[data-open='true'] [data-nav-list] { display: flex !important; }
+    .w-nav[data-open='true'] [data-nav-menu] { flex-direction: column; align-items: stretch; }
+    [data-nav-viewport] { left: 0; right: 0; width: var(--nav-viewport-width); }
+    [data-nav-menu][data-nav-mode='mobile'] [data-nav-back] { display: inline-flex; }
+    .wide { grid-template-columns: 1fr; gap: 8px; }
+  }
+
+  /* ---------- page + inspector ---------- */
+  main { max-width: 620px; margin: 0 auto; padding: 120px 20px 60px; }
+  h1 { font-size: 22px; letter-spacing: -.02em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .09em;
+       color: var(--dim); margin-top: 34px; }
+  code, kbd { background: #1c2230; border: 1px solid var(--line);
+       border-radius: 5px; padding: 1px 5px; font-size: 12.5px; }
+  .tall { height: 150vh; display: grid; place-items: center;
+       border: 1px dashed var(--line); border-radius: 12px; color: var(--dim); }
+  ul.checks { list-style: none; padding: 0; display: grid; gap: 7px; }
+  ul.checks li { display: flex; gap: 9px; align-items: flex-start; }
+
+  #inspector {
+    position: fixed; right: 16px; bottom: 16px; width: 310px; max-height: 46vh;
+    display: flex; flex-direction: column;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    z-index: 40;
+  }
+  #inspector header { padding: 9px 12px; border-bottom: 1px solid var(--line);
+    color: var(--dim); text-transform: uppercase; letter-spacing: .08em; font-size: 10.5px; }
+  #state { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  #state b { color: var(--accent); font-weight: 600; }
+  #log { margin: 0; padding: 10px 12px; overflow: auto; color: var(--dim); }
+  #log div { white-space: pre; }
+  #log div:first-child { color: var(--ok); }
+  @media (max-width: 767px) { #inspector { display: none; } }
+</style>
+</head>
+<body>
+
+<!-- .w-nav / .w-nav-button mimic Webflow's markup so the mobile layer is exercised -->
+<div class="w-nav" data-open="false">
+  <nav data-nav-menu>
+    <span class="brand">Acme</span>
+
+    <div data-nav-list>
+      <div data-nav-item="products">
+        <button type="button" data-nav-trigger>Products</button>
+      </div>
+      <div data-nav-item="solutions">
+        <button type="button" data-nav-trigger>Solutions</button>
+      </div>
+      <div data-nav-item="developers">
+        <button type="button" data-nav-trigger>Developers</button>
+      </div>
+      <div data-nav-item="pricing">
+        <a data-nav-link href="#pricing">Pricing</a>
+      </div>
+    </div>
+
+    <button type="button" data-nav-back>← Back</button>
+
+    <div data-nav-viewport style="display:none">
+      <div data-nav-content="products">
+        <h4>Products</h4>
+        <ul>
+          <li><a href="#a">Analytics</a></li>
+          <li><a href="#b">Automation</a></li>
+          <li><a href="#c">Reporting</a></li>
+        </ul>
+      </div>
+      <div data-nav-content="solutions">
+        <h4>Solutions</h4>
+        <div class="wide">
+          <ul>
+            <li><a href="#d">For startups</a></li>
+            <li><a href="#e">For enterprise</a></li>
+          </ul>
+          <ul>
+            <li><a href="#f">Agencies</a></li>
+            <li><a href="#g">Education</a></li>
+          </ul>
+          <ul>
+            <li><a href="#h">Non-profits</a></li>
+            <li><a href="#i">Government</a></li>
+          </ul>
+        </div>
+      </div>
+      <div data-nav-content="developers">
+        <h4>Developers</h4>
+        <input type="search" placeholder="Search docs… (arrows must stay here)"
+               style="width:100%;margin-bottom:10px;padding:8px 10px;border-radius:7px;
+                      border:1px solid var(--line);background:#0e1116;color:var(--text)" />
+        <ul>
+          <li><a href="#j">Documentation</a></li>
+          <li><a href="#k">API reference</a></li>
+          <li><a href="#l">Changelog</a></li>
+          <li><a href="#m">Status</a></li>
+          <li><a href="#n">Community</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <a href="#" class="w-nav-button" aria-expanded="false" aria-label="Menu">☰</a>
+  </nav>
+</div>
+
+<main>
+  <h1>Manual test — accessible dropdown + navbar scroll animation</h1>
+  <p>This page loads the real <code>dist/navigation.browser.js</code> build. The
+     package ships no CSS; every animation here is plain CSS keyed off the
+     <code>[data-state]</code> and <code>[data-motion]</code> hooks the library sets.</p>
+
+  <h2>Pointer</h2>
+  <ul class="checks">
+    <li>☐ Hover a trigger → opens after <b>200&nbsp;ms</b></li>
+    <li>☐ Hover a sibling within ~300&nbsp;ms of closing → switches <b>instantly</b>, and the panel slides from the correct side</li>
+    <li>☐ Wait &gt;300&nbsp;ms, then hover → pays the 200&nbsp;ms delay again</li>
+    <li>☐ Move onto the panel → stays open; leave → closes after 150&nbsp;ms</li>
+    <li>☐ Panel resizes smoothly between Products / Solutions / Developers</li>
+    <li>☐ Click a trigger → toggles. After click-to-close, hovering the <em>same</em> trigger does nothing until you leave and re-enter</li>
+    <li>☐ Click a link inside a panel → closes. <kbd>⌘</kbd>/<kbd>Ctrl</kbd>-click → stays open</li>
+    <li>☐ Click anywhere outside the nav → closes</li>
+  </ul>
+
+  <h2>Keyboard — Tab is the primary path</h2>
+  <p style="color:var(--dim);margin-top:-6px">
+    Click the page background first, then <kbd>Tab</kbd> in from the top.
+  </p>
+  <ul class="checks">
+    <li>☐ <kbd>Tab</kbd> reaches <b>Products</b>; panel stays <b>closed</b> (no auto-open)</li>
+    <li>☐ <kbd>Enter</kbd> opens it</li>
+    <li>☐ <kbd>Tab</kbd> now steps <b>into</b> the panel → Analytics</li>
+    <li>☐ Keep tabbing: Automation → Reporting</li>
+    <li>☐ <kbd>Tab</kbd> off the last link → panel <b>closes</b> and focus lands on <b>Solutions</b></li>
+    <li>☐ <kbd>Enter</kbd> on Solutions, tab through all 6 links, <kbd>Tab</kbd> off the end → <b>Developers</b></li>
+    <li>☐ From Developers' last link, <kbd>Tab</kbd> → <b>Pricing</b> (the plain link, not skipped)</li>
+    <li>☐ From Pricing, <kbd>Tab</kbd> → leaves the nav into the page</li>
+    <li>☐ <kbd>Shift+Tab</kbd> on a panel's <em>first</em> link → back to its trigger, panel <b>stays open</b></li>
+    <li>☐ <kbd>Shift+Tab</kbd> again → panel closes, focus on the previous trigger</li>
+    <li>☐ With everything closed, tabbing past the nav takes <b>4 stops</b>, not 20</li>
+    <li>☐ <kbd>Esc</kbd> from inside a panel closes it and returns focus to the trigger</li>
+    <li>☐ After <kbd>Esc</kbd>, hover on that same trigger stays closed until you leave and re-enter</li>
+  </ul>
+
+  <h2>Keyboard — arrows (secondary, triggers only)</h2>
+  <ul class="checks">
+    <li>☐ <kbd>←</kbd> <kbd>→</kbd> on a trigger cycle the triggers and wrap</li>
+    <li>☐ <kbd>↓</kbd> on an open trigger moves into the panel's first link</li>
+    <li>☐ <kbd>Home</kbd> / <kbd>End</kbd> jump to first / last trigger</li>
+    <li>☐ <b>Focus a link inside a panel and press the arrows / Home / End → the nav must ignore them</b></li>
+    <li>☐ Same in the search field below — typing and arrowing must not move focus out</li>
+  </ul>
+
+  <h2>Screen reader / a11y</h2>
+  <ul class="checks">
+    <li>☐ Inspect a trigger: <code>aria-expanded</code> flips, <code>aria-controls</code> points at the panel id</li>
+    <li>☐ Panel has <code>role="region"</code> and <code>aria-labelledby</code></li>
+    <li>☐ <b>Pricing</b> is a plain link — it must have <em>no</em> <code>aria-expanded</code></li>
+  </ul>
+
+  <h2>Mobile (resize below 767px)</h2>
+  <ul class="checks">
+    <li>☐ Root gets <code>data-nav-mode="mobile"</code>; hover no longer opens anything</li>
+    <li>☐ Tap ☰ then a trigger → panel opens on tap</li>
+    <li>☐ <b>← Back</b> closes the panel but leaves the burger menu open</li>
+    <li>☐ Close the burger with a panel open, reopen → starts on the main list</li>
+    <li>☐ Cross the 767px line with a panel open → it closes</li>
+  </ul>
+
+  <h2>Navbar scroll animation</h2>
+  <ul class="checks">
+    <li>☐ Nav slides down on load</li>
+    <li>☐ Scroll down &gt;50px → hides; scroll up → shows</li>
+    <li>☐ <b>Scroll down so the nav hides, then <kbd>Shift+Tab</kbd> back up into it
+        → the nav slides back into view</b> (was: focus landed off-screen)</li>
+    <li>☐ Same with the browser's find-and-focus or clicking a skip link</li>
+  </ul>
+
+  <h2>Open/close must look identical by pointer and keyboard</h2>
+  <ul class="checks">
+    <li>☐ <kbd>Enter</kbd> to open, <kbd>Esc</kbd>, then <kbd>Enter</kbd> again
+        <em>immediately</em> → the panel appears at its full height at once</li>
+    <li>☐ Hammer <kbd>Enter</kbd> / <kbd>Esc</kbd> repeatedly → no slow height
+        creep, no half-sized panel (was: reopening during the exit animation
+        animated the height from the stale value)</li>
+    <li>☐ Compare against the mouse: hover open, move away, hover again → same look</li>
+    <li>☐ Switching <em>between</em> panels still animates the height smoothly
+        (that transition is intentional)</li>
+  </ul>
+
+  <div class="tall">↓ scroll region ↓</div>
+  <p id="pricing" style="color:var(--dim)">End of page.</p>
+</main>
+
+<aside id="inspector">
+  <header>live state</header>
+  <div id="state">
+    open: <b id="s-open">null</b><br />
+    mode: <b id="s-mode">—</b><br />
+    motion: <b id="s-motion">—</b><br />
+    viewport: <b id="s-size">—</b><br />
+    focus: <b id="s-focus">—</b>
+  </div>
+  <div id="log"></div>
+</aside>
+
+<script type="module">
+  import {
+    initNavbarAnimation,
+    initNavigationMenu,
+  } from '../dist/navigation.browser.js';
+
+  const log = document.getElementById('log');
+  const line = (msg) => {
+    const el = document.createElement('div');
+    el.textContent = `${new Date().toLocaleTimeString('en-GB')}  ${msg}`;
+    log.prepend(el);
+    while (log.children.length > 60) log.lastChild.remove();
+  };
+
+  const root = document.querySelector('[data-nav-menu]');
+  const viewport = document.querySelector('[data-nav-viewport]');
+
+  const menu = initNavigationMenu(undefined, {
+    onValueChange: (value) => {
+      document.getElementById('s-open').textContent = String(value);
+      line(`onValueChange → ${value}`);
+    },
+  });
+
+  const animOn = !new URLSearchParams(location.search).has('noanim');
+  if (animOn) initNavbarAnimation();
+  line(`menu ${menu ? 'initialized' : 'FAILED'} · scroll anim ${animOn ? 'on' : 'off (?noanim)'}`);
+
+  // Mirror the library's own hooks into the inspector.
+  const refresh = () => {
+    document.getElementById('s-mode').textContent = root.dataset.navMode ?? '—';
+    const open = document.querySelector('[data-nav-content][data-state="open"]');
+    document.getElementById('s-motion').textContent = open?.dataset.motion ?? '—';
+    const cs = getComputedStyle(viewport);
+    const w = cs.getPropertyValue('--nav-viewport-width').trim();
+    const h = cs.getPropertyValue('--nav-viewport-height').trim();
+    document.getElementById('s-size').textContent = w && h ? `${w} × ${h}` : '—';
+  };
+  const describe = (el) => {
+    if (!el || el === document.body) return '—';
+    const label =
+      (el.textContent ?? '').trim().slice(0, 18) || el.tagName.toLowerCase();
+    if (el.hasAttribute('data-nav-trigger')) return 'trigger: ' + label;
+    if (el.hasAttribute('data-nav-link')) return 'link: ' + label;
+    const panel = el.closest('[data-nav-content]');
+    if (panel) return 'panel ' + panel.dataset.navContent + ': ' + label;
+    if (root.contains(el)) return 'nav: ' + label;
+    return 'page: ' + label;
+  };
+  document.addEventListener('focusin', () => {
+    document.getElementById('s-focus').textContent = describe(document.activeElement);
+  });
+
+  new MutationObserver(refresh).observe(root, {
+    subtree: true, attributes: true,
+    attributeFilter: ['data-state', 'data-motion', 'data-nav-mode', 'style'],
+  });
+  refresh();
+
+  // Minimal stand-in for Webflow's burger, so the mobile layer has real
+  // aria-expanded transitions to observe.
+  const shell = document.querySelector('.w-nav');
+  const burger = document.querySelector('.w-nav-button');
+  burger.addEventListener('click', (event) => {
+    event.preventDefault();
+    const open = burger.getAttribute('aria-expanded') !== 'true';
+    burger.setAttribute('aria-expanded', String(open));
+    shell.dataset.open = String(open);
+    line(`burger ${open ? 'opened' : 'closed'}`);
+  });
+
+  window.menu = menu; // poke at menu.open('solutions') from the console
+</script>
+</body>
+</html>
