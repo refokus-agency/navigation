@@ -1,5 +1,10 @@
 import { createHideBehaviour } from './behaviours/hide.ts';
 import { NAVBAR_CONFIG } from './config.ts';
+import {
+  registerBinding,
+  releaseBinding,
+  releaseCurrentBinding,
+} from './registry.ts';
 import { subscribeToScroll } from './scroll-source.ts';
 import type {
   NavbarAnimationHandle,
@@ -95,6 +100,13 @@ function createBehaviour(
  * behaviour, selected by its `r-navbar-behaviour` attribute. Elements without
  * the attribute are left untouched.
  *
+ * An element already bound by an earlier call is rebound rather than bound a
+ * second time: its previous behaviour is torn down first. Re-initializing
+ * without keeping the old handle — a page transition re-running entry code,
+ * say — therefore replaces the binding instead of stacking another one on top
+ * of it, and the superseded handle's `destroy()` becomes a no-op for that
+ * element.
+ *
  * @param options - Animation options
  * @returns A handle exposing `destroy()`, or `false` when no navbar was found
  */
@@ -109,26 +121,29 @@ export function initNavbarAnimation(
 
   const resolvedOptions = resolveOptions(options);
 
-  const behaviours: NavbarBehaviour[] = [];
-  const unsubscribes: Array<() => void> = [];
+  const bindings: Array<{ element: Element; teardown: () => void }> = [];
 
   for (const element of Array.from(navbarElements)) {
+    releaseCurrentBinding(element);
+
     const behaviour = createBehaviour(element, resolvedOptions);
 
     if (!behaviour) continue;
 
-    behaviours.push(behaviour);
-    unsubscribes.push(subscribeToScroll(behaviour.onScroll));
+    const unsubscribe = subscribeToScroll(behaviour.onScroll);
+    const teardown = (): void => {
+      unsubscribe();
+      behaviour.destroy();
+    };
+
+    bindings.push({ element, teardown });
+    registerBinding(element, teardown);
   }
 
   return {
     destroy(): void {
-      for (const unsubscribe of unsubscribes.splice(0)) {
-        unsubscribe();
-      }
-
-      for (const behaviour of behaviours.splice(0)) {
-        behaviour.destroy();
+      for (const { element, teardown } of bindings.splice(0)) {
+        releaseBinding(element, teardown);
       }
     },
   };

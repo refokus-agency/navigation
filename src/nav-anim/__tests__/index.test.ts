@@ -199,9 +199,11 @@ describe('initNavbarAnimation', () => {
       createHideBehaviourMock
         .mockReturnValueOnce({ onScroll: vi.fn(), destroy: firstDestroy })
         .mockReturnValueOnce({ onScroll: vi.fn(), destroy: secondDestroy });
-      mockNavbarQuery([navbarStub('hide')]);
 
+      mockNavbarQuery([navbarStub('hide')]);
       const first = initNavbarAnimation() as { destroy: () => void };
+
+      mockNavbarQuery([navbarStub('hide')]);
       const second = initNavbarAnimation() as { destroy: () => void };
 
       expect(first).not.toBe(second);
@@ -210,6 +212,123 @@ describe('initNavbarAnimation', () => {
 
       expect(firstDestroy).toHaveBeenCalledTimes(1);
       expect(secondDestroy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('re-initialization over an already bound element', () => {
+    it('should tear the previous binding down instead of stacking a second one', () => {
+      const firstDestroy = vi.fn();
+      const firstUnsubscribe = vi.fn();
+
+      createHideBehaviourMock
+        .mockReturnValueOnce({ onScroll: vi.fn(), destroy: firstDestroy })
+        .mockReturnValueOnce({ onScroll: vi.fn(), destroy: vi.fn() });
+      subscribeToScrollMock
+        .mockReturnValueOnce(firstUnsubscribe)
+        .mockReturnValueOnce(vi.fn());
+      mockNavbarQuery([navbarStub('hide')]);
+
+      initNavbarAnimation();
+      initNavbarAnimation();
+
+      expect(firstUnsubscribe).toHaveBeenCalledTimes(1);
+      expect(firstDestroy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should tear the previous binding down before building the replacement', () => {
+      const calls: string[] = [];
+
+      createHideBehaviourMock
+        .mockReturnValueOnce({
+          onScroll: vi.fn(),
+          destroy: () => calls.push('destroy'),
+        })
+        .mockImplementationOnce(() => {
+          calls.push('create');
+          return { onScroll: vi.fn(), destroy: vi.fn() };
+        });
+      mockNavbarQuery([navbarStub('hide')]);
+
+      initNavbarAnimation();
+      initNavbarAnimation();
+
+      expect(calls).toEqual(['destroy', 'create']);
+    });
+
+    it('should make destroy() on the superseded handle a no-op', () => {
+      const firstDestroy = vi.fn();
+      const secondDestroy = vi.fn();
+      const secondUnsubscribe = vi.fn();
+
+      createHideBehaviourMock
+        .mockReturnValueOnce({ onScroll: vi.fn(), destroy: firstDestroy })
+        .mockReturnValueOnce({ onScroll: vi.fn(), destroy: secondDestroy });
+      subscribeToScrollMock
+        .mockReturnValueOnce(vi.fn())
+        .mockReturnValueOnce(secondUnsubscribe);
+      mockNavbarQuery([navbarStub('hide')]);
+
+      const first = initNavbarAnimation() as { destroy: () => void };
+
+      initNavbarAnimation();
+      first.destroy();
+
+      expect(firstDestroy).toHaveBeenCalledTimes(1);
+      expect(secondDestroy).not.toHaveBeenCalled();
+      expect(secondUnsubscribe).not.toHaveBeenCalled();
+    });
+
+    it('should leave bindings the second call did not touch to the first handle', () => {
+      const rebound = navbarStub('hide');
+      const untouched = navbarStub('hide');
+
+      const reboundDestroy = vi.fn();
+      const untouchedDestroy = vi.fn();
+
+      createHideBehaviourMock.mockImplementation((element: Element) => ({
+        onScroll: vi.fn(),
+        destroy: element === rebound ? reboundDestroy : untouchedDestroy,
+      }));
+
+      mockNavbarQuery([rebound, untouched]);
+      const first = initNavbarAnimation() as { destroy: () => void };
+
+      mockNavbarQuery([rebound]);
+      initNavbarAnimation();
+
+      expect(reboundDestroy).toHaveBeenCalledTimes(1);
+      expect(untouchedDestroy).not.toHaveBeenCalled();
+
+      first.destroy();
+
+      expect(reboundDestroy).toHaveBeenCalledTimes(1);
+      expect(untouchedDestroy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should unbind an element whose behaviour attribute no longer opts in', () => {
+      const navbar = {
+        behaviour: 'hide' as string | undefined,
+        getAttribute(name: string) {
+          return name === NAVBAR_CONFIG.attributes.behaviour
+            ? (this.behaviour ?? null)
+            : null;
+        },
+      };
+
+      const destroy = vi.fn();
+      const unsubscribe = vi.fn();
+
+      createHideBehaviourMock.mockReturnValue({ onScroll: vi.fn(), destroy });
+      subscribeToScrollMock.mockReturnValue(unsubscribe);
+      mockNavbarQuery([navbar as unknown as Element]);
+
+      initNavbarAnimation();
+
+      navbar.behaviour = undefined;
+      initNavbarAnimation();
+
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(destroy).toHaveBeenCalledTimes(1);
     });
   });
 });
