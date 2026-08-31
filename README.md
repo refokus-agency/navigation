@@ -33,13 +33,19 @@ npm install @refokus-agency/navigation
 
 ### Basic Setup
 
-1. Add the `r-navbar` attribute to your navbar element(s):
+1. Add the `data-nav-menu` attribute to your navbar element(s):
 
 ```html
-<nav r-navbar>
+<nav data-nav-menu>
   <!-- Your navbar content -->
 </nav>
 ```
+
+`data-nav-menu` is the **single** nav root attribute for this package — see
+`NAV_ROOT_SELECTOR` in `src/config.ts`.
+
+> **Upgrading from a 1.x release:** this attribute used to be `[r-navbar]`.
+> Rename it on your nav element.
 
 2. Initialize the navbar animation system:
 
@@ -100,6 +106,9 @@ pnpm format            # Format with Biome (--write)
 ```
 src/
 ├── index.ts                    # Main entry point
+├── config.ts                   # NAV_ROOT_SELECTOR — the shared nav root
+├── __tests__/
+│   └── config.test.ts          # Asserts the root selector stays shared
 └── nav-anim/
     ├── index.ts                # Navbar animation initialization
     ├── config.ts               # Configuration constants
@@ -111,6 +120,9 @@ src/
 ```
 
 ## Configuration
+
+The nav root selector lives in one place: `NAV_ROOT_SELECTOR` in
+`src/config.ts`. Changing it is a **breaking change** for every consumer.
 
 The package uses the following default configuration:
 
@@ -124,7 +136,7 @@ The package uses the following default configuration:
     threshold: 50      // Minimum scroll distance to trigger animation
   },
   selectors: {
-    navbar: '[r-navbar]' // Attribute selector for navbar elements
+    navbar: '[data-nav-menu]' // Shared NAV_ROOT_SELECTOR from src/config.ts
   }
 }
 ```

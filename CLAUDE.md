@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Package overview
 
-`@refokus-agency/navigation` is an ES-module-only TypeScript library that attaches GSAP-powered show/hide animations to elements carrying the `[r-navbar]` attribute. Intended for Webflow custom-code and similar embed contexts — `gsap` is an external peer dependency and is **not** bundled into the browser build.
+`@refokus-agency/navigation` is an ES-module-only TypeScript library that attaches GSAP-powered show/hide animations to elements carrying the `[data-nav-menu]` attribute. Intended for Webflow custom-code and similar embed contexts — `gsap` is an external peer dependency and is **not** bundled into the browser build.
 
 ## Commands
 
@@ -28,7 +28,7 @@ Node >= 22 is required (see `.nvmrc` / `engines`).
 
 Single public entry: `initNavbarAnimation(options?)` in `src/nav-anim/index.ts`. It:
 
-1. Queries `document` for `NAVBAR_CONFIG.selectors.navbar` (`[r-navbar]`). Returns `false` if none found.
+1. Queries `document` for `NAVBAR_CONFIG.selectors.navbar` (`[data-nav-menu]`). Returns `false` if none found.
 2. Calls `performInitialAnimation` — a `gsap.set` to hidden (-100% Y) followed by a tween to visible.
 3. Calls `initScrollBehavior` — installs a passive `scroll` listener that compares `window.scrollY` to `lastScrollY`, applying hide/show tweens once the delta exceeds `NAVBAR_CONFIG.scroll.threshold` (50px).
 
@@ -36,7 +36,7 @@ It also installs a `focusin` listener on `document` that calls `showNavbar` when
 
 The scroll module (`scroll-behaviour.ts`) holds **module-level singleton state** (`lastScrollY`, `isNavbarVisible`, `navbarElements`, `currentOptions`, `scrollHandlerBound`, `focusHandlerBound`). This means calling `initNavbarAnimation` twice overwrites the previous registration; `cleanupNavbarAnimation` exists but is not re-exported from the package root. Keep this in mind when changing lifecycle logic.
 
-All animations go through `createNavbarAnimation` in `initial-animation.ts` with `overwrite: true`, so conflicting scroll-driven tweens cancel cleanly. `NAVBAR_CONFIG` in `config.ts` is the single source of truth for positions, threshold, and selector — default `NavbarAnimationOptions` (duration/easing) live separately in `nav-anim/index.ts`.
+All animations go through `createNavbarAnimation` in `initial-animation.ts` with `overwrite: true`, so conflicting scroll-driven tweens cancel cleanly. `NAV_ROOT_SELECTOR` in `src/config.ts` is the single source of truth for the nav root selector, guarded by `src/__tests__/config.test.ts`; `NAVBAR_CONFIG` in `nav-anim/config.ts` owns positions and threshold — default `NavbarAnimationOptions` (duration/easing) live separately in `nav-anim/index.ts`.
 
 ## Build outputs
 
@@ -60,4 +60,6 @@ Commits **must** follow Conventional Commits (`feat:`, `fix:`, `feat!:` / `BREAK
 
 ## Usage contract
 
-Consumers add `r-navbar` to their markup and call `initNavbarAnimation({ animationDuration?, animationEasing? })`. The selector is fixed by `NAVBAR_CONFIG` — changing it is a breaking change for every consumer.
+Consumers add `data-nav-menu` to their markup and call `initNavbarAnimation({ animationDuration?, animationEasing? })`. The selector comes from `NAV_ROOT_SELECTOR` — changing it is a breaking change for every consumer.
+
+> This selected `[r-navbar]` up to and including the last release. Renamed so a single element can drive more than one feature; shipped as a major bump.
