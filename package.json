@@ -53,6 +53,7 @@
     "build:browser": "vite build",
     "build:clean": "rimraf dist && npm run build",
     "build:watch": "tsc --watch",
+    "example": "npm run build && vite --open /docs/examples/local/",
     "prepublishOnly": "npm run check-types && npm run lint && npm run build:clean",
     "check-types": "tsc --noEmit --strict --skipLibCheck",
     "typecheck": "tsc --noEmit --strict --skipLibCheck",

@@ -17,6 +17,7 @@ pnpm check-types    # tsc --noEmit --strict
 pnpm lint:report    # biome, no writes (CI-safe)
 pnpm format         # biome --write
 pnpm build          # tsc, then vite browser bundle
+pnpm example        # build + open docs/examples/local/
 pnpm commit         # commitizen — required for commits
 ```
 

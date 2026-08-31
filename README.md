@@ -298,6 +298,20 @@ pnpm build:clean       # Clean and rebuild
 pnpm build:watch       # Watch mode
 ```
 
+#### Examples
+
+```bash
+pnpm example           # Build, then open docs/examples/local/
+```
+
+`docs/examples/local/` loads the local `dist/navigation.browser.js` build and
+styles it with nothing but the `[data-state]` / `[data-motion]` /
+`--nav-viewport-*` hooks, so it doubles as a check that those hooks are enough
+to build with. It carries a live state inspector and a checklist covering
+pointer, keyboard, screen-reader, mobile and scroll behavior — resize below
+767px for the mobile layer and the Webflow burger integration. Not published
+(`files` in `package.json` excludes it).
+
 #### Testing
 
 ```bash
@@ -318,6 +332,8 @@ pnpm format            # Format with Biome (--write)
 ## Project Structure
 
 ```
+docs/examples/
+└── local/index.html            # Runnable example (pnpm example)
 src/
 ├── index.ts                    # Main entry point
 ├── config.ts                   # NAV_ROOT_SELECTOR — the shared nav root
