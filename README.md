@@ -62,6 +62,8 @@ if (success) {
 - **Initial Animation**: Navbar slides in smoothly on page load
 - **Scroll Down**: Navbar hides when scrolling down past threshold (50px)
 - **Scroll Up**: Navbar shows when scrolling up
+- **Focus**: A hidden navbar slides back in when focus moves into it, so
+  tabbing back up to the nav never lands on an off-screen element
 - **Multiple Navbars**: Supports multiple navbar elements with the same attribute
 
 ## Development

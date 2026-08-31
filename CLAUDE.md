@@ -32,7 +32,9 @@ Single public entry: `initNavbarAnimation(options?)` in `src/nav-anim/index.ts`.
 2. Calls `performInitialAnimation` — a `gsap.set` to hidden (-100% Y) followed by a tween to visible.
 3. Calls `initScrollBehavior` — installs a passive `scroll` listener that compares `window.scrollY` to `lastScrollY`, applying hide/show tweens once the delta exceeds `NAVBAR_CONFIG.scroll.threshold` (50px).
 
-The scroll module (`scroll-behaviour.ts`) holds **module-level singleton state** (`lastScrollY`, `isNavbarVisible`, `navbarElements`, `currentOptions`, `scrollHandlerBound`). This means calling `initNavbarAnimation` twice overwrites the previous registration; `cleanupNavbarAnimation` exists but is not re-exported from the package root. Keep this in mind when changing lifecycle logic.
+It also installs a `focusin` listener on `document` that calls `showNavbar` when focus lands inside a navbar element — a hidden navbar would otherwise take focus while off-screen. It is document-level rather than per-element on purpose: the existing tests pass plain object literals as "elements", so nothing may be called on them at init time.
+
+The scroll module (`scroll-behaviour.ts`) holds **module-level singleton state** (`lastScrollY`, `isNavbarVisible`, `navbarElements`, `currentOptions`, `scrollHandlerBound`, `focusHandlerBound`). This means calling `initNavbarAnimation` twice overwrites the previous registration; `cleanupNavbarAnimation` exists but is not re-exported from the package root. Keep this in mind when changing lifecycle logic.
 
 All animations go through `createNavbarAnimation` in `initial-animation.ts` with `overwrite: true`, so conflicting scroll-driven tweens cancel cleanly. `NAVBAR_CONFIG` in `config.ts` is the single source of truth for positions, threshold, and selector — default `NavbarAnimationOptions` (duration/easing) live separately in `nav-anim/index.ts`.
 
