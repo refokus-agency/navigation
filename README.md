@@ -298,19 +298,19 @@ pnpm build:clean       # Clean and rebuild
 pnpm build:watch       # Watch mode
 ```
 
-#### Demo
+#### Examples
 
 ```bash
-pnpm demo              # Build, then open the manual-test page
+pnpm example           # Build, then open docs/examples/local/
 ```
 
-`demo/` is a single self-contained page that loads the real
-`dist/navigation.browser.js` build and styles it with nothing but the
-`[data-state]` / `[data-motion]` / `--nav-viewport-*` hooks — so it doubles as a
-check that those hooks are sufficient to build with. It carries a live state
-inspector and a checklist covering pointer, keyboard, screen-reader, mobile and
-scroll behavior. Resize below 767px to exercise the mobile layer and the Webflow
-burger integration. It is not published (`files` in `package.json` excludes it).
+`docs/examples/local/` loads the local `dist/navigation.browser.js` build and
+styles it with nothing but the `[data-state]` / `[data-motion]` /
+`--nav-viewport-*` hooks, so it doubles as a check that those hooks are enough
+to build with. It carries a live state inspector and a checklist covering
+pointer, keyboard, screen-reader, mobile and scroll behavior — resize below
+767px for the mobile layer and the Webflow burger integration. Not published
+(`files` in `package.json` excludes it).
 
 #### Testing
 
@@ -332,8 +332,8 @@ pnpm format            # Format with Biome (--write)
 ## Project Structure
 
 ```
-demo/
-└── index.html                  # Manual-test page (pnpm demo)
+docs/examples/
+└── local/index.html            # Runnable example (pnpm example)
 src/
 ├── index.ts                    # Main entry point
 ├── config.ts                   # NAV_ROOT_SELECTOR — the shared nav root
