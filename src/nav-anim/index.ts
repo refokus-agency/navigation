@@ -107,6 +107,12 @@ function createBehaviour(
  * of it, and the superseded handle's `destroy()` becomes a no-op for that
  * element.
  *
+ * The return value reports only whether a `[r-navbar]` element exists, so a
+ * truthy handle does not mean anything is animating: elements can all have
+ * opted out. That case — navbars present, none bound — warns, because it is
+ * otherwise silent and is what an upgrade from a version predating the
+ * behaviour attribute looks like.
+ *
  * @param options - Animation options
  * @returns A handle exposing `destroy()`, or `false` when no navbar was found
  */
@@ -138,6 +144,12 @@ export function initNavbarAnimation(
 
     bindings.push({ element, teardown });
     registerBinding(element, teardown);
+  }
+
+  if (!bindings.length) {
+    console.warn(
+      `[r-navbar] Found ${navbarElements.length} ${NAVBAR_CONFIG.selectors.navbar} element(s), but none opted into a behaviour. Add ${NAVBAR_CONFIG.attributes.behaviour}="hide" to the ones that should animate.`,
+    );
   }
 
   return {

@@ -151,6 +151,30 @@ describe('initNavbarAnimation', () => {
       },
     );
 
+    it('should warn when navbars exist but none opted into a behaviour', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      mockNavbarQuery([navbarStub(), navbarStub(), navbarStub()]);
+
+      expect(initNavbarAnimation()).toBeTruthy();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('none opted into a behaviour'),
+      );
+
+      warn.mockRestore();
+    });
+
+    it('should not warn when at least one element opted in', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      mockNavbarQuery([navbarStub(), navbarStub('hide')]);
+      initNavbarAnimation();
+
+      expect(warn).not.toHaveBeenCalled();
+
+      warn.mockRestore();
+    });
+
     it('should resolve each element independently', () => {
       mockNavbarQuery([navbarStub('hide'), navbarStub(), navbarStub('hide')]);
       initNavbarAnimation();

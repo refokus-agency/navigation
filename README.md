@@ -56,7 +56,7 @@ const handle = initNavbarAnimation({
 });
 
 if (handle) {
-  console.log('Navbar animation initialized');
+  console.log('Found a navbar');
 }
 
 // Later — removes the scroll subscription, kills in-flight tweens, and clears
@@ -66,6 +66,11 @@ if (handle) handle.destroy();
 
 `initNavbarAnimation` returns a handle, or `false` when no `[r-navbar]` element
 is found.
+
+> **A truthy handle does not mean anything is animating.** It reports only that
+> a `[r-navbar]` element exists — every one of them may have opted out. When
+> navbars are present and none opted into a behaviour, the package warns in the
+> console rather than failing silently.
 
 ### Behaviours
 
