@@ -24,6 +24,11 @@ import type {
   NavMenuRefs,
 } from './types.ts';
 
+// Ids must be unique per instance: the feature is built for several menus on
+// one page (a desktop nav plus a mobile duplicate is the ordinary Webflow
+// shape), and positional fallback values collide across roots.
+let instanceCount = 0;
+
 const DEFAULT_OPTIONS: NavMenuOptions = {
   delayDuration: 200,
   skipDelayDuration: 300,
@@ -53,7 +58,7 @@ export function initNavigationMenu(
   }
 
   const refs = discoverRefs(root);
-  setupAria(root, refs, resolvedOptions);
+  setupAria(root, refs, resolvedOptions, `nav-${++instanceCount}`);
 
   const renderer = createRenderer({ refs, options: resolvedOptions, root });
   const controller = createController({
@@ -64,6 +69,8 @@ export function initNavigationMenu(
 
   const cleanups: NavMenuCleanup[] = [];
   const context: NavMenuContext = { root, refs, controller, cleanups };
+
+  cleanups.push(() => controller.destroy());
 
   attachPointerEvents(context);
   attachDismiss(context);
@@ -77,9 +84,8 @@ export function initNavigationMenu(
 
   return {
     open: (value: string) => controller.setValue(value),
-    close: () => controller.setValue(null),
+    close: () => controller.close(),
     destroy() {
-      controller.destroy();
       for (const cleanup of cleanups) cleanup();
     },
   };
@@ -99,19 +105,25 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
   const contentMap = new Map<string, HTMLElement>();
 
   const items = root.querySelectorAll<HTMLElement>(selectors.item);
+  const viewportContents = indexViewportContents(viewport);
 
   items.forEach((item, index) => {
-    const trigger = item.querySelector<HTMLElement>(selectors.trigger);
-    if (!trigger) return;
-
-    // With nested items the outer one also matches its child's trigger.
-    if (trigger.closest(selectors.item) !== item) return;
+    const owned = [
+      ...item.querySelectorAll<HTMLElement>(selectors.trigger),
+    ].filter(
+      (trigger) =>
+        // A nested item owns its own triggers, and a trigger inside a panel is
+        // not a nav stop — Tab cannot reach it, so it must not become an entry.
+        trigger.closest(selectors.item) === item &&
+        trigger.closest(selectors.content) === null,
+    );
+    if (owned.length === 0) return;
 
     const value = item.getAttribute(attributes.item) || `item-${index}`;
     item.setAttribute(attributes.item, value);
 
     const content =
-      findViewportContent(viewport, value) ??
+      viewportContents.get(value) ??
       item.querySelector<HTMLElement>(selectors.content);
 
     if (content) {
@@ -119,11 +131,16 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
       contentMap.set(value, content);
     }
 
-    entries.push({ item, trigger, value, content });
-    triggers.push(trigger);
     itemValues.push(value);
-    triggerByValue.set(value, trigger);
-    valueByTrigger.set(trigger, value);
+
+    // One entry per trigger: an item may carry several, and each needs its own
+    // pointer wiring, ARIA and pointer-state slot.
+    for (const trigger of owned) {
+      entries.push({ item, trigger, value, content });
+      triggers.push(trigger);
+      valueByTrigger.set(trigger, value);
+      if (!triggerByValue.has(value)) triggerByValue.set(value, trigger);
+    }
   });
 
   return {
@@ -138,32 +155,37 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
   };
 }
 
-function findViewportContent(
+function indexViewportContents(
   viewport: HTMLElement | null,
-  value: string,
-): HTMLElement | null {
-  if (!viewport) return null;
+): Map<string, HTMLElement> {
+  const byValue = new Map<string, HTMLElement>();
+  if (!viewport) return byValue;
 
   const { selectors, attributes } = NAV_MENU_CONFIG;
-  const contents = viewport.querySelectorAll<HTMLElement>(selectors.content);
 
-  for (const content of contents) {
-    if (content.getAttribute(attributes.content) === value) return content;
+  for (const content of viewport.querySelectorAll<HTMLElement>(
+    selectors.content,
+  )) {
+    const value = content.getAttribute(attributes.content);
+    if (value && !byValue.has(value)) byValue.set(value, content);
   }
 
-  return null;
+  return byValue;
 }
 
 function setupAria(
   root: HTMLElement,
   refs: NavMenuRefs,
   options: NavMenuOptions,
+  idPrefix: string,
 ): void {
   if (!root.getAttribute('role')) root.setAttribute('role', 'navigation');
   root.setAttribute('data-orientation', options.orientation);
 
   refs.list?.setAttribute('data-orientation', options.orientation);
   refs.viewport?.setAttribute('data-orientation', options.orientation);
+
+  const labelled = new Set<string>();
 
   for (const { trigger, value } of refs.entries) {
     if (
@@ -178,17 +200,25 @@ function setupAria(
     const content = refs.contentMap.get(value);
     if (!content) continue;
 
-    const triggerId = `nav-t-${value}`;
-    const contentId = `nav-c-${value}`;
+    const contentId = content.id || `${idPrefix}-c-${value}`;
 
-    trigger.id = triggerId;
     trigger.setAttribute('aria-expanded', 'false');
     trigger.setAttribute('aria-controls', contentId);
 
     content.id = contentId;
     content.setAttribute('role', 'region');
-    content.setAttribute('aria-labelledby', triggerId);
     content.setAttribute('data-orientation', options.orientation);
+
+    // Only the first trigger for a value is named, so several triggers sharing
+    // a panel cannot produce duplicate ids.
+    if (labelled.has(value)) continue;
+    labelled.add(value);
+
+    // Never clobber an author id: a label, anchor or existing aria-* reference
+    // may already point at this element.
+    const triggerId = trigger.id || `${idPrefix}-t-${value}`;
+    trigger.id = triggerId;
+    content.setAttribute('aria-labelledby', triggerId);
   }
 }
 

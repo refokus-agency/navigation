@@ -305,7 +305,12 @@ describe('markup without a viewport', () => {
     expect(content?.style.display).toBe('');
     expect(content?.dataset.state).toBe('open');
 
+    // Without a viewport the panel owns its own exit, so it stays mounted for
+    // the animation exactly as it does when switching panels.
     instance?.close();
+    expect(content?.style.display).toBe('');
+
+    flushFrame();
     expect(content?.style.display).toBe('none');
   });
 });

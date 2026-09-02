@@ -49,12 +49,14 @@ describe('initNavigationMenu', () => {
     const trigger = menu.trigger('products');
     const content = menu.content('products');
 
-    expect(trigger.id).toBe('nav-t-products');
+    // Asserted as relationships, not literal ids: ids carry a per-instance
+    // prefix so two menus on one page cannot collide.
+    expect(trigger.id).not.toBe('');
+    expect(content.id).not.toBe('');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
-    expect(trigger.getAttribute('aria-controls')).toBe('nav-c-products');
-    expect(content.id).toBe('nav-c-products');
+    expect(trigger.getAttribute('aria-controls')).toBe(content.id);
     expect(content.getAttribute('role')).toBe('region');
-    expect(content.getAttribute('aria-labelledby')).toBe('nav-t-products');
+    expect(content.getAttribute('aria-labelledby')).toBe(trigger.id);
   });
 
   it('should set role and orientation hooks on root, list and viewport', () => {
@@ -243,8 +245,9 @@ describe('non-flat markup', () => {
     const instance = initNavigationMenu();
     const trigger = document.querySelector<HTMLElement>('[data-nav-trigger]');
 
-    expect(trigger?.id).toBe('nav-t-inner');
-    expect(trigger?.getAttribute('aria-controls')).toBe('nav-c-inner');
+    const content = document.querySelector<HTMLElement>('[data-nav-content]');
+    expect(trigger?.id).toMatch(/-t-inner$/);
+    expect(trigger?.getAttribute('aria-controls')).toBe(content?.id);
 
     instance?.open('inner');
     expect(trigger?.dataset.state).toBe('open');

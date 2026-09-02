@@ -8,17 +8,22 @@ export function attachPointerEvents({
   controller,
   cleanups,
 }: NavMenuContext): void {
-  const isMobile = () => root.dataset.navMode === 'mobile';
+  // One guard for all four handlers, so it cannot be dropped from one of them:
+  // a touchscreen laptop at desktop width has isMobile() false, and an
+  // unfiltered touch pointerenter would clear the close timer with no
+  // pointerleave to follow it.
+  const isMouseHover = (event: PointerEvent) =>
+    event.pointerType === 'mouse' && root.dataset.navMode !== 'mobile';
 
   for (const { trigger, value } of refs.entries) {
     if (!refs.contentMap.has(value)) continue;
 
     const onEnter = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse' || isMobile()) return;
+      if (!isMouseHover(event)) return;
       controller.triggerPointerEnter(value, trigger);
     };
     const onLeave = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse' || isMobile()) return;
+      if (!isMouseHover(event)) return;
       controller.triggerPointerLeave(trigger);
     };
     const onClick = (event: MouseEvent) => {
@@ -37,17 +42,23 @@ export function attachPointerEvents({
     });
   }
 
+  // Panels can fall back to living inside their item even when a viewport
+  // exists, and such a panel needs its own hover target or the close timer
+  // runs on under the cursor.
+  const outsideViewport = [...refs.contentMap.values()].filter(
+    (content) => !refs.viewport?.contains(content),
+  );
   const hoverTargets = refs.viewport
-    ? [refs.viewport]
-    : [...refs.contentMap.values()];
+    ? [refs.viewport, ...outsideViewport]
+    : outsideViewport;
 
   for (const target of hoverTargets) {
-    const onEnter = () => {
-      if (isMobile()) return;
+    const onEnter = (event: PointerEvent) => {
+      if (!isMouseHover(event)) return;
       controller.contentPointerEnter();
     };
     const onLeave = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse' || isMobile()) return;
+      if (!isMouseHover(event)) return;
       controller.contentPointerLeave();
     };
 
@@ -69,9 +80,9 @@ export function attachDismiss({
   const onOutside = (event: Event) => {
     const target = event.target;
     if (!(target instanceof Node)) return;
-    if (controller.getActiveValue() && !root.contains(target)) {
-      controller.setValue(null);
-    }
+    // Not gated on getActiveValue(): it is still null while a hover-open is
+    // only pending, and setValue(null) is what cancels that timer.
+    if (!root.contains(target)) controller.close();
   };
 
   document.addEventListener('pointerdown', onOutside);
@@ -101,7 +112,7 @@ export function attachLinkClicks({
     if (!link) return;
 
     if (!event.metaKey && !event.ctrlKey) {
-      controller.setValue(null);
+      controller.close();
     }
   };
 

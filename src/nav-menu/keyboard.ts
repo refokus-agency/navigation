@@ -145,13 +145,13 @@ function handleTab(
         return;
       }
       // Nothing to step into.
-      controller.setValue(null);
+      controller.close();
       return;
     }
 
     // Moving to a sibling stop abandons any open panel; backwards includes ours.
     if (activeValue !== null && (goingBack || activeValue !== triggerValue)) {
-      controller.setValue(null);
+      controller.close();
     }
     return;
   }
@@ -174,7 +174,7 @@ function handleTab(
       const next = nextNavStop(root, refs, activeValue);
       if (next) next.focus();
       else focusAfterRoot(root);
-      controller.setValue(null);
+      controller.close();
       return;
     }
 
@@ -182,7 +182,7 @@ function handleTab(
   }
 
   // Any other stop in the nav: leaving it strands the open panel.
-  if (activeValue !== null) controller.setValue(null);
+  if (activeValue !== null) controller.close();
 }
 
 /** Triggers and plain links, never panel contents. */

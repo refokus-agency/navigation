@@ -39,12 +39,18 @@ second `initNavbarAnimation` call overwrites the first. `cleanupNavbarAnimation`
 is not exported from the package root.
 
 **`nav-menu` holds none** — each call returns an independent
-`{ open, close, destroy }`. Every module pushes teardown onto the shared
-`cleanups` array via `NavMenuContext`; `destroy()` must leave nothing behind.
+`{ open, close, destroy }`. Every teardown goes onto the shared `cleanups`
+array, the controller's included, so `destroy()` is just draining that array
+and nothing can be forgotten. (`index.ts` owns a module-level instance counter,
+used only to keep generated ids unique across roots.)
 
-**`render.ts` is the only module that writes DOM state**, and it animates
-nothing. Whether a viewport mount skips the size transition comes from its own
-`isViewportOpen` flag — **never** from reading back `style.display`, which only
+**`render.ts` is the only module that writes *reactive* DOM state**, and it
+animates nothing. Two deliberate exceptions: `setupAria` in `index.ts` writes
+the ARIA wiring once at init, and `mobile.ts` writes `[data-nav-mode]`, which
+tracks the breakpoint rather than the open/closed state.
+
+Whether a viewport mount skips the size transition comes from the renderer's
+own `isViewportOpen` flag — **never** from reading back `style.display`, which only
 flips when the exit animation ends (a reopen inside that window then sized from
 a stale value; constant via `Enter`, invisible via hover).
 

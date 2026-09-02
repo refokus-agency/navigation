@@ -26,7 +26,7 @@ export function attachMobile({
   if (mediaQuery) {
     const onMediaQueryChange = () => {
       applyMode();
-      controller.setValue(null);
+      controller.close();
     };
     mediaQuery.addEventListener('change', onMediaQueryChange);
     cleanups.push(() =>
@@ -38,7 +38,7 @@ export function attachMobile({
   if (back) {
     const onClick = (event: MouseEvent) => {
       event.preventDefault();
-      controller.setValue(null);
+      controller.close();
     };
     back.addEventListener('click', onClick);
     cleanups.push(() => back.removeEventListener('click', onClick));
@@ -49,16 +49,21 @@ export function attachMobile({
     ?.querySelector<HTMLElement>(selectors.webflowBurger);
 
   if (burger && typeof MutationObserver !== 'undefined') {
-    let wasOpen = burger.getAttribute('aria-expanded') === 'true';
-
-    const observer = new MutationObserver(() => {
+    // Scan the whole batch, not just its first record: same-tick mutations
+    // coalesce into one callback, and an open immediately followed by a close
+    // leaves oldValues of ['false', 'true'] — so only `some` sees that the
+    // overlay was open at all and a panel is now stranded behind it.
+    const observer = new MutationObserver((mutations) => {
+      const wasOpen = mutations.some(
+        (mutation) => mutation.oldValue === 'true',
+      );
       const isOpen = burger.getAttribute('aria-expanded') === 'true';
-      if (wasOpen && !isOpen) controller.setValue(null);
-      wasOpen = isOpen;
+      if (wasOpen && !isOpen) controller.close();
     });
     observer.observe(burger, {
       attributes: true,
       attributeFilter: ['aria-expanded'],
+      attributeOldValue: true,
     });
 
     cleanups.push(() => observer.disconnect());

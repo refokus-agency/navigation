@@ -41,6 +41,8 @@ export type NavMenuRenderer = {
 
 export type NavMenuController = {
   setValue(value: string | null): void;
+  /** Closes now and cancels a pending hover-open. */
+  close(): void;
   triggerPointerEnter(value: string, trigger: HTMLElement): void;
   triggerPointerLeave(trigger: HTMLElement): void;
   triggerClick(value: string, trigger: HTMLElement): void;

@@ -23,15 +23,15 @@ export function createRenderer({
   // animate from the stale size (constant via Enter, invisible via hover).
   let isViewportOpen = false;
 
+  // `dir` is fixed for the instance, so order it once rather than per render.
+  const ordered =
+    options.dir === 'rtl' ? [...refs.itemValues].reverse() : refs.itemValues;
+
   function applyState(
     value: string | null,
     previousValue: string | null,
   ): void {
     const { viewport } = refs;
-    const ordered =
-      options.dir === 'rtl'
-        ? [...refs.itemValues].reverse()
-        : [...refs.itemValues];
     const prevIdx = previousValue ? ordered.indexOf(previousValue) : -1;
     const currIdx = value ? ordered.indexOf(value) : -1;
 
@@ -54,9 +54,11 @@ export function createRenderer({
       } else if (wasActive && value) {
         // Switching panels — animate this content out independently
         hideAfterAnimation(content, () => hideContent(content));
-      } else if (wasActive && !value && viewport) {
-        // Deliberately empty: stay visible so the viewport's exit animation
-        // has something to render. The viewport's callback below cleans up.
+      } else if (wasActive && !value) {
+        // With a viewport, stay visible so its exit animation has something to
+        // render and let its callback below clean up. Without one, this panel
+        // owns its own exit, exactly as it does when switching.
+        if (!viewport) hideAfterAnimation(content, () => hideContent(content));
       } else {
         hideContent(content);
       }

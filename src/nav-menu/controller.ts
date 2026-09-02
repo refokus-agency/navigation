@@ -109,6 +109,18 @@ export function createController({
     startCloseTimer();
   }
 
+  /**
+   * Closes now and cancels a pending hover-open. Externally-driven closes must
+   * use this: an in-flight openTimer is invisible to getActiveValue(), so a
+   * plain setValue(null) would let the menu open ~200ms after the user clicked
+   * away or crossed the breakpoint.
+   */
+  function close(): void {
+    clearTimeout(openTimer);
+    clearTimeout(closeTimer);
+    setValue(null);
+  }
+
   function startCloseTimer(): void {
     clearTimeout(closeTimer);
     closeTimer = setTimeout(
@@ -118,6 +130,8 @@ export function createController({
   }
 
   function handleEscape(): HTMLElement | null {
+    // Even with nothing open, a hover-open may be in flight.
+    clearTimeout(openTimer);
     if (!activeValue) return null;
 
     const trigger = refs.triggerByValue.get(activeValue) ?? null;
@@ -136,6 +150,7 @@ export function createController({
 
   return {
     setValue,
+    close,
     triggerPointerEnter,
     triggerPointerLeave,
     triggerClick,
