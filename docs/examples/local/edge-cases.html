@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>@refokus-agency/navigation — edge cases</title>
+
+<script type="importmap">
+{ "imports": { "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.15.0/+esm" } }
+</script>
+
+<style>
+  * { box-sizing: border-box; }
+  :root { --bg:#0e1116; --panel:#171c24; --line:#2a323d; --text:#e6edf3;
+          --dim:#8b949e; --accent:#58a6ff; --ok:#3fb950; --warn:#d29922; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size:21px; letter-spacing:-.02em; margin-bottom:4px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.09em;
+       color:var(--dim); margin:38px 0 10px; }
+  p.lede { color:var(--dim); margin-top:0; }
+  code,kbd { background:#1c2230; border:1px solid var(--line); border-radius:5px;
+             padding:1px 5px; font-size:12.5px; }
+  a.back { color:var(--accent); }
+
+  .case { border:1px solid var(--line); border-radius:12px; padding:16px 18px;
+          background:var(--panel); margin-bottom:14px; }
+  .case > h3 { margin:0 0 4px; font-size:14.5px; }
+  .case > .why { color:var(--dim); font-size:13.5px; margin:0 0 14px; }
+  .case > .try { color:var(--text); font-size:13.5px; margin:12px 0 0;
+                 border-top:1px solid var(--line); padding-top:12px; }
+
+  /* --- the nav under test (minimal styling, real hooks) --- */
+  [data-nav-menu] { position:relative; }
+  [data-nav-list] { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+  [data-nav-item] { position:relative; }
+  [data-nav-trigger],[data-nav-link],[data-nav-back] {
+    appearance:none; background:#1c2230; border:1px solid var(--line);
+    color:var(--text); font:inherit; padding:6px 11px; border-radius:8px;
+    cursor:pointer; text-decoration:none; }
+  [data-nav-trigger][data-state='open'] { background:#263041; color:var(--accent);
+    border-color:var(--accent); }
+  [data-nav-trigger]:focus-visible,[data-nav-link]:focus-visible,
+  [data-nav-content] a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  [data-nav-viewport] { position:absolute; top:calc(100% + 6px); left:0;
+    width:var(--nav-viewport-width); height:var(--nav-viewport-height);
+    overflow:hidden; background:#0f141b; border:1px solid var(--line);
+    border-radius:10px; z-index:5;
+    transition:width .25s ease, height .25s ease; }
+  /* top/left only — the viewport's size derives from this element */
+  [data-nav-content] { position:absolute; top:0; left:0; padding:12px; width:max-content; }
+  [data-nav-content] a { display:block; padding:5px 8px; border-radius:6px;
+    color:var(--text); text-decoration:none; white-space:nowrap; }
+  [data-nav-content] a:hover { background:#212936; color:var(--accent); }
+
+  /* in-place panels (no viewport, or outside it) */
+  .inplace [data-nav-content] { position:absolute; top:calc(100% + 6px); left:0;
+    background:#0f141b; border:1px solid var(--line); border-radius:10px; z-index:5; }
+
+  @keyframes fadeIn  { from{opacity:0; transform:translateY(-4px)} to{opacity:1;transform:none} }
+  @keyframes fadeOut { from{opacity:1; transform:none} to{opacity:0; transform:translateY(-4px)} }
+  [data-nav-viewport][data-state='open']   { animation:fadeIn  .18s ease both; }
+  [data-nav-viewport][data-state='closed'] { animation:fadeOut .30s ease both; }
+  .inplace [data-nav-content][data-state='open']   { animation:fadeIn  .18s ease both; }
+  .inplace [data-nav-content][data-state='closed'] { animation:fadeOut .30s ease both; }
+
+  .harness { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .harness button { background:#232b38; border:1px solid var(--line); color:var(--text);
+    font:inherit; font-size:13px; padding:6px 11px; border-radius:8px; cursor:pointer; }
+  .harness button:hover { border-color:var(--accent); color:var(--accent); }
+
+  #log { margin-top:26px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:12px 14px; max-height:220px; overflow:auto;
+    font:12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--dim); }
+  #log div:first-child { color:var(--ok); }
+  .verdict { font-weight:600; }
+  .verdict.pass { color:var(--ok); }
+  .verdict.fail { color:var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Edge cases from the #83 review</h1>
+  <p class="lede">
+    Markup shapes the <a class="back" href="./index.html">main example</a> does not
+    contain. Each block is one review finding. The log at the bottom records every
+    state change.
+  </p>
+
+  <!-- 1 ─ several triggers in one item -->
+  <div class="case">
+    <h3>1 · Two triggers in one item</h3>
+    <p class="why">
+      Only the first used to get pointer wiring and ARIA — the second was a dead
+      control that only <kbd>Enter</kbd> reached, and arrow keys from it jumped to
+      the first or last item.
+    </p>
+    <nav data-nav-menu id="multi">
+      <div data-nav-list>
+        <div data-nav-item="products">
+          <button type="button" data-nav-trigger>Products</button>
+          <button type="button" data-nav-trigger aria-label="Open products">▾</button>
+        </div>
+        <div data-nav-item="pricing">
+          <button type="button" data-nav-trigger>Pricing</button>
+        </div>
+      </div>
+      <div data-nav-viewport>
+        <div data-nav-content="products"><a href="#a">Analytics</a><a href="#b">Automation</a></div>
+        <div data-nav-content="pricing"><a href="#c">Plans</a></div>
+      </div>
+    </nav>
+    <p class="try">
+      Hover <b>▾</b> → opens. Click it → toggles. Focus it and press <kbd>→</kbd> →
+      must land on <b>Pricing</b>, not back on Products. Inspect both triggers: both
+      carry <code>aria-controls</code>, only one carries an <code>id</code>.
+    </p>
+  </div>
+
+  <!-- 2 ─ two roots, positional values -->
+  <div class="case">
+    <h3>2 · Two roots with positional values</h3>
+    <p class="why">
+      Neither item declares a value, so both fall back to <code>item-0</code>. The
+      ids used to collide and every <code>aria-controls</code> resolved into the
+      first root.
+    </p>
+    <div style="display:flex; gap:28px; flex-wrap:wrap">
+      <nav data-nav-menu id="root-a">
+        <div data-nav-list>
+          <div data-nav-item>
+            <button type="button" data-nav-trigger>Root A menu</button>
+          </div>
+        </div>
+        <div data-nav-viewport><div data-nav-content><a href="#a">A only</a></div></div>
+      </nav>
+      <nav data-nav-menu id="root-b">
+        <div data-nav-list>
+          <div data-nav-item>
+            <button type="button" data-nav-trigger>Root B menu</button>
+          </div>
+        </div>
+        <div data-nav-viewport><div data-nav-content><a href="#b">B only</a></div></div>
+      </nav>
+    </div>
+    <div class="harness">
+      <button type="button" data-check="ids">Check id uniqueness &amp; targeting</button>
+    </div>
+    <p class="try">
+      Open each — they must open independently. The check reports whether every id
+      in the document is unique and whether each trigger resolves to the panel in
+      its <em>own</em> root.
+    </p>
+  </div>
+
+  <!-- 3 ─ panel outside the viewport + no-viewport exit -->
+  <div class="case">
+    <h3>3 · Panel living in its item, viewport present but empty</h3>
+    <p class="why">
+      A panel taking the in-item fallback got no hover target, so the close timer
+      ran on and shut it ~150ms after the cursor arrived. Closing also snapped shut
+      with no exit animation, while switching animated properly.
+    </p>
+    <nav data-nav-menu id="inplace" class="inplace">
+      <div data-nav-list>
+        <div data-nav-item="one">
+          <button type="button" data-nav-trigger>In-place one</button>
+          <div data-nav-content="one"><a href="#x">Link one</a><a href="#y">Link two</a></div>
+        </div>
+        <div data-nav-item="two">
+          <button type="button" data-nav-trigger>In-place two</button>
+          <div data-nav-content="two"><a href="#z">Link three</a></div>
+        </div>
+      </div>
+      <div data-nav-viewport></div>
+    </nav>
+    <p class="try">
+      Hover a trigger, then move onto the panel → it must <b>stay open</b>. Then
+      press <kbd>Esc</kbd> → it must <b>fade out</b> over 300ms, not disappear
+      instantly.
+    </p>
+  </div>
+
+  <!-- 4 ─ nested item inside a panel -->
+  <div class="case">
+    <h3>4 · Nested item inside a panel</h3>
+    <p class="why">
+      A mega-menu column with its own <code>[data-nav-item]</code> used to register
+      as a top-level trigger, but Tab excluded it — so <kbd>Home</kbd>/<kbd>End</kbd>
+      could send focus to an element Tab could never reach, and nowhere at all when
+      its panel was closed and <code>inert</code>.
+    </p>
+    <nav data-nav-menu id="nested">
+      <div data-nav-list>
+        <div data-nav-item="mega">
+          <button type="button" data-nav-trigger id="mega-trigger">Mega menu</button>
+        </div>
+      </div>
+      <div data-nav-viewport>
+        <div data-nav-content="mega">
+          <div data-nav-item="column">
+            <button type="button" data-nav-trigger id="column-trigger">Column heading</button>
+          </div>
+          <a href="#n1">Nested link</a>
+        </div>
+      </div>
+    </nav>
+    <div class="harness">
+      <button type="button" data-check="nested">Check the nested trigger is not an entry</button>
+    </div>
+    <p class="try">
+      Focus <b>Mega menu</b> and press <kbd>End</kbd> → focus must stay on it. The
+      check confirms the inner trigger got no <code>aria-expanded</code> and no
+      <code>data-state</code>.
+    </p>
+  </div>
+
+  <!-- 5 ─ synthetic cases -->
+  <div class="case">
+    <h3>5 · Cases that need a synthetic event</h3>
+    <p class="why">
+      A touch pointer needs a touchscreen at desktop width, and a same-tick overlay
+      toggle cannot be produced by clicking. These dispatch the exact events.
+    </p>
+    <div class="harness">
+      <button type="button" data-check="touch">Touch <code>pointerenter</code> on an open viewport</button>
+      <button type="button" data-check="pending">Cancel a pending hover-open</button>
+      <button type="button" data-check="burger">Same-tick burger open→close</button>
+    </div>
+    <p class="try">
+      Each runs the scenario and reports pass/fail in the log — the touch one opens
+      case 1, fires an unfiltered <code>touch</code> pointerenter, and asserts the
+      panel still closes.
+    </p>
+  </div>
+
+  <div id="log"></div>
+</main>
+
+<!-- Webflow overlay stand-in for the burger check -->
+<div class="w-nav" style="display:none">
+  <a class="w-nav-button" aria-expanded="false" href="#">menu</a>
+  <nav data-nav-menu id="burger-nav">
+    <div data-nav-list>
+      <div data-nav-item="b"><button type="button" data-nav-trigger>b</button></div>
+    </div>
+    <div data-nav-viewport><div data-nav-content="b"><a href="#b">b</a></div></div>
+  </nav>
+</div>
+
+<script type="module">
+  import { initNavigationMenu } from '../../../dist/navigation.browser.js';
+
+  const logEl = document.getElementById('log');
+  const log = (msg, verdict) => {
+    const el = document.createElement('div');
+    el.innerHTML = verdict
+      ? `<span class="verdict ${verdict}">${verdict.toUpperCase()}</span>  ${msg}`
+      : msg;
+    logEl.prepend(el);
+  };
+
+  const menus = new Map();
+  for (const root of document.querySelectorAll('[data-nav-menu]')) {
+    menus.set(root.id, initNavigationMenu(root, {
+      onValueChange: (v) => log(`${root.id}: ${v ?? 'closed'}`),
+    }));
+  }
+  log(`initialized ${menus.size} menus`);
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const state = (sel) => document.querySelector(sel)?.dataset.state;
+
+  const checks = {
+    ids() {
+      const ids = [...document.querySelectorAll('[id]')].map((el) => el.id);
+      const unique = new Set(ids).size === ids.length;
+      log(`${ids.length} ids, all unique: ${unique}`, unique ? 'pass' : 'fail');
+
+      for (const id of ['root-a', 'root-b']) {
+        const root = document.getElementById(id);
+        const trigger = root.querySelector('[data-nav-trigger]');
+        const content = root.querySelector('[data-nav-content]');
+        const target = document.getElementById(trigger.getAttribute('aria-controls'));
+        const ok = target === content;
+        log(`${id}: aria-controls resolves inside its own root: ${ok}`, ok ? 'pass' : 'fail');
+      }
+    },
+
+    nested() {
+      const inner = document.getElementById('column-trigger');
+      const ok = !inner.hasAttribute('aria-expanded') && inner.dataset.state === undefined;
+      log(`nested trigger is not an entry: ${ok}`, ok ? 'pass' : 'fail');
+    },
+
+    async touch() {
+      const nav = document.getElementById('multi');
+      menus.get('multi').open('products');
+      await wait(30);
+
+      const viewport = nav.querySelector('[data-nav-viewport]');
+      const event = new Event('pointerenter');
+      Object.defineProperty(event, 'pointerType', { value: 'touch' });
+      viewport.dispatchEvent(event);
+
+      // Leaving the trigger starts the close timer; the touch enter must not
+      // have cleared it.
+      const leave = new Event('pointerleave');
+      Object.defineProperty(leave, 'pointerType', { value: 'mouse' });
+      nav.querySelector('[data-nav-trigger]').dispatchEvent(leave);
+
+      await wait(260);
+      const ok = state('#multi [data-nav-content="products"]') === 'closed';
+      log(`touch pointerenter did not pin the panel open: ${ok}`, ok ? 'pass' : 'fail');
+    },
+
+    async pending() {
+      const nav = document.getElementById('multi');
+      const trigger = nav.querySelector('[data-nav-trigger]');
+
+      const enter = new Event('pointerenter');
+      Object.defineProperty(enter, 'pointerType', { value: 'mouse' });
+      trigger.dispatchEvent(enter);
+      log('hover started — clicking outside before the 200ms delay elapses');
+
+      await wait(60);
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+
+      await wait(400);
+      const ok = state('#multi [data-nav-content="products"]') !== 'open';
+      log(`pending open was cancelled: ${ok}`, ok ? 'pass' : 'fail');
+    },
+
+    async burger() {
+      const burger = document.querySelector('.w-nav-button');
+      menus.get('burger-nav').open('b');
+      await wait(30);
+
+      // Both in one tick — MutationObserver coalesces them.
+      burger.setAttribute('aria-expanded', 'true');
+      burger.setAttribute('aria-expanded', 'false');
+
+      await wait(50);
+      const ok = state('#burger-nav [data-nav-content="b"]') === 'closed';
+      log(`same-tick open→close reset the panel: ${ok}`, ok ? 'pass' : 'fail');
+    },
+  };
+
+  for (const button of document.querySelectorAll('[data-check]')) {
+    button.addEventListener('click', () => checks[button.dataset.check]());
+  }
+</script>
+</body>
+</html>
