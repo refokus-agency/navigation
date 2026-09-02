@@ -4,12 +4,16 @@
 [![npm version](https://img.shields.io/npm/v/@refokus-agency/navigation.svg)](https://www.npmjs.com/package/@refokus-agency/navigation)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-A TypeScript package for implementing smooth navbar animations with GSAP, featuring scroll-based show/hide behavior and customizable animation settings.
+A TypeScript package for Webflow and custom-code navigations: GSAP-powered scroll show/hide for the navbar shell, plus a fully accessible dropdown menu with hover delays, keyboard navigation and ARIA wiring.
 
 ## Features
 
 - ✨ Smooth GSAP-powered animations
 - 📜 Scroll-based navbar show/hide behavior
+- ♿ Accessible dropdown menu — full keyboard support, ARIA wiring, focus management
+- ⏱️ Radix-style hover delays with an instant-switch skip window
+- 🎬 CSS-driven enter/exit animations via `[data-state]` / `[data-motion]` hooks
+- 📱 Mobile layer that integrates with the Webflow burger overlay
 - ⚙️ Configurable animation settings
 - 🎯 Attribute-based element selection
 - 📦 ES Module-only package (no CommonJS support)
@@ -33,13 +37,16 @@ npm install @refokus-agency/navigation
 
 ### Basic Setup
 
-1. Add the `r-navbar` attribute to your navbar element(s):
+1. Add the `data-nav-menu` attribute to your navbar element(s):
 
 ```html
-<nav r-navbar>
+<nav data-nav-menu>
   <!-- Your navbar content -->
 </nav>
 ```
+
+`data-nav-menu` is the **single** nav root attribute — both the scroll
+animation and the dropdown menu attach to it, so one element serves both.
 
 2. Initialize the navbar animation system:
 
@@ -62,7 +69,222 @@ if (success) {
 - **Initial Animation**: Navbar slides in smoothly on page load
 - **Scroll Down**: Navbar hides when scrolling down past threshold (50px)
 - **Scroll Up**: Navbar shows when scrolling up
+- **Focus**: A hidden navbar slides back in when focus moves into it, so
+  tabbing back up to the nav never lands on an off-screen element
 - **Multiple Navbars**: Supports multiple navbar elements with the same attribute
+
+### Using both features together
+
+Both features attach to the same `[data-nav-menu]` root, so one nav gets the
+scroll behavior and the dropdown menu:
+
+```typescript
+import {
+  initNavbarAnimation,
+  initNavigationMenu,
+} from '@refokus-agency/navigation';
+
+initNavbarAnimation();
+initNavigationMenu();
+```
+
+They are independent: the animation reads only the root, the menu reads only
+its own `data-nav-*` descendants. Use either on its own if you prefer.
+
+> **Upgrading from a 1.x release:** `initNavbarAnimation` used to select
+> `[r-navbar]`. Rename that attribute to `data-nav-menu` on your nav element —
+> it is now the single root selector for both features.
+
+## Accessible Dropdown Menu
+
+`initNavigationMenu` attaches an accessible dropdown navigation to your markup.
+It ships **no CSS and no GSAP dependency** — it manages state, focus and ARIA,
+then exposes data attributes and custom properties for your CSS to animate.
+
+### Markup
+
+```html
+<nav data-nav-menu>
+  <div data-nav-list>
+    <!-- Item with a dropdown -->
+    <div data-nav-item="products">
+      <button type="button" data-nav-trigger>Products</button>
+    </div>
+
+    <!-- Plain link, no dropdown -->
+    <div data-nav-item>
+      <a data-nav-link href="/pricing">Pricing</a>
+    </div>
+  </div>
+
+  <div data-nav-viewport>
+    <div data-nav-content="products">
+      <a href="/products/a">Product A</a>
+    </div>
+  </div>
+</nav>
+```
+
+| Attribute             | Purpose                                                                             |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `data-nav-menu`       | Menu root. Gets `role="navigation"` unless you set a role yourself                   |
+| `data-nav-list`       | Wrapper around the items (optional, receives `[data-orientation]`)                  |
+| `data-nav-item`       | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted |
+| `data-nav-trigger`    | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel    |
+| `data-nav-content`    | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                |
+| `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
+| `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
+| `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
+
+Panels may live inside a shared `[data-nav-viewport]` or directly inside their
+`[data-nav-item]`. The viewport form is preferred: it lets one element animate
+between panel sizes.
+
+> **Note:** `data-nav-menu` is the same attribute the scroll animation uses, so
+> a single `<nav data-nav-menu>` can run both features. The `data-nav-*` names
+> match the existing Toggl and Relocity implementations, so those sites can drop
+> in this package without touching their Webflow markup or CSS.
+
+### Initialization
+
+```typescript
+import { initNavigationMenu } from '@refokus-agency/navigation';
+
+const menu = initNavigationMenu();
+
+menu?.open('products'); // open a panel by its data-nav-item value
+menu?.close();          // close whatever is open
+menu?.destroy();        // remove every listener, timer and observer
+```
+
+Pass a root element or selector as the first argument to run several menus on
+one page:
+
+```typescript
+document.querySelectorAll<HTMLElement>('[data-nav-menu]').forEach((root) => {
+  initNavigationMenu(root, { delayDuration: 100 });
+});
+```
+
+Returns `null` when no root matches, or when running inside the Webflow
+Designer (see `skipInWebflowEditor`).
+
+### Options
+
+| Option                | Type                           | Default        | Description                                                                 |
+| --------------------- | ------------------------------ | -------------- | --------------------------------------------------------------------------- |
+| `delayDuration`       | `number`                       | `200`          | Hover dwell time before a panel opens, in ms                                |
+| `skipDelayDuration`   | `number`                       | `300`          | Window after a close during which the next hover opens instantly            |
+| `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
+| `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction                                       |
+| `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
+| `onValueChange`       | `(value: string \| null) => void` | —          | Called with the open item's value, or `null` when the menu closes           |
+
+### CSS hooks
+
+| Hook                       | Values                                                    | Set on                                |
+| -------------------------- | --------------------------------------------------------- | ------------------------------------- |
+| `[data-state]`             | `open` \| `closed`                                        | root, triggers, contents, viewport    |
+| `[data-motion]`            | `from-start` \| `from-end` \| `to-start` \| `to-end`       | contents (which way the panel slides) |
+| `[data-orientation]`       | `horizontal` \| `vertical`                                | root, list, viewport, contents        |
+| `[data-nav-mode]`          | `mobile` \| `desktop`                                     | root                                  |
+| `--nav-viewport-width`     | e.g. `480px` (`100%` on mobile)                           | viewport                              |
+| `--nav-viewport-height`    | e.g. `320px`                                              | viewport                              |
+
+Panels stay mounted for the duration of their CSS **animation** (not
+transition), so `@keyframes` exit animations play out before the element is
+hidden. Without an animation, hiding is immediate.
+
+```css
+[data-nav-viewport] {
+  width: var(--nav-viewport-width);
+  height: var(--nav-viewport-height);
+  transition: width 0.25s ease, height 0.25s ease;
+}
+
+[data-nav-content] {
+  position: absolute;
+  top: 0;
+  left: 0; /* top/left only — see the sizing rule below */
+}
+
+[data-nav-content][data-motion='from-end'] {
+  animation: nav-enter-from-right 0.2s ease;
+}
+```
+
+> **Sizing rule — the one way to break this.** `--nav-viewport-*` is measured
+> from the active panel's `scrollWidth`/`scrollHeight`, so the panel must have
+> **no imposed size of its own**. Position it with `top`/`left` only. Give it
+> `inset: 0`, `bottom: 0`, or `height: 100%` and the measurement becomes
+> circular — the panel's box is stretched to the viewport, whose height came
+> from the panel — with two visible symptoms: the viewport settles on the
+> tallest panel and never shrinks, and the `ResizeObserver` re-measures on
+> every frame of the size transition, so the height visibly chases itself.
+
+### Interaction model
+
+- **Hover** a trigger for `delayDuration` to open; hovering a sibling within
+  `skipDelayDuration` of a close switches instantly
+- **Pointer** over the viewport keeps the menu open; leaving closes it after 150ms
+- **Click** a trigger to toggle it — after a click-to-close the cursor must
+  leave and re-enter before hover reopens it
+- **Click** a link inside a panel closes the menu; ⌘/Ctrl-click keeps it open
+- **Click or focus** outside the nav closes the menu
+Hover is mouse-only and disabled in mobile mode — touch devices fall through
+to the click handler.
+
+### Keyboard
+
+Follows the [WAI-ARIA Disclosure Navigation][apg] pattern, where **Tab is the
+primary path** — the triggers are ordinary tab stops, not a single roving one.
+The menubar pattern (`role="menubar"`, arrow-only navigation) is deliberately
+*not* used: the APG reserves it for application command menus, and it would
+stop keyboard users tabbing through nav links the way they can everywhere else.
+
+[apg]: https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/
+
+| Key | Behavior |
+| --- | --- |
+| `Tab` on a trigger, panel closed | next nav stop — panels do **not** open on focus |
+| `Tab` on a trigger, panel open | steps into the panel's first link |
+| `Tab` on the last link in a panel | closes the panel, lands on the next nav stop |
+| `Shift+Tab` on the first link in a panel | back to its trigger, panel stays open |
+| `Enter` / `Space` | toggles the focused trigger's panel |
+| `Escape` | closes and returns focus to the trigger |
+
+So a full pass reads: `Products → (Enter) → Analytics → Automation → Reporting
+→ Solutions → …`, and tabbing straight past the nav with everything closed
+costs one stop per nav item.
+
+Opening and closing look identical whether driven by pointer or keyboard. The
+viewport only animates its size when moving *between* open panels; mounting
+from closed always applies the size instantly, even when a reopen interrupts
+the previous exit animation — which keyboard users hit constantly, since
+`Enter` has none of hover's delay.
+
+Because a panel in a shared `[data-nav-viewport]` is not a DOM sibling of its
+trigger, natural tab order would be wrong — the library intercepts `Tab` and
+drives the logical order instead. A closing panel is marked `inert` the moment
+it starts its exit animation, so it can never be tabbed into while fading out.
+
+Arrow keys are a secondary convenience and apply **only while a trigger has
+focus**, so keys pressed inside a panel — arrows in a search field, say —
+behave natively:
+
+| Key | Behavior (on a trigger only) |
+| --- | --- |
+| `←` `→` | move between triggers, wrapping (`↑` `↓` when vertical) |
+| `↓` | move into the open panel (`→` when vertical) |
+| `Home` / `End` | first / last trigger |
+
+### Webflow mobile integration
+
+Below 767px the root is marked `[data-nav-mode="mobile"]`. If the menu sits
+inside a Webflow `.w-nav`, closing the burger overlay resets the menu so
+reopening it always starts on the main list, and crossing the breakpoint
+closes any open panel. Add `[data-nav-back]` inside the menu for a back control
+that closes the panel without dismissing the overlay.
 
 ## Development
 
@@ -75,6 +297,20 @@ pnpm build             # Build types + ESM + browser bundle
 pnpm build:clean       # Clean and rebuild
 pnpm build:watch       # Watch mode
 ```
+
+#### Examples
+
+```bash
+pnpm example           # Build, then open docs/examples/local/
+```
+
+`docs/examples/local/` loads the local `dist/navigation.browser.js` build and
+styles it with nothing but the `[data-state]` / `[data-motion]` /
+`--nav-viewport-*` hooks, so it doubles as a check that those hooks are enough
+to build with. It carries a live state inspector and a checklist covering
+pointer, keyboard, screen-reader, mobile and scroll behavior — resize below
+767px for the mobile layer and the Webflow burger integration. Not published
+(`files` in `package.json` excludes it).
 
 #### Testing
 
@@ -96,21 +332,47 @@ pnpm format            # Format with Biome (--write)
 ## Project Structure
 
 ```
+docs/examples/
+└── local/index.html            # Runnable example (pnpm example)
 src/
 ├── index.ts                    # Main entry point
-└── nav-anim/
-    ├── index.ts                # Navbar animation initialization
-    ├── config.ts               # Configuration constants
-    ├── initial-animation.ts    # Initial slide-in animation
-    ├── scroll-behaviour.ts     # Scroll-based show/hide logic
+├── config.ts                   # NAV_ROOT_SELECTOR — the shared nav root
+├── __tests__/
+│   └── config.test.ts          # Asserts both features share the root selector
+├── nav-anim/                   # GSAP scroll show/hide for the navbar shell
+│   ├── index.ts                # Navbar animation initialization
+│   ├── config.ts               # Configuration constants
+│   ├── initial-animation.ts    # Initial slide-in animation
+│   ├── scroll-behaviour.ts     # Scroll-based show/hide logic
+│   └── __tests__/
+│       ├── index.test.ts             # Initialization tests
+│       └── scroll-behaviour.test.ts  # Scroll behavior tests
+└── nav-menu/                   # Accessible dropdown menu
+    ├── index.ts                # Ref discovery, ARIA wiring, public API
+    ├── config.ts               # Selectors, attributes, timings
+    ├── types.ts                # Shared types
+    ├── controller.ts           # Open/closed state machine and hover timers
+    ├── render.ts               # Data attributes, viewport sizing, ResizeObserver
+    ├── pointer.ts              # Hover, outside dismiss, panel link clicks
+    ├── keyboard.ts             # Arrow/Home/End/Enter/Escape handling
+    ├── mobile.ts               # Breakpoint mode and Webflow burger integration
     └── __tests__/
-      ├── index.test.ts             # Initialization tests
-      └── scroll-behaviour.test.ts  # Scroll behavior tests
+        ├── helpers.ts          # Shared markup and event helpers
+        ├── index.test.ts       # Initialization and ARIA tests
+        ├── pointer.test.ts     # Hover, click, dismiss behavior
+        ├── keyboard.test.ts    # Keyboard navigation
+        ├── render.test.ts      # State hooks, motion, viewport sizing
+        └── mobile.test.ts      # Breakpoint and burger overlay behavior
 ```
 
 ## Configuration
 
-The package uses the following default configuration:
+The nav root selector is shared: `NAV_ROOT_SELECTOR` in `src/config.ts` is the
+single source of truth, and both feature configs reference it. Feature-specific
+selectors and fixed timings live in `config.ts` next to each feature. Changing
+any selector is a **breaking change** for every consumer.
+
+`nav-anim/config.ts`:
 
 ```typescript
 {
@@ -122,8 +384,34 @@ The package uses the following default configuration:
     threshold: 50      // Minimum scroll distance to trigger animation
   },
   selectors: {
-    navbar: '[r-navbar]' // Attribute selector for navbar elements
+    navbar: '[data-nav-menu]' // Shared NAV_ROOT_SELECTOR from src/config.ts
   }
+}
+```
+
+`nav-menu/config.ts`:
+
+```typescript
+{
+  selectors: {
+    root: '[data-nav-menu]',
+    list: '[data-nav-list]',
+    item: '[data-nav-item]',
+    trigger: '[data-nav-trigger]',
+    content: '[data-nav-content]',
+    link: '[data-nav-link]',
+    viewport: '[data-nav-viewport]',
+    back: '[data-nav-back]',
+    webflowNav: '.w-nav',
+    webflowBurger: '.w-nav-button'
+  },
+  timing: {
+    closeDelay: 150        // Grace period after the pointer leaves, in ms
+  },
+  mobile: {
+    query: '(max-width: 767px)'
+  },
+  editorClass: 'w-editor'  // Webflow Designer canvas marker
 }
 ```
 

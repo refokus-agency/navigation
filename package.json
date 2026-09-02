@@ -2,7 +2,7 @@
   "name": "@refokus-agency/navigation",
   "version": "0.0.0-development",
   "type": "module",
-  "description": "Lightweight GSAP-powered navbar animations with scroll-based show/hide behavior for Webflow and custom-code sites",
+  "description": "Navbar animations and an accessible dropdown navigation menu for Webflow and custom-code sites",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -32,7 +32,13 @@
     "web-animation",
     "typescript",
     "esm",
-    "webflow"
+    "webflow",
+    "accessibility",
+    "a11y",
+    "aria",
+    "dropdown",
+    "navigation-menu",
+    "keyboard-navigation"
   ],
   "repository": {
     "type": "git",
@@ -47,6 +53,7 @@
     "build:browser": "vite build",
     "build:clean": "rimraf dist && npm run build",
     "build:watch": "tsc --watch",
+    "example": "npm run build && vite --open /docs/examples/local/",
     "prepublishOnly": "npm run check-types && npm run lint && npm run build:clean",
     "check-types": "tsc --noEmit --strict --skipLibCheck",
     "typecheck": "tsc --noEmit --strict --skipLibCheck",

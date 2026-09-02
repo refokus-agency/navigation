@@ -1,61 +1,82 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Package
 
-## Package overview
+`@refokus-agency/navigation` — ESM-only TypeScript, two independent features for
+Webflow custom-code embeds. `gsap` is a peer dep, never bundled.
 
-`@refokus-agency/navigation` is an ES-module-only TypeScript library that attaches GSAP-powered show/hide animations to elements carrying the `[r-navbar]` attribute. Intended for Webflow custom-code and similar embed contexts — `gsap` is an external peer dependency and is **not** bundled into the browser build.
+- **`nav-anim`** (`initNavbarAnimation`) — GSAP scroll show/hide. Uses GSAP.
+- **`nav-menu`** (`initNavigationMenu`) — accessible dropdown. **No GSAP**, no CSS
+  shipped; it writes data attributes and consumer CSS animates them.
 
 ## Commands
 
 ```bash
-pnpm install            # install (pnpm is the canonical lockfile; npm also works)
-pnpm test               # vitest run (jsdom env, globals enabled)
-pnpm test:watch         # vitest watch
-vitest run path/to/file.test.ts   # run a single test file
-pnpm check-types        # tsc --noEmit --strict
-pnpm lint               # biome lint --write ./src
-pnpm lint:report        # biome lint ./src (no fixes, CI-safe check)
-pnpm format             # biome format --write ./src
-pnpm build              # tsc (types + esm) then vite build (browser bundle)
-pnpm build:clean        # rimraf dist + full rebuild
-pnpm commit             # commitizen — REQUIRED for commits (see Releases below)
+pnpm test           # vitest run (jsdom)
+pnpm check-types    # tsc --noEmit --strict
+pnpm lint:report    # biome, no writes (CI-safe)
+pnpm format         # biome --write
+pnpm build          # tsc, then vite browser bundle
+pnpm example        # build + open docs/examples/local/
+pnpm commit         # commitizen — required for commits
 ```
 
-Node >= 22 is required (see `.nvmrc` / `engines`).
+Node >= 22.
 
-## Architecture
+## Non-obvious invariants
 
-Single public entry: `initNavbarAnimation(options?)` in `src/nav-anim/index.ts`. It:
+**One nav root selector.** `NAV_ROOT_SELECTOR` in `src/config.ts` is the single
+source of truth; both feature configs reference it so one `<nav data-nav-menu>`
+drives both. `src/__tests__/config.test.ts` fails if they fork.
 
-1. Queries `document` for `NAVBAR_CONFIG.selectors.navbar` (`[r-navbar]`). Returns `false` if none found.
-2. Calls `performInitialAnimation` — a `gsap.set` to hidden (-100% Y) followed by a tween to visible.
-3. Calls `initScrollBehavior` — installs a passive `scroll` listener that compares `window.scrollY` to `lastScrollY`, applying hide/show tweens once the delta exceeds `NAVBAR_CONFIG.scroll.threshold` (50px).
+**Never rename the `data-nav-*` inputs** (`menu`, `list`, `item`, `trigger`,
+`content`, `viewport`, `link`, `back`). They are verbatim from the Toggl and
+Relocity implementations so those sites adopt the package without editing
+Webflow markup. Outputs consumer CSS depends on: `data-state`, `data-motion`,
+`data-orientation`, `data-nav-mode`, `--nav-viewport-{width,height}`.
 
-The scroll module (`scroll-behaviour.ts`) holds **module-level singleton state** (`lastScrollY`, `isNavbarVisible`, `navbarElements`, `currentOptions`, `scrollHandlerBound`). This means calling `initNavbarAnimation` twice overwrites the previous registration; `cleanupNavbarAnimation` exists but is not re-exported from the package root. Keep this in mind when changing lifecycle logic.
+**`nav-anim` holds module-level singleton state** in `scroll-behaviour.ts`, so a
+second `initNavbarAnimation` call overwrites the first. `cleanupNavbarAnimation`
+is not exported from the package root.
 
-All animations go through `createNavbarAnimation` in `initial-animation.ts` with `overwrite: true`, so conflicting scroll-driven tweens cancel cleanly. `NAVBAR_CONFIG` in `config.ts` is the single source of truth for positions, threshold, and selector — default `NavbarAnimationOptions` (duration/easing) live separately in `nav-anim/index.ts`.
+**`nav-menu` holds none** — each call returns an independent
+`{ open, close, destroy }`. Every teardown goes onto the shared `cleanups`
+array, the controller's included, so `destroy()` is just draining that array
+and nothing can be forgotten. (`index.ts` owns a module-level instance counter,
+used only to keep generated ids unique across roots.)
 
-## Build outputs
+**`render.ts` is the only module that writes *reactive* DOM state**, and it
+animates nothing. Two deliberate exceptions: `setupAria` in `index.ts` writes
+the ARIA wiring once at init, and `mobile.ts` writes `[data-nav-mode]`, which
+tracks the breakpoint rather than the open/closed state.
 
-`pnpm build` produces two artifact sets in `dist/`:
+Whether a viewport mount skips the size transition comes from the renderer's
+own `isViewportOpen` flag — **never** from reading back `style.display`, which only
+flips when the exit animation ends (a reopen inside that window then sized from
+a stale value; constant via `Enter`, invisible via hover).
 
-- **tsc output**: `.js` + `.d.ts` + source maps from `tsconfig.json` (extends `@total-typescript/tsconfig/bundler`, `rootDir: src`, `outDir: dist`).
-- **vite lib build** (`vite.config.ts`): `navigation.browser.js`, ESM only, with `gsap` marked `external`. `emptyOutDir: false` so the vite step does not wipe the tsc output.
+**Panels must carry no imposed size.** `sizeViewport` measures the active
+panel's `scrollWidth`/`scrollHeight`, so consumer `inset: 0` or `height: 100%`
+makes it circular — it settles on the tallest panel and the `ResizeObserver`
+chases the transition. CSS contract, documented in the README's "Sizing rule";
+the library cannot detect it.
 
-Any new entry point must be added to both `src/index.ts` re-exports and considered for the `exports` map in `package.json`.
+**Keyboard is WAI-ARIA Disclosure Navigation, not menubar.** `Tab` is primary
+and `handleTab` drives the logical order (trigger → its open panel → next nav
+stop), since a panel in the viewport is not a DOM sibling of its trigger.
+Panels never open on focus alone — deliberate, or tabbing to page content drags
+you through every panel. Arrows/`Home`/`End` are secondary and gated on a
+**trigger** having focus. Closed panels get `inert`.
 
-## Releases & commits
+`skipInWebflowEditor` (default `true`) no-ops the menu when `html.w-editor` is
+present, so panels stay editable in the Designer.
 
-Releases are **fully automated** by `refokus-agency/platform`'s reusable workflows:
+## Build & release
 
-- `.github/workflows/pr-ci.yml` — calls `platform/.github/workflows/ci.yml` on PRs (lint + typecheck + test + build).
-- `.github/workflows/main-release.yml` — calls `ci.yml` then `release.yml` on push to `main`, which runs semantic-release and publishes to GitHub Packages under `@refokus-agency`.
+`pnpm build` emits two sets into `dist/`: tsc `.js`/`.d.ts`, then vite's
+`navigation.browser.js` (ESM, `gsap` external, `emptyOutDir: false`). A new
+entry point needs adding to `src/index.ts` and the `exports` map.
 
-Do not `npm publish` manually. Do not bump `package.json` version manually — `version` is pinned to `0.0.0-development` and semantic-release sets it at publish time.
-
-Commits **must** follow Conventional Commits (`feat:`, `fix:`, `feat!:` / `BREAKING CHANGE:`). Use `pnpm commit` (Commitizen) to stay compliant — the version bump semantic-release picks depends entirely on commit types.
-
-## Usage contract
-
-Consumers add `r-navbar` to their markup and call `initNavbarAnimation({ animationDuration?, animationEasing? })`. The selector is fixed by `NAVBAR_CONFIG` — changing it is a breaking change for every consumer.
+Releases are fully automated by `refokus-agency/platform` reusable workflows.
+Never `npm publish` or bump `version` (pinned to `0.0.0-development`) by hand.
+Commits must be Conventional Commits — the bump depends on the type.

@@ -5,6 +5,7 @@ import { createNavbarAnimation } from './initial-animation.ts';
 let lastScrollY = 0;
 let isNavbarVisible = true;
 let scrollHandlerBound: (() => void) | null = null;
+let focusHandlerBound: ((event: FocusEvent) => void) | null = null;
 let currentOptions: NavbarAnimationOptions | null = null;
 let navbarElements: Element[] = [];
 
@@ -61,6 +62,21 @@ function isScrollingDownPastThreshold(currentScrollY: number): boolean {
 }
 
 /**
+ * Reveals a hidden navbar when focus moves into it, so tabbing back up never
+ * lands on an off-screen element.
+ */
+function handleFocusIn(event: FocusEvent): void {
+  const target = event.target;
+  if (!(target instanceof Node)) return;
+
+  const isInsideNavbar = navbarElements.some((element) =>
+    element.contains(target),
+  );
+
+  if (isInsideNavbar) showNavbar();
+}
+
+/**
  * Handles scroll events to show/hide navbar based on direction
  */
 function handleScroll(): void {
@@ -78,12 +94,17 @@ function handleScroll(): void {
 }
 
 /**
- * Removes scroll event listener for cleanup
+ * Removes scroll and focus event listeners for cleanup
  */
 export function cleanupNavbarAnimation(): void {
   if (scrollHandlerBound) {
     window.removeEventListener('scroll', scrollHandlerBound);
     scrollHandlerBound = null;
+  }
+
+  if (focusHandlerBound) {
+    document.removeEventListener('focusin', focusHandlerBound);
+    focusHandlerBound = null;
   }
 
   navbarElements = [];
@@ -101,10 +122,18 @@ export function initScrollBehavior(
     window.removeEventListener('scroll', scrollHandlerBound);
   }
 
+  if (focusHandlerBound) {
+    document.removeEventListener('focusin', focusHandlerBound);
+  }
+
   currentOptions = options;
   navbarElements = elements;
   isNavbarVisible = true;
   lastScrollY = window.scrollY;
+
   scrollHandlerBound = handleScroll;
   window.addEventListener('scroll', scrollHandlerBound, { passive: true });
+
+  focusHandlerBound = handleFocusIn;
+  document.addEventListener('focusin', focusHandlerBound);
 }
