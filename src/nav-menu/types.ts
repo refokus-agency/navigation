@@ -40,8 +40,12 @@ export type NavMenuRenderer = {
 };
 
 export type NavMenuController = {
-  setValue(value: string | null): void;
-  /** Closes now and cancels a pending hover-open. */
+  /**
+   * The only two state entry points. `setValue` is intentionally not exposed:
+   * both of these cancel the pending hover timers, and a caller reaching past
+   * them would reintroduce the transition-undone-a-moment-later class of bug.
+   */
+  open(value: string, trigger?: HTMLElement): void;
   close(): void;
   triggerPointerEnter(value: string, trigger: HTMLElement): void;
   triggerPointerLeave(trigger: HTMLElement): void;
@@ -51,6 +55,8 @@ export type NavMenuController = {
   /** Closes the menu and returns the trigger that should regain focus. */
   handleEscape(): HTMLElement | null;
   getActiveValue(): string | null;
+  /** The trigger that opened the active panel, for focus return. */
+  getActiveTrigger(): HTMLElement | null;
   destroy(): void;
 };
 

@@ -25,6 +25,9 @@ export function createController({
 }): NavMenuController {
   let activeValue: string | null = null;
   let previousValue: string | null = null;
+  // The trigger that actually opened the panel. An item may own several, and
+  // focus must return to the one the user used, not the first in the item.
+  let activeTrigger: HTMLElement | null = null;
   let openTimer: Timer;
   let closeTimer: Timer;
   let skipTimer: Timer;
@@ -43,6 +46,7 @@ export function createController({
     if (activeValue === value) return;
     previousValue = activeValue;
     activeValue = value;
+    if (value === null) activeTrigger = null;
 
     if (value !== null) {
       clearTimeout(skipTimer);
@@ -68,14 +72,13 @@ export function createController({
       if (activeValue === value) {
         clearTimeout(closeTimer);
       } else {
-        openTimer = setTimeout(() => {
-          clearTimeout(closeTimer);
-          setValue(value);
-        }, options.delayDuration);
+        openTimer = setTimeout(
+          () => open(value, trigger),
+          options.delayDuration,
+        );
       }
     } else {
-      clearTimeout(closeTimer);
-      setValue(value);
+      open(value, trigger);
     }
   }
 
@@ -94,10 +97,10 @@ export function createController({
     const pointerState = triggerPointerState.get(trigger);
 
     if (activeValue === value) {
-      setValue(null);
+      close();
       if (pointerState) pointerState.wasClickClose = true;
     } else {
-      setValue(value);
+      open(value, trigger);
     }
   }
 
@@ -110,11 +113,19 @@ export function createController({
   }
 
   /**
-   * Closes now and cancels a pending hover-open. Externally-driven closes must
-   * use this: an in-flight openTimer is invisible to getActiveValue(), so a
-   * plain setValue(null) would let the menu open ~200ms after the user clicked
-   * away or crossed the breakpoint.
+   * The only two ways in from outside — `setValue` is deliberately not exposed.
+   * Both cancel the pending timers, because an in-flight `openTimer` or
+   * `closeTimer` is invisible to `getActiveValue()` and would otherwise undo
+   * the transition a moment later: a double-click reopening what the second
+   * click closed, or a stale close swallowing a programmatic open.
    */
+  function open(value: string, trigger?: HTMLElement): void {
+    clearTimeout(openTimer);
+    clearTimeout(closeTimer);
+    activeTrigger = trigger ?? refs.triggerByValue.get(value) ?? null;
+    setValue(value);
+  }
+
   function close(): void {
     clearTimeout(openTimer);
     clearTimeout(closeTimer);
@@ -134,7 +145,8 @@ export function createController({
     clearTimeout(openTimer);
     if (!activeValue) return null;
 
-    const trigger = refs.triggerByValue.get(activeValue) ?? null;
+    const trigger =
+      activeTrigger ?? refs.triggerByValue.get(activeValue) ?? null;
     const pointerState = trigger ? triggerPointerState.get(trigger) : null;
     if (pointerState) pointerState.wasEscapeClose = true;
     setValue(null);
@@ -149,7 +161,7 @@ export function createController({
   }
 
   return {
-    setValue,
+    open,
     close,
     triggerPointerEnter,
     triggerPointerLeave,
@@ -158,6 +170,7 @@ export function createController({
     contentPointerLeave,
     handleEscape,
     getActiveValue: () => activeValue,
+    getActiveTrigger: () => activeTrigger,
     destroy,
   };
 }

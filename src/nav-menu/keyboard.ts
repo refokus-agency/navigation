@@ -109,8 +109,8 @@ function handleTriggerKey(
       if (value && refs.contentMap.has(value)) {
         event.preventDefault();
         // Bypasses the wasClickClose guard on purpose: Enter may reopen.
-        if (controller.getActiveValue() === value) controller.setValue(null);
-        else controller.setValue(value);
+        if (controller.getActiveValue() === value) controller.close();
+        else controller.open(value, trigger);
       }
       break;
     }
@@ -164,14 +164,18 @@ function handleTab(
 
     if (goingBack && index === 0) {
       event.preventDefault();
-      refs.triggerByValue.get(activeValue)?.focus();
+      openingTrigger(refs, controller, activeValue)?.focus();
       return;
     }
 
     if (!goingBack && index === candidates.length - 1) {
       event.preventDefault();
       // Before closing: closing marks the panel inert, which would blur us.
-      const next = nextNavStop(root, refs, activeValue);
+      const next = nextNavStop(
+        root,
+        refs,
+        openingTrigger(refs, controller, activeValue),
+      );
       if (next) next.focus();
       else focusAfterRoot(root);
       controller.close();
@@ -197,12 +201,25 @@ function navStops(root: HTMLElement, refs: NavMenuRefs): HTMLElement[] {
   });
 }
 
+/**
+ * The trigger the active panel was opened from, so focus returns there rather
+ * than to whichever trigger its item happens to list first.
+ */
+function openingTrigger(
+  refs: NavMenuRefs,
+  controller: NavMenuController,
+  value: string,
+): HTMLElement | null {
+  return (
+    controller.getActiveTrigger() ?? refs.triggerByValue.get(value) ?? null
+  );
+}
+
 function nextNavStop(
   root: HTMLElement,
   refs: NavMenuRefs,
-  value: string,
+  trigger: HTMLElement | null,
 ): HTMLElement | null {
-  const trigger = refs.triggerByValue.get(value);
   if (!trigger) return null;
 
   const stops = navStops(root, refs);
@@ -246,8 +263,8 @@ function moveFocus(
 
   if (controller.getActiveValue()) {
     const value = refs.valueByTrigger.get(trigger);
-    if (value && refs.contentMap.has(value)) controller.setValue(value);
-    else controller.setValue(null);
+    if (value && refs.contentMap.has(value)) controller.open(value, trigger);
+    else controller.close();
   }
 }
 

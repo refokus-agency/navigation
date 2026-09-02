@@ -296,6 +296,25 @@ describe('burger overlay batching', () => {
   });
 });
 
+describe('burger overlay batching, reopened in the same tick', () => {
+  it('should stay open when the batch ends open', async () => {
+    const instance = initNavigationMenu();
+    const burger = document.querySelector<HTMLElement>('.w-nav-button');
+
+    burger?.setAttribute('aria-expanded', 'true');
+    await Promise.resolve();
+    instance?.open('a');
+
+    // true -> false -> true in one tick: oldValues are ['true', 'false'], so a
+    // `some` on oldValue is true, but the overlay ends open and must not reset.
+    burger?.setAttribute('aria-expanded', 'false');
+    burger?.setAttribute('aria-expanded', 'true');
+    await Promise.resolve();
+
+    expect(menu.trigger('a').dataset.state).toBe('open');
+  });
+});
+
 describe('teardown', () => {
   it('should clear hover timers through the cleanups array', () => {
     vi.useFakeTimers();
@@ -306,5 +325,118 @@ describe('teardown', () => {
 
     vi.advanceTimersByTime(delayDuration * 2);
     expect(menu.trigger('a').dataset.state).toBe('closed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Second review round: residual timer exposure and focus return with several
+// triggers on one item.
+// ---------------------------------------------------------------------------
+
+describe('toggle-close during a pending hover-open', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  it('should not reopen after a click-close', () => {
+    initNavigationMenu();
+
+    firePointer(menu.trigger('a'), 'pointerenter');
+    vi.advanceTimersByTime(40);
+    menu.trigger('a').click();
+    menu.trigger('a').click();
+    expect(menu.trigger('a').dataset.state).toBe('closed');
+
+    vi.advanceTimersByTime(delayDuration);
+    expect(menu.trigger('a').dataset.state).toBe('closed');
+  });
+
+  it('should not reopen after an Enter-close', () => {
+    initNavigationMenu();
+    menu.trigger('a').focus();
+
+    firePointer(menu.trigger('a'), 'pointerenter');
+    vi.advanceTimersByTime(40);
+    fireKey(menu.trigger('a'), 'Enter');
+    fireKey(menu.trigger('a'), 'Enter');
+    expect(menu.trigger('a').dataset.state).toBe('closed');
+
+    vi.advanceTimersByTime(delayDuration);
+    expect(menu.trigger('a').dataset.state).toBe('closed');
+  });
+});
+
+describe('programmatic open during a pending close', () => {
+  it('should not be undone by a stale close timer', () => {
+    vi.useFakeTimers();
+    const instance = initNavigationMenu();
+
+    firePointer(menu.trigger('a'), 'pointerenter');
+    vi.advanceTimersByTime(delayDuration);
+    firePointer(menu.trigger('a'), 'pointerleave');
+
+    instance?.open('b');
+    vi.advanceTimersByTime(closeDelay);
+
+    expect(menu.trigger('b').dataset.state).toBe('open');
+  });
+});
+
+describe('focus return with several triggers on one item', () => {
+  const markup = `
+    <nav data-nav-menu>
+      <div data-nav-list>
+        <div data-nav-item="products">
+          <a data-nav-trigger href="/products" id="text-link">Products</a>
+          <button type="button" data-nav-trigger id="chevron">▾</button>
+        </div>
+        <div data-nav-item="pricing">
+          <button type="button" data-nav-trigger id="pricing-trigger">P</button>
+        </div>
+      </div>
+      <div data-nav-viewport>
+        <div data-nav-content="products"><a href="/p" id="panel-link">P</a></div>
+        <div data-nav-content="pricing"><a href="/q">Q</a></div>
+      </div>
+    </nav>
+  `;
+
+  it('should return Escape focus to the trigger that opened the panel', () => {
+    document.body.innerHTML = markup;
+    initNavigationMenu();
+
+    const chevron = document.querySelector<HTMLElement>('#chevron');
+    chevron?.click();
+    fireKey(chevron as HTMLElement, 'Escape');
+
+    expect(document.activeElement).toBe(chevron);
+  });
+
+  it('should return Shift+Tab focus to the trigger that opened the panel', () => {
+    document.body.innerHTML = markup;
+    initNavigationMenu();
+
+    document.querySelector<HTMLElement>('#chevron')?.click();
+    const panelLink = document.querySelector<HTMLElement>('#panel-link');
+    panelLink?.focus();
+
+    fireKey(panelLink as HTMLElement, 'Tab', { shiftKey: true });
+
+    expect(document.activeElement).toBe(document.querySelector('#chevron'));
+  });
+
+  it('should Tab forward out of the panel, never back onto a passed trigger', () => {
+    document.body.innerHTML = markup;
+    initNavigationMenu();
+
+    document.querySelector<HTMLElement>('#chevron')?.click();
+    const panelLink = document.querySelector<HTMLElement>('#panel-link');
+    panelLink?.focus();
+
+    fireKey(panelLink as HTMLElement, 'Tab');
+
+    expect(document.activeElement).toBe(
+      document.querySelector('#pricing-trigger'),
+    );
   });
 });

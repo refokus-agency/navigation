@@ -83,7 +83,7 @@ export function initNavigationMenu(
   renderer.applyState(null, null);
 
   return {
-    open: (value: string) => controller.setValue(value),
+    open: (value: string) => controller.open(value),
     close: () => controller.close(),
     destroy() {
       for (const cleanup of cleanups) cleanup();
