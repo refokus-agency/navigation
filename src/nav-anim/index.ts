@@ -1,3 +1,4 @@
+import { createCompressBehaviour } from './behaviours/compress.ts';
 import { createHideBehaviour } from './behaviours/hide.ts';
 import { NAVBAR_CONFIG } from './config.ts';
 import {
@@ -24,15 +25,34 @@ export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
 const DEFAULT_OPTIONS: NavbarAnimationOptions = {
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
+  compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint,
 };
+
+/**
+ * Takes a caller-supplied number only when it is one worth using.
+ *
+ * `??` alone lets `NaN` through, and every comparison against `NaN` is false.
+ * A `NaN` breakpoint would therefore pass the `window.innerWidth <` check at
+ * every viewport width and register compress everywhere — including the mobile
+ * widths the breakpoint exists to stay out of, where Webflow's own Navbar takes
+ * over. That is the opposite of the failure the caller would expect.
+ *
+ * @param value - Caller-supplied value
+ * @param fallback - Default to fall back to
+ * @returns The value when it is a finite number, the fallback otherwise
+ */
+function resolveNumber(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
 
 /**
  * Merges caller options over the defaults.
  *
  * Done per key rather than by spreading, because a spread lets an explicitly
- * `undefined` property overwrite the default with nothing — a consumer
- * forwarding a value from their own config that happens to be undefined would
- * otherwise end up with no default at all.
+ * `undefined` property overwrite the default with nothing — a consumer passing
+ * `{ compressBreakpoint: config.breakpoint }` where that value happens to be
+ * undefined would otherwise get a breakpoint no viewport can satisfy, and
+ * compress would silently never run.
  *
  * @param options - Caller-supplied options
  * @returns Fully resolved options
@@ -41,9 +61,15 @@ function resolveOptions(
   options: InitNavbarAnimationOptions,
 ): NavbarAnimationOptions {
   return {
-    animationDuration:
-      options.animationDuration ?? DEFAULT_OPTIONS.animationDuration,
+    animationDuration: resolveNumber(
+      options.animationDuration,
+      DEFAULT_OPTIONS.animationDuration,
+    ),
     animationEasing: options.animationEasing ?? DEFAULT_OPTIONS.animationEasing,
+    compressBreakpoint: resolveNumber(
+      options.compressBreakpoint,
+      DEFAULT_OPTIONS.compressBreakpoint,
+    ),
   };
 }
 
@@ -64,10 +90,11 @@ function resolveBehaviourName(element: Element): NavbarBehaviourName {
   const normalized = value.trim().toLowerCase();
 
   if (normalized === 'hide') return 'hide';
+  if (normalized === 'compress') return 'compress';
 
   if (normalized !== '') {
     console.warn(
-      `[r-navbar] Unrecognised ${NAVBAR_CONFIG.attributes.behaviour}="${value}". Expected "hide". Falling back to no behaviour.`,
+      `[r-navbar] Unrecognised ${NAVBAR_CONFIG.attributes.behaviour}="${value}". Expected "hide" or "compress". Falling back to no behaviour.`,
     );
   }
 
@@ -88,6 +115,8 @@ function createBehaviour(
   switch (resolveBehaviourName(element)) {
     case 'hide':
       return createHideBehaviour(element, options);
+    case 'compress':
+      return createCompressBehaviour(element, options);
     default:
       return null;
   }
@@ -148,7 +177,7 @@ export function initNavbarAnimation(
 
   if (!bindings.length) {
     console.warn(
-      `[r-navbar] Found ${navbarElements.length} ${NAVBAR_CONFIG.selectors.navbar} element(s), but none opted into a behaviour. Add ${NAVBAR_CONFIG.attributes.behaviour}="hide" to the ones that should animate.`,
+      `[r-navbar] Found ${navbarElements.length} ${NAVBAR_CONFIG.selectors.navbar} element(s), but none opted into a behaviour. Add ${NAVBAR_CONFIG.attributes.behaviour}="hide" or ${NAVBAR_CONFIG.attributes.behaviour}="compress" to the ones that should animate.`,
     );
   }
 

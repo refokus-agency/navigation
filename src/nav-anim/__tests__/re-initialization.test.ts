@@ -104,7 +104,7 @@ describe('re-initialization', () => {
     expect(createNavbarAnimationMock).toHaveBeenCalledWith(
       [navbarElement],
       NAVBAR_CONFIG.position.hidden,
-      options,
+      { ...options, compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint },
     );
   });
 
@@ -131,6 +131,7 @@ describe('re-initialization', () => {
       {
         animationDuration: 0.9,
         animationEasing: 'power4.inOut',
+        compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint,
       },
     );
   });

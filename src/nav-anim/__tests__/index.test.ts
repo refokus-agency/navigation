@@ -95,6 +95,7 @@ describe('initNavbarAnimation', () => {
       expect.objectContaining({
         animationDuration: 0.3,
         animationEasing: 'power2.inOut',
+        compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint,
       }),
     );
   });
@@ -106,22 +107,45 @@ describe('initNavbarAnimation', () => {
     expect(createHideBehaviourMock).toHaveBeenCalledWith(expect.anything(), {
       animationDuration: 0.8,
       animationEasing: 'power2.inOut',
+      compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint,
     });
   });
 
   it('should ignore explicitly undefined options rather than clobbering defaults', () => {
     mockNavbarQuery([navbarStub('hide')]);
 
-    // A consumer forwarding a value from their own config that happens to be
-    // undefined would otherwise end up with no default at all.
+    // A consumer forwarding `{ compressBreakpoint: config.breakpoint }` where
+    // that value is undefined would otherwise get a breakpoint no viewport can
+    // satisfy, and compress would silently never run.
     initNavbarAnimation({
       animationDuration: undefined,
       animationEasing: undefined,
+      compressBreakpoint: undefined,
     });
 
     expect(createHideBehaviourMock).toHaveBeenCalledWith(expect.anything(), {
       animationDuration: 0.3,
       animationEasing: 'power2.inOut',
+      compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint,
+    });
+  });
+
+  it('should fall back to defaults for numbers that are not usable', () => {
+    mockNavbarQuery([navbarStub('hide')]);
+
+    // `Number(someMissingConfigValue)` is the shape this arrives in. NaN
+    // compares false against everything, so a NaN breakpoint would pass the
+    // `innerWidth <` check at every width and register compress on mobile —
+    // the opposite of the gate's purpose.
+    initNavbarAnimation({
+      animationDuration: Number.NaN,
+      compressBreakpoint: Number.NaN,
+    });
+
+    expect(createHideBehaviourMock).toHaveBeenCalledWith(expect.anything(), {
+      animationDuration: 0.3,
+      animationEasing: 'power2.inOut',
+      compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint,
     });
   });
 
