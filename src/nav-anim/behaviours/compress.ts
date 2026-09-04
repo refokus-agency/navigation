@@ -2,6 +2,10 @@ import { gsap } from 'gsap';
 import { NAVBAR_CONFIG } from '../config.ts';
 import { performInitialAnimation } from '../initial-animation.ts';
 import { defaultMeasurer, type NavbarMeasurer } from '../measure.ts';
+import {
+  isScrollingDownPastThreshold,
+  isSignificantScroll,
+} from '../scroll-gesture.ts';
 import type { NavbarAnimationOptions, NavbarBehaviour } from '../types.ts';
 
 type NavbarWidths = {
@@ -30,6 +34,30 @@ function createInertBehaviour(): NavbarBehaviour {
     onScroll: () => {},
     destroy: () => {},
   };
+}
+
+/**
+ * Whether a measurement pass produced widths worth animating to.
+ *
+ * Every read comes back `0` when the navbar is not laid out at measure time —
+ * inside a hidden tab panel or an overlay that has yet to be revealed, or when
+ * initialization runs before the containing element is displayed. The widths
+ * object is still truthy, so without this check the first scroll down tweens
+ * the navbar to `width: 0` and, where `ResizeObserver` is unavailable to
+ * re-measure later, leaves it collapsed for good.
+ *
+ * `compressed` is allowed to be `0`: a navbar whose entire content is the
+ * collapsing subtree legitimately measures that way.
+ *
+ * @param candidate - The widths to check
+ * @returns Whether the widths can be animated to
+ */
+function hasUsableWidths(
+  candidate: NavbarWidths | null,
+): candidate is NavbarWidths {
+  if (!candidate) return false;
+
+  return candidate.expanded > 0 && candidate.compressible > 0;
 }
 
 /**
@@ -128,7 +156,7 @@ export function createCompressBehaviour(
    * responding to layout on its own until the next compression.
    */
   function applyCurrentState(): void {
-    if (!widths) return;
+    if (!hasUsableWidths(widths)) return;
 
     if (isCompressed) {
       gsap.set(element, { width: widths.compressed });
@@ -194,14 +222,14 @@ export function createCompressBehaviour(
   }
 
   function compressNavbar(): void {
-    if (isCompressed || !widths) return;
+    if (isCompressed || !hasUsableWidths(widths)) return;
 
     isCompressed = true;
     runTransition(widths.compressed, 0, 0);
   }
 
   function expandNavbar(): void {
-    if (!isCompressed || !widths) return;
+    if (!isCompressed || !hasUsableWidths(widths)) return;
 
     isCompressed = false;
     runTransition(widths.expanded, widths.compressible, 1);
@@ -215,6 +243,14 @@ export function createCompressBehaviour(
     // has to restart from where the page actually is. A stale reading here
     // reads a later scroll up as a scroll down and compresses the wrong way.
     lastScrollY = window.scrollY;
+    // `measurer` reports the border box, and these widths are written back as
+    // CSS `width`. Under the default `content-box` that overshoots by padding
+    // plus border, so the expand tween lands wide and then snaps when
+    // `onComplete` clears the property. Pinning `border-box` makes the box that
+    // was measured the box the tween animates. It is inert until a width is
+    // actually set, so this changes nothing about the resting navbar.
+    elementStyle.boxSizing = 'border-box';
+    compressibleStyle.boxSizing = 'border-box';
     // Keeps the subtree's children from spilling out as its width goes to 0.
     compressibleStyle.overflow = 'hidden';
     // A flex item defaults to `min-width: auto`, which floors it at its
@@ -254,6 +290,8 @@ export function createCompressBehaviour(
     });
     compressibleStyle.overflow = '';
     compressibleStyle.minWidth = '';
+    elementStyle.boxSizing = '';
+    compressibleStyle.boxSizing = '';
   }
 
   /**
@@ -289,16 +327,9 @@ export function createCompressBehaviour(
     onScroll(currentScrollY: number): void {
       if (!isActive) return;
 
-      if (
-        Math.abs(currentScrollY - lastScrollY) < NAVBAR_CONFIG.scroll.threshold
-      ) {
-        return;
-      }
+      if (!isSignificantScroll(currentScrollY, lastScrollY)) return;
 
-      if (
-        currentScrollY > lastScrollY &&
-        currentScrollY > NAVBAR_CONFIG.scroll.threshold
-      ) {
+      if (isScrollingDownPastThreshold(currentScrollY, lastScrollY)) {
         compressNavbar();
       } else {
         expandNavbar();

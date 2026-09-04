@@ -29,6 +29,23 @@ const DEFAULT_OPTIONS: NavbarAnimationOptions = {
 };
 
 /**
+ * Takes a caller-supplied number only when it is one worth using.
+ *
+ * `??` alone lets `NaN` through, and every comparison against `NaN` is false.
+ * A `NaN` breakpoint would therefore pass the `window.innerWidth <` check at
+ * every viewport width and register compress everywhere — including the mobile
+ * widths the breakpoint exists to stay out of, where Webflow's own Navbar takes
+ * over. That is the opposite of the failure the caller would expect.
+ *
+ * @param value - Caller-supplied value
+ * @param fallback - Default to fall back to
+ * @returns The value when it is a finite number, the fallback otherwise
+ */
+function resolveNumber(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+/**
  * Merges caller options over the defaults.
  *
  * Done per key rather than by spreading, because a spread lets an explicitly
@@ -44,11 +61,15 @@ function resolveOptions(
   options: InitNavbarAnimationOptions,
 ): NavbarAnimationOptions {
   return {
-    animationDuration:
-      options.animationDuration ?? DEFAULT_OPTIONS.animationDuration,
+    animationDuration: resolveNumber(
+      options.animationDuration,
+      DEFAULT_OPTIONS.animationDuration,
+    ),
     animationEasing: options.animationEasing ?? DEFAULT_OPTIONS.animationEasing,
-    compressBreakpoint:
-      options.compressBreakpoint ?? DEFAULT_OPTIONS.compressBreakpoint,
+    compressBreakpoint: resolveNumber(
+      options.compressBreakpoint,
+      DEFAULT_OPTIONS.compressBreakpoint,
+    ),
   };
 }
 

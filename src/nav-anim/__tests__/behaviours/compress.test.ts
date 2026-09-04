@@ -46,7 +46,9 @@ type Stubs = {
     display: string;
     overflow: string;
     minWidth: string;
+    boxSizing: string;
   };
+  navbarStyle: { width: string; boxSizing: string };
   measurer: Mock<NavbarMeasurer>;
 };
 
@@ -55,31 +57,37 @@ type Stubs = {
  * has no layout, the stub keys off the subtree width the behaviour just set —
  * the same signal a real browser would resolve through layout.
  */
-function createStubs({ withSubtree = true } = {}): Stubs {
+function createStubs({ withSubtree = true, unlaidOut = false } = {}): Stubs {
   const compressibleStyle = {
     width: '',
     display: '',
     overflow: '',
     minWidth: '',
+    boxSizing: '',
   };
   const compressible = withSubtree
     ? ({ style: compressibleStyle } as unknown as Element)
     : null;
 
+  const navbarStyle = { width: '', boxSizing: '' };
+
   const navbar = {
-    style: { width: '' },
+    style: navbarStyle,
     querySelector: (selector: string) =>
       selector === NAVBAR_CONFIG.selectors.compressible ? compressible : null,
   } as unknown as Element;
 
   const measurer = vi.fn((target: Element) => {
+    // What a real browser reports for anything outside the layout tree.
+    if (unlaidOut) return 0;
+
     if (target === compressible) return COMPRESSIBLE_WIDTH;
     return compressibleStyle.width === '0px'
       ? COMPRESSED_WIDTH
       : EXPANDED_WIDTH;
   });
 
-  return { navbar, compressible, compressibleStyle, measurer };
+  return { navbar, compressible, compressibleStyle, navbarStyle, measurer };
 }
 
 function setupMockWindow({
@@ -241,6 +249,59 @@ describe('compress behaviour', () => {
       // Without this a flex item floors at min-content and never reaches 0.
       expect(compressibleStyle.minWidth).toBe('0');
       expect(compressibleStyle.overflow).toBe('hidden');
+    });
+
+    it('should measure and animate the same box', () => {
+      const { navbar, compressibleStyle, navbarStyle, measurer } =
+        createStubs();
+
+      createCompressBehaviour(navbar, OPTIONS, { measurer });
+
+      // The measurer reports the border box and those numbers are written back
+      // as CSS width, so content-box sizing would land the tween wide by
+      // padding plus border and snap when the property clears.
+      expect(navbarStyle.boxSizing).toBe('border-box');
+      expect(compressibleStyle.boxSizing).toBe('border-box');
+    });
+
+    it('should not compress a navbar that measured as not laid out', () => {
+      const { navbar, measurer } = createStubs({ unlaidOut: true });
+
+      const behaviour = createCompressBehaviour(navbar, OPTIONS, { measurer });
+      behaviour.onScroll(NAVBAR_CONFIG.scroll.threshold + 20);
+
+      // A navbar inside a hidden panel measures 0 everywhere. Tweening to
+      // those widths would collapse it and, without ResizeObserver to
+      // re-measure, leave it collapsed.
+      expect(toMock).not.toHaveBeenCalled();
+    });
+
+    it('should compress once a re-measure finds real widths', () => {
+      const { fireResize } = setupMockWindow({ innerWidth: 1440 });
+      const stubs = createStubs();
+      const measurer = vi
+        .fn<NavbarMeasurer>()
+        .mockReturnValueOnce(0)
+        .mockReturnValueOnce(0)
+        .mockReturnValueOnce(0)
+        .mockImplementation(stubs.measurer);
+
+      const behaviour = createCompressBehaviour(stubs.navbar, OPTIONS, {
+        measurer,
+      });
+
+      behaviour.onScroll(NAVBAR_CONFIG.scroll.threshold + 20);
+      expect(toMock).not.toHaveBeenCalled();
+
+      // A resize is what arrives once the navbar is revealed.
+      fireResize();
+
+      behaviour.onScroll(0);
+      behaviour.onScroll(NAVBAR_CONFIG.scroll.threshold + 20);
+
+      expect(tweenFor(stubs.navbar)).toMatchObject({
+        width: COMPRESSED_WIDTH,
+      });
     });
 
     it('should restore the subtree width it borrowed while measuring', () => {

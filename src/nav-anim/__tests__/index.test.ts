@@ -130,6 +130,25 @@ describe('initNavbarAnimation', () => {
     });
   });
 
+  it('should fall back to defaults for numbers that are not usable', () => {
+    mockNavbarQuery([navbarStub('hide')]);
+
+    // `Number(someMissingConfigValue)` is the shape this arrives in. NaN
+    // compares false against everything, so a NaN breakpoint would pass the
+    // `innerWidth <` check at every width and register compress on mobile —
+    // the opposite of the gate's purpose.
+    initNavbarAnimation({
+      animationDuration: Number.NaN,
+      compressBreakpoint: Number.NaN,
+    });
+
+    expect(createHideBehaviourMock).toHaveBeenCalledWith(expect.anything(), {
+      animationDuration: 0.3,
+      animationEasing: 'power2.inOut',
+      compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint,
+    });
+  });
+
   describe('behaviour attribute', () => {
     it.each([
       ['absent', undefined],

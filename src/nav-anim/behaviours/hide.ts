@@ -4,38 +4,11 @@ import {
   createNavbarAnimation,
   performInitialAnimation,
 } from '../initial-animation.ts';
+import {
+  isScrollingDownPastThreshold,
+  isSignificantScroll,
+} from '../scroll-gesture.ts';
 import type { NavbarAnimationOptions, NavbarBehaviour } from '../types.ts';
-
-/**
- * Determines if scroll distance is significant enough to trigger animation
- * @param currentScrollY - Current scroll position
- * @param lastScrollY - Scroll position at the last significant move
- * @returns Whether scroll is significant
- */
-function isSignificantScroll(
-  currentScrollY: number,
-  lastScrollY: number,
-): boolean {
-  return (
-    Math.abs(currentScrollY - lastScrollY) >= NAVBAR_CONFIG.scroll.threshold
-  );
-}
-
-/**
- * Determines if user is scrolling down past threshold
- * @param currentScrollY - Current scroll position
- * @param lastScrollY - Scroll position at the last significant move
- * @returns Whether user is scrolling down past threshold
- */
-function isScrollingDownPastThreshold(
-  currentScrollY: number,
-  lastScrollY: number,
-): boolean {
-  return (
-    currentScrollY > lastScrollY &&
-    currentScrollY > NAVBAR_CONFIG.scroll.threshold
-  );
-}
 
 /**
  * Creates the hide/show behaviour for a single navbar element.
