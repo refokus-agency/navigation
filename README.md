@@ -33,36 +33,69 @@ npm install @refokus-agency/navigation
 
 ### Basic Setup
 
-1. Add the `r-navbar` attribute to your navbar element(s):
+1. Add the `r-navbar` attribute to your navbar element(s), and tell each one
+   which behaviour it should use with `r-navbar-behaviour`:
 
 ```html
-<nav r-navbar>
+<nav r-navbar r-navbar-behaviour="hide">
   <!-- Your navbar content -->
 </nav>
 ```
+
+> **A navbar without `r-navbar-behaviour` is left completely alone.** The
+> attribute is opt-in: absent, empty, or unrecognised all mean "no animation".
 
 2. Initialize the navbar animation system:
 
 ```typescript
 import { initNavbarAnimation } from '@refokus-agency/navigation';
 
-// Initialize with custom options
-const success = initNavbarAnimation({
+const handle = initNavbarAnimation({
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
 });
 
-if (success) {
-  console.log('Navbar animation initialized');
+if (handle) {
+  console.log('Found a navbar');
 }
+
+// Later — removes the scroll subscription, kills in-flight tweens, and clears
+// every inline property the package wrote.
+if (handle) handle.destroy();
 ```
+
+`initNavbarAnimation` returns a handle, or `false` when no `[r-navbar]` element
+is found.
+
+> **A truthy handle does not mean anything is animating.** It reports only that
+> a `[r-navbar]` element exists — every one of them may have opted out. When
+> navbars are present and none opted into a behaviour, the package warns in the
+> console rather than failing silently.
+
+### Behaviours
+
+Each navbar picks its own behaviour, so a page can mix them freely.
+
+| `r-navbar-behaviour` | What happens                                                              |
+| -------------------- | ------------------------------------------------------------------------- |
+| *absent* or empty    | Nothing. The element is left untouched.                                   |
+| `hide`               | Slides the navbar out of the viewport on scroll down, back in on scroll up. |
+
+Further behaviours plug into the same seam without touching this module.
+
+### Options
+
+| Option              | Default          | Description                                            |
+| ------------------- | ---------------- | ------------------------------------------------------ |
+| `animationDuration` | `0.3`            | Tween duration, in seconds.                            |
+| `animationEasing`   | `'power2.inOut'` | GSAP easing string.                                    |
 
 ### How It Works
 
 - **Initial Animation**: Navbar slides in smoothly on page load
-- **Scroll Down**: Navbar hides when scrolling down past threshold (50px)
-- **Scroll Up**: Navbar shows when scrolling up
-- **Multiple Navbars**: Supports multiple navbar elements with the same attribute
+- **Scroll Down**: The navbar's behaviour triggers once scroll passes the threshold (50px)
+- **Scroll Up**: The navbar returns to its resting state
+- **Multiple Navbars**: Every `[r-navbar]` gets its own independent state, and they all share a single scroll listener
 
 ## Development
 
@@ -99,13 +132,18 @@ pnpm format            # Format with Biome (--write)
 src/
 ├── index.ts                    # Main entry point
 └── nav-anim/
-    ├── index.ts                # Navbar animation initialization
+    ├── index.ts                # Initialization, attribute resolution, handle
     ├── config.ts               # Configuration constants
+    ├── types.ts                # Shared types
     ├── initial-animation.ts    # Initial slide-in animation
-    ├── scroll-behaviour.ts     # Scroll-based show/hide logic
+    ├── scroll-source.ts        # Single shared passive scroll listener
+    ├── behaviours/
+    │   └── hide.ts             # Slide out of the viewport
     └── __tests__/
       ├── index.test.ts             # Initialization tests
-      └── scroll-behaviour.test.ts  # Scroll behavior tests
+      ├── scroll-source.test.ts     # Shared listener tests
+      └── behaviours/
+        └── hide.test.ts            # Hide behaviour tests
 ```
 
 ## Configuration
@@ -122,7 +160,10 @@ The package uses the following default configuration:
     threshold: 50      // Minimum scroll distance to trigger animation
   },
   selectors: {
-    navbar: '[r-navbar]' // Attribute selector for navbar elements
+    navbar: '[r-navbar]'                 // Navbar elements
+  },
+  attributes: {
+    behaviour: 'r-navbar-behaviour'      // Per-element behaviour selector
   }
 }
 ```
