@@ -1,0 +1,58 @@
+# AI code review on demand — comment "@claude review" on a pull request.
+#
+# Every gate (trigger phrase, actor permissions, bot filter, fork head,
+# pull request state) lives inside the reusable, so this caller filters
+# nothing beyond the event itself.
+#
+# Three deliberate deviations from the other callers in this repo:
+#
+# 1. Secrets are mapped EXPLICITLY rather than blanket-inherited. This job
+#    runs on a comment, an event any org member can fire, so it gets exactly
+#    the one credential it needs and nothing else. Do not "fix" this back to
+#    blanket inheritance.
+# 2. `id-token: write` is CONDITIONALLY load-bearing — keep it, but know why.
+#    With ANTHROPIC_API_KEY set, claude-code-action's setupWorkloadIdentity()
+#    returns early before core.getIDToken(), so the OIDC path never runs and
+#    this grant sits inert today. It stays as insurance for the credential
+#    rotation case: the reusable's "Resolve auth" gate also passes on the
+#    federation vars alone (they default to the org's
+#    ANTHROPIC_FEDERATION_RULE_ID / ANTHROPIC_ORG_ID) and never checks whether
+#    this permission was granted. So if the API key is ever rotated out while
+#    those vars exist, the job proceeds and hard-fails on the missing OIDC
+#    permission instead of skipping green. Removing this turns a documented
+#    green skip into a red check on the next credential change.
+# 3. The reusable is pinned to an EXACT version, not the floating `@v1` that
+#    `pr-ci.yml` uses. This caller is the only one in the repo that hands a
+#    credential to a comment-triggered job, so upstream must not change what
+#    runs with that credential without a commit here. v1.10.2 is commit
+#    afb47de8f546213d30186e12e540b466b28b9a68 — recorded because a tag is
+#    mutable. Bump deliberately; re-check the reusable's secret interface
+#    when you do.
+
+name: Code Review
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+
+# Keyed on issue.number because github.event.pull_request.number is empty on
+# issue_comment — using it would collapse every pull request into one group.
+# cancel-in-progress is false: non-matching comments still join the group, and
+# cancelling would kill a review already in flight.
+# Note the group also keys on the workflow NAME: renaming this workflow, or
+# adding another one named "Code Review", silently shares the group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  code-review:
+    uses: refokus-agency/platform/.github/workflows/code-review.yml@v1.10.2
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
