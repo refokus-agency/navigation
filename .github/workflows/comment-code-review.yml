@@ -24,8 +24,8 @@
 # 3. The reusable is pinned to an EXACT version, not the floating `@v1` that
 #    `pr-ci.yml` uses. This caller is the only one in the repo that hands a
 #    credential to a comment-triggered job, so upstream must not change what
-#    runs with that credential without a commit here. v1.10.2 is commit
-#    afb47de8f546213d30186e12e540b466b28b9a68 — recorded because a tag is
+#    runs with that credential without a commit here. v1.10.3 is commit
+#    a8da1da7adc68709d91bfe26fbe5afd9d35a9f8e — recorded because a tag is
 #    mutable. Bump deliberately; re-check the reusable's secret interface
 #    when you do.
 
@@ -53,6 +53,6 @@ concurrency:
 
 jobs:
   code-review:
-    uses: refokus-agency/platform/.github/workflows/code-review.yml@v1.10.2
+    uses: refokus-agency/platform/.github/workflows/code-review.yml@v1.10.3
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
