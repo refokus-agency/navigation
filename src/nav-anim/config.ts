@@ -1,3 +1,5 @@
+import { NAV_ROOT_SELECTOR } from '../config.ts';
+
 export const NAVBAR_CONFIG = {
   position: {
     hidden: '-100%',
@@ -7,6 +9,6 @@ export const NAVBAR_CONFIG = {
     threshold: 50,
   },
   selectors: {
-    navbar: '[r-navbar]',
+    navbar: NAV_ROOT_SELECTOR,
   },
 };
