@@ -24,10 +24,18 @@
 # 3. The reusable is pinned to an EXACT version, not the floating `@v1` that
 #    `pr-ci.yml` uses. This caller is the only one in the repo that hands a
 #    credential to a comment-triggered job, so upstream must not change what
-#    runs with that credential without a commit here. v1.10.2 is commit
-#    afb47de8f546213d30186e12e540b466b28b9a68 — recorded because a tag is
+#    runs with that credential without a commit here. v1.10.3 is commit
+#    a8da1da7adc68709d91bfe26fbe5afd9d35a9f8e — recorded because a tag is
 #    mutable. Bump deliberately; re-check the reusable's secret interface
 #    when you do.
+#
+#    The pin is TWO lines, not one. `platform-ref` below defaults to `main`,
+#    and the reusable checks platform out a SECOND time at that ref to run
+#    the guard script that `Verify review outcome` EXECUTES from disk. Left
+#    at its default it would pull that script from a floating branch,
+#    defeating the whole point of the exact pin above. Dependabot bumps
+#    `uses:` only, so the `with:` line is a manual edit every time — the two
+#    must never drift apart.
 
 name: Code Review
 
@@ -53,6 +61,9 @@ concurrency:
 
 jobs:
   code-review:
-    uses: refokus-agency/platform/.github/workflows/code-review.yml@v1.10.2
+    uses: refokus-agency/platform/.github/workflows/code-review.yml@v1.10.3
+    with:
+      # Must move together with the `uses:` ref above — see deviation 3.
+      platform-ref: v1.10.3
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
