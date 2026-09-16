@@ -24,8 +24,8 @@
 # 3. The reusable is pinned to an EXACT version, not the floating `@v1` that
 #    `pr-ci.yml` uses. This caller is the only one in the repo that hands a
 #    credential to a comment-triggered job, so upstream must not change what
-#    runs with that credential without a commit here. v1.10.3 is commit
-#    a8da1da7adc68709d91bfe26fbe5afd9d35a9f8e — recorded because a tag is
+#    runs with that credential without a commit here. v1.11.0 is commit
+#    7a6fe894f7f8383aed085de279a5f91e7e3c182c — recorded because a tag is
 #    mutable. Bump deliberately; re-check the reusable's secret interface
 #    when you do.
 #
@@ -49,21 +49,11 @@ permissions:
   issues: write
   id-token: write
 
-# Keyed on issue.number because github.event.pull_request.number is empty on
-# issue_comment — using it would collapse every pull request into one group.
-# cancel-in-progress is false: non-matching comments still join the group, and
-# cancelling would kill a review already in flight.
-# Note the group also keys on the workflow NAME: renaming this workflow, or
-# adding another one named "Code Review", silently shares the group.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.issue.number }}
-  cancel-in-progress: false
-
 jobs:
   code-review:
-    uses: refokus-agency/platform/.github/workflows/code-review.yml@v1.10.3
+    uses: refokus-agency/platform/.github/workflows/code-review.yml@v1.11.0
     with:
       # Must move together with the `uses:` ref above — see deviation 3.
-      platform-ref: v1.10.3
+      platform-ref: v1.11.0
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
