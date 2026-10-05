@@ -8,6 +8,17 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     groups:
+      # Must stay above minor-and-patch: a dependency joins the first group it
+      # matches. No update-types, so majors are grouped too (vitest and its
+      # scoped siblings pin each other with exact peer ranges, so a lone bump
+      # breaks `npm ci` with ERESOLVE).
+      # The `@vitest/*` glob alone does NOT match the scoped packages, so list
+      # every scoped devDependency by exact name; the glob is only a catch-all.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/ui"
+          - "@vitest/*"
       minor-and-patch:
         update-types:
           - "minor"
