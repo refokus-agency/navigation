@@ -10,17 +10,19 @@
 #    runs on a comment, an event any org member can fire, so it gets exactly
 #    the one credential it needs and nothing else. Do not "fix" this back to
 #    blanket inheritance.
-# 2. `id-token: write` is CONDITIONALLY load-bearing — keep it, but know why.
-#    With ANTHROPIC_API_KEY set, claude-code-action's setupWorkloadIdentity()
-#    returns early before core.getIDToken(), so the OIDC path never runs and
-#    this grant sits inert today. It stays as insurance for the credential
-#    rotation case: the reusable's "Resolve auth" gate also passes on the
-#    federation vars alone (they default to the org's
-#    ANTHROPIC_FEDERATION_RULE_ID / ANTHROPIC_ORG_ID) and never checks whether
-#    this permission was granted. So if the API key is ever rotated out while
-#    those vars exist, the job proceeds and hard-fails on the missing OIDC
-#    permission instead of skipping green. Removing this turns a documented
-#    green skip into a red check on the next credential change.
+# 2. `id-token: write` is required on EVERY run — keep it, and know why.
+#    It is NOT for the Anthropic credential: the reusable passes no
+#    `github_token`, so claude-code-action's setupGitHubToken() falls through
+#    to core.getIDToken() and trades it for the GitHub App token the action
+#    uses to read the PR and post the review. Remove it and every review dies
+#    red with "Could not fetch an OIDC token" — not a green skip.
+#    Separately, the Anthropic federation path (setupWorkloadIdentity()) IS
+#    dormant while ANTHROPIC_API_KEY is set: it returns early before
+#    core.getIDToken(). That path matters on credential rotation: the
+#    reusable's "Resolve auth" gate also passes on the federation vars alone
+#    (they default to the org's ANTHROPIC_FEDERATION_RULE_ID /
+#    ANTHROPIC_ORG_ID), so if the API key is rotated out while those vars
+#    exist, the job proceeds into federation, which needs this same grant.
 # 3. The reusable is pinned to an EXACT version, not the floating `@v1` that
 #    `pr-ci.yml` uses. This caller is the only one in the repo that hands a
 #    credential to a comment-triggered job, so upstream must not change what
