@@ -324,7 +324,7 @@ pnpm test:ui           # With UI
 #### Code Quality
 
 ```bash
-pnpm check-types       # Type checking
+pnpm typecheck         # Type checking
 pnpm lint              # Lint with Biome (--write)
 pnpm format            # Format with Biome (--write)
 ```
@@ -507,7 +507,7 @@ Before publishing, ensure:
 - All tests pass (`pnpm test`)
 - Code is properly formatted (`pnpm format`)
 - Linting passes (`pnpm lint`)
-- Type checking passes (`pnpm check-types`)
+- Type checking passes (`pnpm typecheck`)
 - Commit messages follow conventional commits format
 
 ### Release Notes
