@@ -21,6 +21,7 @@ vi.mock('gsap', () => ({
 const OPTIONS = {
   animationDuration: 0.5,
   animationEasing: 'power1.out',
+  compressBreakpoint: NAVBAR_CONFIG.compress.breakpoint,
 };
 
 function setupMockWindow(initialScrollY = 0): void {

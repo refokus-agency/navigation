@@ -4,8 +4,9 @@
  * - `none` — the element is left completely alone. This is what an absent,
  *   empty, or unrecognised attribute resolves to.
  * - `hide` — slides the navbar out of the viewport on scroll down.
+ * - `compress` — collapses the navbar into a compact form on scroll down.
  */
-export type NavbarBehaviourName = 'none' | 'hide';
+export type NavbarBehaviourName = 'none' | 'hide' | 'compress';
 
 /**
  * Animation settings shared by every behaviour.
@@ -13,6 +14,11 @@ export type NavbarBehaviourName = 'none' | 'hide';
 export type NavbarAnimationOptions = {
   animationDuration: number;
   animationEasing: string;
+  /**
+   * Viewport width, in pixels, at or above which `compress` registers. Below
+   * it the behaviour stays dormant and clears anything it wrote.
+   */
+  compressBreakpoint: number;
 };
 
 /**

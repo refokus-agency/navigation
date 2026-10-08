@@ -80,8 +80,44 @@ Each navbar picks its own behaviour, so a page can mix them freely.
 | -------------------- | ------------------------------------------------------------------------- |
 | *absent* or empty    | Nothing. The element is left untouched.                                   |
 | `hide`               | Slides the navbar out of the viewport on scroll down, back in on scroll up. |
+| `compress`           | Collapses the navbar into a compact form on scroll down, expands on scroll up. |
 
-Further behaviours plug into the same seam without touching this module.
+#### `compress`
+
+Compress keeps the navbar on screen and drops part of it instead. Mark the
+subtree that should collapse with `r-navbar-compress`:
+
+```html
+<nav r-navbar r-navbar-behaviour="compress">
+  <a class="logo">Refokus</a>
+
+  <div r-navbar-compress>
+    <a href="/about">About</a>
+    <a href="/work">Work</a>
+  </div>
+
+  <a class="cta">Get in touch</a>
+</nav>
+```
+
+Things worth knowing:
+
+- **The navbar must be free to shrink.** Compress animates to measured pixel
+  widths, so a navbar pinned to a fixed width has nothing to compress to. Use
+  `width: fit-content` or an equivalent shrink-to-fit layout.
+- **It is gated by a breakpoint.** Below `compressBreakpoint` (default `992`)
+  nothing registers and any inline properties it wrote are cleared. The default
+  keeps it clear of Webflow's native Navbar, which takes over with its own
+  hamburger below 992px when `data-collapse="medium"` is set.
+- **It manages `overflow` and `min-width` on the subtree.** Both are set while
+  compress is active and cleared when it is not, so the subtree can collapse
+  past its min-content width without its children spilling out. You do not need
+  to set them yourself.
+- **Missing markup is not an error.** If `[r-navbar-compress]` does not resolve
+  inside the navbar, the behaviour does nothing — so the code can ship before
+  the markup lands.
+- **`prefers-reduced-motion` disables it entirely.** Nothing animates and the
+  navbar stays exactly as it is.
 
 ### Options
 
@@ -89,6 +125,7 @@ Further behaviours plug into the same seam without touching this module.
 | ------------------- | ---------------- | ------------------------------------------------------ |
 | `animationDuration` | `0.3`            | Tween duration, in seconds.                            |
 | `animationEasing`   | `'power2.inOut'` | GSAP easing string.                                    |
+| `compressBreakpoint`| `992`            | Viewport width at or above which `compress` registers. |
 
 ### How It Works
 
@@ -137,13 +174,16 @@ src/
     ├── types.ts                # Shared types
     ├── initial-animation.ts    # Initial slide-in animation
     ├── scroll-source.ts        # Single shared passive scroll listener
+    ├── measure.ts              # Injectable width measurement
     ├── behaviours/
-    │   └── hide.ts             # Slide out of the viewport
+    │   ├── hide.ts             # Slide out of the viewport
+    │   └── compress.ts         # Collapse into a compact form
     └── __tests__/
       ├── index.test.ts             # Initialization tests
       ├── scroll-source.test.ts     # Shared listener tests
       └── behaviours/
-        └── hide.test.ts            # Hide behaviour tests
+        ├── hide.test.ts            # Hide behaviour tests
+        └── compress.test.ts        # Compress behaviour tests
 ```
 
 ## Configuration
@@ -159,8 +199,12 @@ The package uses the following default configuration:
   scroll: {
     threshold: 50      // Minimum scroll distance to trigger animation
   },
+  compress: {
+    breakpoint: 992    // Default viewport width at or above which compress runs
+  },
   selectors: {
-    navbar: '[r-navbar]'                 // Navbar elements
+    navbar: '[r-navbar]',                // Navbar elements
+    compressible: '[r-navbar-compress]'  // Subtree that collapses on compress
   },
   attributes: {
     behaviour: 'r-navbar-behaviour'      // Per-element behaviour selector
