@@ -13,7 +13,7 @@ Webflow custom-code embeds. `gsap` is a peer dep, never bundled.
 
 ```bash
 pnpm test           # vitest run (jsdom)
-pnpm check-types    # tsc --noEmit --strict
+pnpm typecheck      # tsc --noEmit --strict
 pnpm lint:report    # biome, no writes (CI-safe)
 pnpm format         # biome --write
 pnpm build          # tsc, then vite browser bundle

@@ -27,7 +27,7 @@ Requirements:
 pnpm install          # install dependencies
 pnpm test             # run the test suite (Vitest, jsdom)
 pnpm test:watch       # tests in watch mode
-pnpm check-types      # strict type checking (tsc --noEmit)
+pnpm typecheck        # strict type checking (tsc --noEmit)
 pnpm lint             # Biome lint, applies fixes (--write)
 pnpm lint:report      # Biome lint, read-only — same check CI runs
 pnpm format           # Biome format (with --write)
@@ -67,9 +67,13 @@ automated by semantic-release on merge to `main`.
 - **TypeScript** in strict mode.
 - **Biome** for linting and formatting.
 
-Run `pnpm lint && pnpm format && pnpm check-types` before opening your PR —
+Run `pnpm lint && pnpm format && pnpm typecheck` before opening your PR —
 `lint` and `format` apply fixes in place. To check without modifying your
 working tree, run `pnpm lint:report`.
+
+The type-check script must keep the exact name `typecheck`: the shared CI
+pipeline discovers it by name and silently skips the step when it is absent,
+so renaming it would disable type-checking without any visible failure.
 
 ## Response Time
 
