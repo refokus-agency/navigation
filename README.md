@@ -135,6 +135,7 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
 | `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
 | `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
+| `data-nav-design-mode` | Opens every panel without running the menu — see "Editing panels in the Designer" below |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their
 `[data-nav-item]`. The viewport form is preferred: it lets one element animate
@@ -177,7 +178,7 @@ Designer (see `skipInWebflowEditor`).
 | `skipDelayDuration`   | `number`                       | `300`          | Window after a close during which the next hover opens instantly            |
 | `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
 | `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction                                       |
-| `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
+| `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present; panels are opened for editing instead |
 | `onValueChange`       | `(value: string \| null) => void` | —          | Called with the open item's value, or `null` when the menu closes           |
 
 ### CSS hooks
@@ -286,6 +287,34 @@ reopening it always starts on the main list, and crossing the breakpoint
 closes any open panel. Add `[data-nav-back]` inside the menu for a back control
 that closes the panel without dismissing the overlay.
 
+### Editing panels in the Designer
+
+In the Designer the menu never runs (see `skipInWebflowEditor`), which used to
+leave every panel closed and impossible to edit. Init now opens them for you:
+
+- **In the Designer**, `initNavigationMenu()` writes `[data-state="open"]` on the
+  root, list, items, triggers, panels and viewport, and clears `inert`,
+  `aria-hidden` and the inline hiding a previous render left behind. It then
+  returns `null`: no listeners, no timers, no ARIA wiring, no ids.
+- **Outside the Designer**, add `data-nav-design-mode` to the root to get the
+  same view while styling locally. The attribute wins over
+  `skipInWebflowEditor: false`.
+
+The root keeps `[data-nav-design-mode]`, so a consumer's CSS can lay the panels
+out for editing without affecting the published site — with a shared viewport,
+the panels would otherwise stack on top of each other:
+
+```css
+[data-nav-menu][data-nav-design-mode] [data-nav-viewport] {
+  width: auto;
+  height: auto;
+}
+
+[data-nav-menu][data-nav-design-mode] [data-nav-content] {
+  position: static;
+}
+```
+
 ## Development
 
 ### Available Scripts
@@ -356,6 +385,7 @@ src/
     ├── pointer.ts              # Hover, outside dismiss, panel link clicks
     ├── keyboard.ts             # Arrow/Home/End/Enter/Escape handling
     ├── mobile.ts               # Breakpoint mode and Webflow burger integration
+    ├── design-mode.ts          # Opens every panel for editing (Designer / attribute)
     └── __tests__/
         ├── helpers.ts          # Shared markup and event helpers
         ├── index.test.ts       # Initialization and ARIA tests
