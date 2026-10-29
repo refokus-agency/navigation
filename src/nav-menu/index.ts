@@ -6,6 +6,7 @@
 
 import { NAV_MENU_CONFIG } from './config.ts';
 import { createController } from './controller.ts';
+import { applyDesignMode } from './design-mode.ts';
 import { attachKeyboardEvents } from './keyboard.ts';
 import { attachMobile } from './mobile.ts';
 import {
@@ -50,10 +51,19 @@ export function initNavigationMenu(
 
   const resolvedOptions: NavMenuOptions = { ...DEFAULT_OPTIONS, ...options };
 
+  // Two ways in: the attribute (works anywhere, so it is testable outside the
+  // Designer) and the Designer itself, where the menu is a no-op anyway — a
+  // no-op that leaves every panel closed and impossible to edit.
+  const isEditor = document.documentElement.classList.contains(
+    NAV_MENU_CONFIG.editorClass,
+  );
+  const skipsForEditor = resolvedOptions.skipInWebflowEditor && isEditor;
+
   if (
-    resolvedOptions.skipInWebflowEditor &&
-    document.documentElement.classList.contains(NAV_MENU_CONFIG.editorClass)
+    root.hasAttribute(NAV_MENU_CONFIG.designMode.attribute) ||
+    skipsForEditor
   ) {
+    applyDesignMode(root);
     return null;
   }
 

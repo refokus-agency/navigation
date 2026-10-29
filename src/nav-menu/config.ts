@@ -24,4 +24,8 @@ export const NAV_MENU_CONFIG = {
     query: '(max-width: 767px)',
   },
   editorClass: 'w-editor',
+  designMode: {
+    /** Open every panel without running the menu — see `design-mode.ts`. */
+    attribute: 'data-nav-design-mode',
+  },
 };
