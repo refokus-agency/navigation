@@ -7,7 +7,10 @@ export function attachPointerEvents({
   refs,
   controller,
   cleanups,
+  options,
 }: NavMenuContext): void {
+  const hover = options.interaction === 'hover';
+
   // One guard for all four handlers, so it cannot be dropped from one of them:
   // a touchscreen laptop at desktop width has isMobile() false, and an
   // unfiltered touch pointerenter would clear the close timer with no
@@ -31,8 +34,12 @@ export function attachPointerEvents({
       controller.triggerClick(value, trigger);
     };
 
-    trigger.addEventListener('pointerenter', onEnter);
-    trigger.addEventListener('pointerleave', onLeave);
+    // Click mode attaches no hover listeners at all, so no hover timer can
+    // ever be scheduled.
+    if (hover) {
+      trigger.addEventListener('pointerenter', onEnter);
+      trigger.addEventListener('pointerleave', onLeave);
+    }
     trigger.addEventListener('click', onClick);
 
     cleanups.push(() => {
@@ -41,6 +48,8 @@ export function attachPointerEvents({
       trigger.removeEventListener('click', onClick);
     });
   }
+
+  if (!hover) return;
 
   // Panels can fall back to living inside their item even when a viewport
   // exists, and such a panel needs its own hover target or the close timer

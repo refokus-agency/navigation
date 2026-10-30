@@ -20,6 +20,7 @@ import type {
   NavMenuCleanup,
   NavMenuContext,
   NavMenuEntry,
+  NavMenuInteraction,
   NavMenuOptions,
   NavMenuRefs,
 } from './types.ts';
@@ -34,6 +35,7 @@ const DEFAULT_OPTIONS: NavMenuOptions = {
   skipDelayDuration: 300,
   orientation: 'horizontal',
   dir: 'ltr',
+  interaction: 'hover',
   skipInWebflowEditor: true,
 };
 
@@ -49,6 +51,10 @@ export function initNavigationMenu(
   if (!root) return null;
 
   const resolvedOptions: NavMenuOptions = { ...DEFAULT_OPTIONS, ...options };
+  resolvedOptions.interaction = resolveInteraction(
+    root,
+    resolvedOptions.interaction,
+  );
 
   if (
     resolvedOptions.skipInWebflowEditor &&
@@ -68,7 +74,13 @@ export function initNavigationMenu(
   });
 
   const cleanups: NavMenuCleanup[] = [];
-  const context: NavMenuContext = { root, refs, controller, cleanups };
+  const context: NavMenuContext = {
+    root,
+    refs,
+    controller,
+    cleanups,
+    options: resolvedOptions,
+  };
 
   cleanups.push(() => controller.destroy());
 
@@ -89,6 +101,25 @@ export function initNavigationMenu(
       for (const cleanup of cleanups) cleanup();
     },
   };
+}
+
+/**
+ * The root attribute wins, then the JS option, then hover. `jsValue` is
+ * `unknown` because browser-bundle callers pass untyped options.
+ */
+function resolveInteraction(
+  root: HTMLElement,
+  jsValue: unknown,
+): NavMenuInteraction {
+  const attribute = root.getAttribute(NAV_MENU_CONFIG.attributes.interaction);
+  if (isInteraction(attribute)) return attribute;
+  if (isInteraction(jsValue)) return jsValue;
+  return 'hover';
+}
+
+// Exact match only: Webflow authors typing "Click" get the documented default.
+function isInteraction(value: unknown): value is NavMenuInteraction {
+  return value === 'hover' || value === 'click';
 }
 
 function discoverRefs(root: HTMLElement): NavMenuRefs {
@@ -226,6 +257,7 @@ export type {
   InitNavigationMenuOptions,
   NavigationMenuInstance,
   NavMenuDirection,
+  NavMenuInteraction,
   NavMenuOptions,
   NavMenuOrientation,
 } from './types.ts';
