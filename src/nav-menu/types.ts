@@ -2,6 +2,8 @@ export type NavMenuOrientation = 'horizontal' | 'vertical';
 
 export type NavMenuDirection = 'ltr' | 'rtl';
 
+export type NavMenuInteraction = 'hover' | 'click';
+
 export type NavMenuOptions = {
   /** Delay before a hovered trigger opens its panel, in ms. */
   delayDuration: number;
@@ -9,6 +11,8 @@ export type NavMenuOptions = {
   skipDelayDuration: number;
   orientation: NavMenuOrientation;
   dir: NavMenuDirection;
+  /** What opens a panel with the mouse. Overridden by `data-nav-interaction` on the root. */
+  interaction: NavMenuInteraction;
   /** No-op inside the Webflow Designer so panels stay editable in canvas. */
   skipInWebflowEditor: boolean;
   onValueChange?: (value: string | null) => void;
@@ -68,6 +72,7 @@ export type NavMenuContext = {
   refs: NavMenuRefs;
   controller: NavMenuController;
   cleanups: NavMenuCleanup[];
+  options: NavMenuOptions;
 };
 
 export type NavigationMenuInstance = {

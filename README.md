@@ -135,6 +135,7 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
 | `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
 | `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
+| `data-nav-interaction` | On the root: `hover` (default) or `click` — what opens a panel with the mouse. Overrides the `interaction` option |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their
 `[data-nav-item]`. The viewport form is preferred: it lets one element animate
@@ -177,6 +178,7 @@ Designer (see `skipInWebflowEditor`).
 | `skipDelayDuration`   | `number`                       | `300`          | Window after a close during which the next hover opens instantly            |
 | `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
 | `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction                                       |
+| `interaction`         | `'hover' \| 'click'`           | `'hover'`      | What opens a panel with the mouse. `data-nav-interaction` on the root wins  |
 | `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
 | `onValueChange`       | `(value: string \| null) => void` | —          | Called with the open item's value, or `null` when the menu closes           |
 
@@ -233,6 +235,16 @@ hidden. Without an animation, hiding is immediate.
 - **Click or focus** outside the nav closes the menu
 Hover is mouse-only and disabled in mobile mode — touch devices fall through
 to the click handler.
+
+Set `data-nav-interaction="click"` on the root (or pass `interaction: 'click'`)
+to drop hover entirely: a panel opens and closes only on trigger click, stays
+open when the pointer leaves, and still closes on outside click, `Escape`, a
+link click inside it, or focus leaving the nav. Clicking another trigger
+switches panels. The keyboard behaves the same in both modes.
+
+The mode is read once, at init, with this precedence: the attribute, when it is
+exactly `hover` or `click`; else the `interaction` option, when valid; else
+`hover`. Values are case-sensitive — `"Click"` is ignored.
 
 ### Keyboard
 

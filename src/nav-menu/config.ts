@@ -16,6 +16,7 @@ export const NAV_MENU_CONFIG = {
   attributes: {
     item: 'data-nav-item',
     content: 'data-nav-content',
+    interaction: 'data-nav-interaction',
   },
   timing: {
     closeDelay: 150,
