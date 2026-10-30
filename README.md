@@ -135,6 +135,7 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
 | `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
 | `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
+| `data-nav-breakpoint` | Mobile breakpoint in px as a plain integer (`991`); defaults to 767. Match your CSS |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their
 `[data-nav-item]`. The viewport form is preferred: it lets one element animate
@@ -280,9 +281,10 @@ behave natively:
 
 ### Webflow mobile integration
 
-Below 767px the root is marked `[data-nav-mode="mobile"]`. If the menu sits
-inside a Webflow `.w-nav`, closing the burger overlay resets the menu so
-reopening it always starts on the main list, and crossing the breakpoint
+At or below the mobile breakpoint — 767px by default, or the root's
+`[data-nav-breakpoint]` — the root is marked `[data-nav-mode="mobile"]`. If the
+menu sits inside a Webflow `.w-nav`, closing the burger overlay resets the menu
+so reopening it always starts on the main list, and crossing the breakpoint
 closes any open panel. Add `[data-nav-back]` inside the menu for a back control
 that closes the panel without dismissing the overlay.
 
@@ -405,11 +407,16 @@ any selector is a **breaking change** for every consumer.
     webflowNav: '.w-nav',
     webflowBurger: '.w-nav-button'
   },
+  attributes: {
+    item: 'data-nav-item',
+    content: 'data-nav-content',
+    breakpoint: 'data-nav-breakpoint'
+  },
   timing: {
     closeDelay: 150        // Grace period after the pointer leaves, in ms
   },
   mobile: {
-    query: '(max-width: 767px)'
+    breakpoint: 767        // Max viewport width in px; [data-nav-breakpoint] overrides it
   },
   editorClass: 'w-editor'  // Webflow Designer canvas marker
 }
