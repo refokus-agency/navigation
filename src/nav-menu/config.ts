@@ -16,12 +16,14 @@ export const NAV_MENU_CONFIG = {
   attributes: {
     item: 'data-nav-item',
     content: 'data-nav-content',
+    breakpoint: 'data-nav-breakpoint',
   },
   timing: {
     closeDelay: 150,
   },
   mobile: {
-    query: '(max-width: 767px)',
+    /** Max viewport width in px for mobile mode, used when data-nav-breakpoint is absent or invalid. */
+    breakpoint: 767,
   },
   editorClass: 'w-editor',
 };

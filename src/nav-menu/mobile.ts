@@ -2,6 +2,18 @@ import { NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
 
 /**
+ * The root's own breakpoint when [data-nav-breakpoint] is a plain positive
+ * integer ("991"); anything else ("991px", " 991 ", "0") falls back to the default.
+ */
+function readBreakpoint(root: HTMLElement): number {
+  const value = root.getAttribute(NAV_MENU_CONFIG.attributes.breakpoint);
+  const breakpoint = value !== null && /^\d+$/.test(value) ? Number(value) : 0;
+  return breakpoint > 0 && Number.isSafeInteger(breakpoint)
+    ? breakpoint
+    : NAV_MENU_CONFIG.mobile.breakpoint;
+}
+
+/**
  * Publishes [data-nav-mode] for CSS, wires [data-nav-back], and resets state on
  * breakpoint crossings and when the Webflow burger overlay closes.
  */
@@ -10,12 +22,12 @@ export function attachMobile({
   controller,
   cleanups,
 }: NavMenuContext): void {
-  const { selectors, mobile } = NAV_MENU_CONFIG;
+  const { selectors } = NAV_MENU_CONFIG;
 
   // Absent in SSR/jsdom — assume desktop rather than failing init.
   const mediaQuery =
     typeof window.matchMedia === 'function'
-      ? window.matchMedia(mobile.query)
+      ? window.matchMedia(`(max-width: ${readBreakpoint(root)}px)`)
       : null;
 
   const applyMode = () => {
