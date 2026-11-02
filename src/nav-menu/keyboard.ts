@@ -268,7 +268,7 @@ function moveFocus(
   }
 }
 
-function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
+export function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, {
     acceptNode(node) {
       const element = node as HTMLElement & {
@@ -292,7 +292,7 @@ function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
   return candidates;
 }
 
-function focusFirst(candidates: HTMLElement[]): boolean {
+export function focusFirst(candidates: HTMLElement[]): boolean {
   const previous = document.activeElement;
 
   for (const candidate of candidates) {

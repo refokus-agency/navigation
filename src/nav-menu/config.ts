@@ -10,6 +10,8 @@ export const NAV_MENU_CONFIG = {
     link: '[data-nav-link]',
     viewport: '[data-nav-viewport]',
     back: '[data-nav-back]',
+    toggle: '[data-nav-toggle]',
+    card: '[data-nav-card]',
     webflowNav: '.w-nav',
     webflowBurger: '.w-nav-button',
   },

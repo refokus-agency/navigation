@@ -58,7 +58,8 @@ export function initNavigationMenu(
   }
 
   const refs = discoverRefs(root);
-  setupAria(root, refs, resolvedOptions, `nav-${++instanceCount}`);
+  const idPrefix = `nav-${++instanceCount}`;
+  setupAria(root, refs, resolvedOptions, idPrefix);
 
   const renderer = createRenderer({ refs, options: resolvedOptions, root });
   const controller = createController({
@@ -68,7 +69,13 @@ export function initNavigationMenu(
   });
 
   const cleanups: NavMenuCleanup[] = [];
-  const context: NavMenuContext = { root, refs, controller, cleanups };
+  const context: NavMenuContext = {
+    root,
+    refs,
+    controller,
+    cleanups,
+    idPrefix,
+  };
 
   cleanups.push(() => controller.destroy());
 

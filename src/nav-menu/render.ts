@@ -64,8 +64,16 @@ export function createRenderer({
       }
     });
 
-    for (const { trigger, value: triggerValue, content } of refs.entries) {
+    for (const {
+      item,
+      trigger,
+      value: triggerValue,
+      content,
+    } of refs.entries) {
       const isOpen = triggerValue === value;
+      // Accordion hook. Unconditional so a breakpoint crossing cannot strand
+      // a stale `open` on an item.
+      if (content) item.dataset.state = isOpen ? 'open' : 'closed';
       trigger.dataset.state = isOpen ? 'open' : 'closed';
       // A plain link must not announce collapsible content it does not have.
       if (content) trigger.setAttribute('aria-expanded', String(isOpen));

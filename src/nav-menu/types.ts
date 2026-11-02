@@ -68,6 +68,8 @@ export type NavMenuContext = {
   refs: NavMenuRefs;
   controller: NavMenuController;
   cleanups: NavMenuCleanup[];
+  /** Per-instance id prefix, so generated ids never collide across roots. */
+  idPrefix: string;
 };
 
 export type NavigationMenuInstance = {
