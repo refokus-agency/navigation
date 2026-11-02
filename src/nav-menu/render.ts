@@ -140,22 +140,65 @@ export function createRenderer({
       '--nav-viewport-height',
       `${content.scrollHeight}px`,
     );
+
+    positionViewport(value, isMobile ? null : content.scrollWidth);
+  }
+
+  /**
+   * Publishes the active trigger's geometry, and `--nav-viewport-x` when the
+   * viewport opts in with `[data-nav-align="trigger"]`. Coordinates are relative
+   * to the viewport's positioning ancestor, so they can feed `left`/`translate`
+   * directly. `panelWidth` is null on mobile, where the panel spans the overlay.
+   */
+  function positionViewport(value: string, panelWidth: number | null): void {
+    const { viewport } = refs;
+    const trigger = refs.triggerByValue.get(value);
+    if (!viewport || !trigger) return;
+
+    const anchor = viewport.offsetParent ?? root;
+    const anchorRect = anchor.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
+    const triggerX = triggerRect.left - anchorRect.left;
+
+    root.style.setProperty('--nav-trigger-x', `${triggerX}px`);
+    root.style.setProperty('--nav-trigger-width', `${triggerRect.width}px`);
+
+    if (viewport.dataset.navAlign !== 'trigger' || panelWidth === null) {
+      viewport.style.removeProperty('--nav-viewport-x');
+      return;
+    }
+
+    // Clamp inside the root so a trigger near the edge never pushes the panel out.
+    const rootRect = root.getBoundingClientRect();
+    const min = rootRect.left - anchorRect.left;
+    const max = Math.max(min, min + rootRect.width - panelWidth);
+    const x = Math.min(Math.max(triggerX, min), max);
+    viewport.style.setProperty('--nav-viewport-x', `${x}px`);
   }
 
   function observeResize(getActiveValue: () => string | null): NavMenuCleanup {
-    if (!refs.viewport || typeof ResizeObserver === 'undefined') {
-      return () => {};
-    }
+    if (!refs.viewport) return () => {};
 
-    const observer = new ResizeObserver(() => {
+    const remeasure = () => {
       const value = getActiveValue();
       if (value) sizeViewport(value);
-    });
+    };
+    // Trigger geometry moves with the window even when no panel resizes.
+    window.addEventListener('resize', remeasure);
+    const stopWindow = () => window.removeEventListener('resize', remeasure);
+
+    if (typeof ResizeObserver === 'undefined') return stopWindow;
+
+    const observer = new ResizeObserver(remeasure);
     refs.contentMap.forEach((content) => {
       observer.observe(content);
     });
+    observer.observe(root);
 
-    return () => observer.disconnect();
+    return () => {
+      stopWindow();
+      observer.disconnect();
+    };
   }
 
   return { applyState, observeResize };

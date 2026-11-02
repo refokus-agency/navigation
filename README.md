@@ -190,6 +190,10 @@ Designer (see `skipInWebflowEditor`).
 | `[data-nav-mode]`          | `mobile` \| `desktop`                                     | root                                  |
 | `--nav-viewport-width`     | e.g. `480px` (`100%` on mobile)                           | viewport                              |
 | `--nav-viewport-height`    | e.g. `320px`                                              | viewport                              |
+| `[data-nav-align]`         | `viewport` (default) \| `trigger`                         | viewport (you set it)                 |
+| `--nav-viewport-x`         | e.g. `120px` — only with `data-nav-align="trigger"`       | viewport                              |
+| `--nav-trigger-x`          | e.g. `96px`, the active trigger's left edge               | root                                  |
+| `--nav-trigger-width`      | e.g. `88px`                                               | root                                  |
 
 Panels stay mounted for the duration of their CSS **animation** (not
 transition), so `@keyframes` exit animations play out before the element is
@@ -212,6 +216,37 @@ hidden. Without an animation, hiding is immediate.
   animation: nav-enter-from-right 0.2s ease;
 }
 ```
+
+#### Anchoring to the trigger
+
+Set `data-nav-align="trigger"` on the viewport and `--nav-viewport-x` follows the
+active trigger's left edge, clamped so the panel never overflows the root (not
+applied on mobile). Values are relative to the viewport's positioning ancestor,
+and recomputed on resize. `--nav-trigger-x` / `--nav-trigger-width` are always
+published, so a pill needs no JS:
+
+```css
+[data-nav-viewport] {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  transform: translateX(var(--nav-viewport-x, 0px));
+  transition: transform 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+[data-nav-list] { position: relative; }
+.nav-pill {
+  position: absolute;
+  left: 0;
+  width: var(--nav-trigger-width);
+  transform: translateX(var(--nav-trigger-x));
+  transition: transform 0.25s ease, width 0.25s ease;
+}
+[data-nav-menu][data-state='closed'] .nav-pill { opacity: 0; }
+```
+
+The pill's positioning ancestor must share its left edge with the viewport's
+(here, both start at the root's left).
 
 > **Sizing rule — the one way to break this.** `--nav-viewport-*` is measured
 > from the active panel's `scrollWidth`/`scrollHeight`, so the panel must have

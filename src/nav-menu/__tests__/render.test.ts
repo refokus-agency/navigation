@@ -314,3 +314,80 @@ describe('markup without a viewport', () => {
     expect(content?.style.display).toBe('none');
   });
 });
+
+describe('trigger geometry', () => {
+  function rect(left: number, width: number): DOMRect {
+    return {
+      left,
+      width,
+      right: left + width,
+      top: 0,
+      bottom: 0,
+      height: 0,
+      x: left,
+      y: 0,
+      toJSON() {},
+    } as DOMRect;
+  }
+
+  function setup(align?: string) {
+    if (align) menu.viewport.dataset.navAlign = align;
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rect(100, 600),
+    );
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rect(150, 80),
+    );
+    vi.spyOn(menu.trigger('c'), 'getBoundingClientRect').mockReturnValue(
+      rect(620, 70),
+    );
+    setScrollSize(menu.content('a'), 200, 100);
+    setScrollSize(menu.content('c'), 200, 100);
+    const instance = initNavigationMenu();
+    flushFrame();
+    return instance;
+  }
+
+  const prop = (el: HTMLElement, name: string) =>
+    el.style.getPropertyValue(name);
+
+  it('should publish the active trigger x and width on the root', () => {
+    const instance = setup();
+    instance?.open('a');
+
+    expect(prop(menu.root, '--nav-trigger-x')).toBe('50px');
+    expect(prop(menu.root, '--nav-trigger-width')).toBe('80px');
+    instance?.open('c');
+    expect(prop(menu.root, '--nav-trigger-x')).toBe('520px');
+    expect(prop(menu.root, '--nav-trigger-width')).toBe('70px');
+  });
+
+  it('should not publish --nav-viewport-x by default', () => {
+    setup()?.open('a');
+    expect(prop(menu.viewport, '--nav-viewport-x')).toBe('');
+  });
+
+  it('should anchor the panel to its trigger with data-nav-align="trigger"', () => {
+    setup('trigger')?.open('a');
+    expect(prop(menu.viewport, '--nav-viewport-x')).toBe('50px');
+  });
+
+  it('should clamp the panel inside the root', () => {
+    setup('trigger')?.open('c');
+    // trigger at 520, panel 200 wide, root 600 wide -> max 400
+    expect(prop(menu.viewport, '--nav-viewport-x')).toBe('400px');
+  });
+
+  it('should recompute on window resize', () => {
+    const instance = setup('trigger');
+    instance?.open('a');
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rect(200, 80),
+    );
+
+    window.dispatchEvent(new Event('resize'));
+
+    expect(prop(menu.root, '--nav-trigger-x')).toBe('100px');
+    expect(prop(menu.viewport, '--nav-viewport-x')).toBe('100px');
+  });
+});
