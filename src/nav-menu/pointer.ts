@@ -1,4 +1,4 @@
-import { NAV_MENU_CONFIG } from './config.ts';
+import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
 
 /** Mouse only — touch falls through to the click handler. */
@@ -27,6 +27,9 @@ export function attachPointerEvents({
       controller.triggerPointerLeave(trigger);
     };
     const onClick = (event: MouseEvent) => {
+      // Read per click so the attribute can change after init. Navigate mode
+      // leaves the link alone: opening is hover/keyboard only.
+      if (isNavigateTrigger(trigger)) return;
       event.preventDefault();
       controller.triggerClick(value, trigger);
     };

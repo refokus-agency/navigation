@@ -229,8 +229,30 @@ hidden. Without an animation, hiding is immediate.
 - **Pointer** over the viewport keeps the menu open; leaving closes it after 150ms
 - **Click** a trigger to toggle it — after a click-to-close the cursor must
   leave and re-enter before hover reopens it
+- **Click** a trigger with `data-nav-trigger-mode="navigate"` follows its link
+  instead of toggling (see "Trigger mode" below)
 - **Click** a link inside a panel closes the menu; ⌘/Ctrl-click keeps it open
 - **Click or focus** outside the nav closes the menu
+#### Trigger mode
+
+A trigger that is also a link to the section's overview page can opt out of
+click-toggling:
+
+```html
+<a href="/products" data-nav-trigger data-nav-trigger-mode="navigate">Products</a>
+```
+
+| Mode               | Click / `Enter`                         | Opens from                 |
+| ------------------ | --------------------------------------- | -------------------------- |
+| `toggle` (default) | Toggles the panel, navigation prevented | Click, hover, keyboard     |
+| `navigate`         | Not prevented — the link navigates      | Hover, arrow keys, `Space` |
+
+Trade-off: touch has no hover, so a `navigate` trigger on a touch device just
+navigates and its panel is unreachable. Keep `toggle` (the default) wherever
+touch users need the panel. ⌘/Ctrl-click on a `navigate` trigger opens the link
+in a new tab and leaves the menu as it is; a ⌘/Ctrl-click on a link inside a
+panel already keeps the menu open.
+
 Hover is mouse-only and disabled in mobile mode — touch devices fall through
 to the click handler.
 
