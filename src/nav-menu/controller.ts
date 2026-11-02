@@ -1,4 +1,3 @@
-import { NAV_MENU_CONFIG } from './config.ts';
 import type {
   NavMenuController,
   NavMenuOptions,
@@ -134,10 +133,7 @@ export function createController({
 
   function startCloseTimer(): void {
     clearTimeout(closeTimer);
-    closeTimer = setTimeout(
-      () => setValue(null),
-      NAV_MENU_CONFIG.timing.closeDelay,
-    );
+    closeTimer = setTimeout(() => setValue(null), options.closeDelay);
   }
 
   function handleEscape(): HTMLElement | null {

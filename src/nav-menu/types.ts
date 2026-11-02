@@ -7,6 +7,8 @@ export type NavMenuOptions = {
   delayDuration: number;
   /** Window after a close during which the next open is instant, in ms. */
   skipDelayDuration: number;
+  /** Grace period after the pointer leaves before the panel closes, in ms. */
+  closeDelay: number;
   orientation: NavMenuOrientation;
   dir: NavMenuDirection;
   /** No-op inside the Webflow Designer so panels stay editable in canvas. */

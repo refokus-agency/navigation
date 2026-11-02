@@ -16,6 +16,11 @@ export const NAV_MENU_CONFIG = {
   attributes: {
     item: 'data-nav-item',
     content: 'data-nav-content',
+    delay: 'data-nav-delay',
+    skipDelay: 'data-nav-skip-delay',
+    closeDelay: 'data-nav-close-delay',
+    orientation: 'data-nav-orientation',
+    dir: 'data-nav-dir',
   },
   timing: {
     closeDelay: 150,

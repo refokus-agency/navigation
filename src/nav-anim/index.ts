@@ -1,10 +1,26 @@
+import { gsap } from 'gsap';
+import {
+  type AttributeReader,
+  isBoolean,
+  isFiniteNumber,
+  readBooleanAttr,
+  readNumberAttr,
+  resolveSetting,
+} from '../attributes.ts';
 import { NAVBAR_CONFIG } from './config.ts';
 import { performInitialAnimation } from './initial-animation.ts';
-import { initScrollBehavior } from './scroll-behaviour.ts';
+import {
+  cleanupNavbarAnimation,
+  initScrollBehavior,
+} from './scroll-behaviour.ts';
 
 export type NavbarAnimationOptions = {
   animationDuration: number;
   animationEasing: string;
+  /** When false, the navbar slides in once and never hides on scroll. */
+  hideOnScroll: boolean;
+  /** Scroll distance, in px, before the navbar hides or shows. */
+  scrollThreshold: number;
 };
 
 export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
@@ -12,6 +28,8 @@ export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
 const DEFAULT_OPTIONS: NavbarAnimationOptions = {
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
+  hideOnScroll: true,
+  scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
 };
 
 /**
@@ -27,14 +45,81 @@ export function initNavbarAnimation(
 
   if (!navbarElements.length) return false;
 
-  const resolvedOptions: NavbarAnimationOptions = {
+  const elements = Array.from(navbarElements);
+  const resolvedOptions = resolveAnimOptions(elements[0] as Element, {
     ...DEFAULT_OPTIONS,
     ...options,
-  };
+  });
 
-  const elements = Array.from(navbarElements);
+  // A re-init must drop the previous singleton binding, even when it no
+  // longer hides on scroll and so never reaches initScrollBehavior.
+  cleanupNavbarAnimation();
+
+  // The slide-in always runs, so the navbar appears even when it never hides.
   performInitialAnimation(elements, resolvedOptions);
-  initScrollBehavior(elements, resolvedOptions);
+  if (resolvedOptions.hideOnScroll) {
+    initScrollBehavior(elements, resolvedOptions);
+  }
 
   return true;
+}
+
+/**
+ * Any name GSAP resolves to an ease function; `"foo"` resolves to nothing.
+ * GSAP looks the base name (before any `(`) up in a plain object, so
+ * `Object.prototype` members such as `"constructor"` or `"toString(1)"` resolve
+ * to builtins and must be rejected explicitly. Malformed arguments
+ * (`"steps(abc)"`) still resolve to a function, but one that returns `NaN`, so
+ * the candidate is probed once.
+ */
+const isEase = (value: unknown): value is string => {
+  if (typeof value !== 'string' || value === '') return false;
+  const baseName = value.split('(')[0] ?? '';
+  if (baseName in Object.prototype) return false;
+  const ease = gsap.parseEase(value);
+  return typeof ease === 'function' && Number.isFinite(ease(0.5));
+};
+
+const readEaseAttr: AttributeReader<string> = (el, name) => {
+  const value = el.getAttribute(name);
+  return isEase(value) ? value : undefined;
+};
+
+/**
+ * The first root's attributes override the merged JS options; read once, at
+ * init. Every root is animated, but the state is a singleton, so one root
+ * decides. Invalid values — attribute or JS — are skipped silently.
+ */
+function resolveAnimOptions(
+  firstRoot: Element,
+  merged: NavbarAnimationOptions,
+): NavbarAnimationOptions {
+  const { attributes } = NAVBAR_CONFIG;
+
+  return {
+    hideOnScroll: resolveSetting({
+      attribute: readBooleanAttr(firstRoot, attributes.hideOnScroll),
+      js: merged.hideOnScroll,
+      isValid: isBoolean,
+      fallback: DEFAULT_OPTIONS.hideOnScroll,
+    }),
+    scrollThreshold: resolveSetting({
+      attribute: readNumberAttr(firstRoot, attributes.scrollThreshold),
+      js: merged.scrollThreshold,
+      isValid: isFiniteNumber,
+      fallback: DEFAULT_OPTIONS.scrollThreshold,
+    }),
+    animationDuration: resolveSetting({
+      attribute: readNumberAttr(firstRoot, attributes.animDuration),
+      js: merged.animationDuration,
+      isValid: isFiniteNumber,
+      fallback: DEFAULT_OPTIONS.animationDuration,
+    }),
+    animationEasing: resolveSetting({
+      attribute: readEaseAttr(firstRoot, attributes.animEasing),
+      js: merged.animationEasing,
+      isValid: isEase,
+      fallback: DEFAULT_OPTIONS.animationEasing,
+    }),
+  };
 }
