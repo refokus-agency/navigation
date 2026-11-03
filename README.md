@@ -25,7 +25,7 @@ A TypeScript package for Webflow and custom-code navigations: GSAP-powered scrol
 
 ## Requirements
 
-- Node.js >= 22.0.0
+- Node.js ^22.22.2 || ^24.15.0 || >=26
 
 ## Installation
 
@@ -135,6 +135,8 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
 | `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
 | `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
+| `data-nav-toggle`     | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
+| `data-nav-card`       | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their
 `[data-nav-item]`. The viewport form is preferred: it lets one element animate
@@ -190,6 +192,10 @@ Designer (see `skipInWebflowEditor`).
 | `[data-nav-mode]`          | `mobile` \| `desktop`                                     | root                                  |
 | `--nav-viewport-width`     | e.g. `480px` (`100%` on mobile)                           | viewport                              |
 | `--nav-viewport-height`    | e.g. `320px`                                              | viewport                              |
+| `[data-nav-align]`         | `viewport` (default) \| `trigger`                         | viewport (you set it)                 |
+| `--nav-viewport-x`         | e.g. `120px` — only with `data-nav-align="trigger"`       | viewport                              |
+| `--nav-trigger-x`          | e.g. `96px`, the active trigger's left edge, from the root's left | root                        |
+| `--nav-trigger-width`      | e.g. `88px`                                               | root                                  |
 
 Panels stay mounted for the duration of their CSS **animation** (not
 transition), so `@keyframes` exit animations play out before the element is
@@ -212,6 +218,40 @@ hidden. Without an animation, hiding is immediate.
   animation: nav-enter-from-right 0.2s ease;
 }
 ```
+
+#### Anchoring to the trigger
+
+Set `data-nav-align="trigger"` on the viewport and `--nav-viewport-x` follows the
+active trigger's left edge, clamped so the panel never overflows the root (not
+applied on mobile), relative to the viewport's positioning ancestor (the window
+when the viewport is `position: fixed`).
+`--nav-trigger-x` / `--nav-trigger-width` are always published, measured from the
+**root's** left edge, so a pill needs no JS as long as the root is its
+positioning ancestor:
+
+```css
+[data-nav-viewport] {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  transform: translateX(var(--nav-viewport-x, 0px));
+  transition: transform 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+[data-nav-menu] { position: relative; }
+.nav-pill {
+  position: absolute;
+  left: 0;
+  width: var(--nav-trigger-width);
+  transform: translateX(var(--nav-trigger-x));
+  transition: transform 0.25s ease, width 0.25s ease;
+}
+[data-nav-menu][data-state='closed'] .nav-pill { opacity: 0; }
+```
+
+Make the root `position: relative` and place the pill in it (not inside
+`[data-nav-list]`): `--nav-trigger-x` is measured from the root, so the pill
+stays aligned however much sits before the list, such as a logo.
 
 > **Sizing rule — the one way to break this.** `--nav-viewport-*` is measured
 > from the active panel's `scrollWidth`/`scrollHeight`, so the panel must have
@@ -307,6 +347,33 @@ inside a Webflow `.w-nav`, closing the burger overlay resets the menu so
 reopening it always starts on the main list, and crossing the breakpoint
 closes any open panel. Add `[data-nav-back]` inside the menu for a back control
 that closes the panel without dismissing the overlay.
+
+### Mobile menu (toggle, card, accordion)
+
+Opt in with markup alone — no project JS beyond `initNavigationMenu()`:
+
+```html
+<nav data-nav-menu>
+  <button data-nav-toggle>Menu</button>
+  <div data-nav-card>
+    <div data-nav-list>…items…</div>
+  </div>
+</nav>
+```
+
+In `[data-nav-mode="mobile"]`:
+
+- the toggle opens/closes the card (`data-state="open|closed"`, written only
+  in mobile mode, so `[data-nav-card][data-state='closed']` rules cannot hide
+  the desktop menu); Escape and a
+  click outside close it, and Escape returns focus to the toggle. A panel's own
+  Escape closes the panel first;
+- triggers behave as an accordion — one panel open at a time, `data-state` on
+  the item and the content, and focus moves to the first link on open;
+- closing the card, or crossing the breakpoint, closes any open panel.
+
+On desktop none of this applies and existing behavior is unchanged. CSS owns
+all visuals; hide `[data-nav-toggle]` above the breakpoint yourself.
 
 ## Development
 
