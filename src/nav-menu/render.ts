@@ -158,9 +158,9 @@ export function createRenderer({
 
   /**
    * Publishes the active trigger's geometry, and `--nav-viewport-x` when the
-   * viewport opts in with `[data-nav-align="trigger"]`. Coordinates are relative
-   * to the viewport's positioning ancestor, so they can feed `left`/`translate`
-   * directly. `panelWidth` is null on mobile, where the panel spans the overlay.
+   * viewport opts in with `[data-nav-align="trigger"]`. The trigger vars are
+   * relative to the root; `--nav-viewport-x` to the viewport's positioning
+   * ancestor, so it can feed `left`/`translate` directly. `panelWidth` is null on mobile, where the panel spans the overlay.
    */
   function positionViewport(
     value: string,
@@ -172,12 +172,15 @@ export function createRenderer({
     const trigger = activeTrigger ?? refs.triggerByValue.get(value);
     if (!trigger) return;
 
-    const anchor = viewport?.offsetParent ?? root;
-    const anchorRect = anchor.getBoundingClientRect();
+    const rootRect = root.getBoundingClientRect();
     const triggerRect = trigger.getBoundingClientRect();
-    const triggerX = triggerRect.left - anchorRect.left;
 
-    root.style.setProperty('--nav-trigger-x', `${triggerX}px`);
+    // Measured against the root, a stable reference that does not depend on
+    // where the viewport happens to be positioned.
+    root.style.setProperty(
+      '--nav-trigger-x',
+      `${triggerRect.left - rootRect.left}px`,
+    );
     root.style.setProperty('--nav-trigger-width', `${triggerRect.width}px`);
 
     if (!viewport) return;
@@ -186,8 +189,11 @@ export function createRenderer({
       return;
     }
 
+    // --nav-viewport-x is the one value relative to the viewport's own
+    // positioning ancestor, since it feeds that element's left/translate.
+    const anchorRect = (viewport.offsetParent ?? root).getBoundingClientRect();
+    const triggerX = triggerRect.left - anchorRect.left;
     // Clamp inside the root so a trigger near the edge never pushes the panel out.
-    const rootRect = root.getBoundingClientRect();
     const min = rootRect.left - anchorRect.left;
     const max = Math.max(min, min + rootRect.width - panelWidth);
     const x = Math.min(Math.max(triggerX, min), max);

@@ -467,3 +467,45 @@ describe('trigger geometry without a viewport', () => {
     expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('100px');
   });
 });
+
+describe('trigger geometry reference points', () => {
+  it('should measure trigger vars from the root, not the viewport offsetParent', () => {
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    const anchor = document.createElement('div');
+    vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue(rectOf(160, 500));
+    Object.defineProperty(menu.viewport, 'offsetParent', {
+      value: anchor,
+      configurable: true,
+    });
+    menu.viewport.dataset.navAlign = 'trigger';
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(100, 600),
+    );
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rectOf(300, 80),
+    );
+    setScrollSize(menu.content('a'), 200, 100);
+
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('a');
+
+    // root-relative: 300 - 100
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('200px');
+    // anchor-relative: 300 - 160, within [min=-60, max=340]
+    expect(menu.viewport.style.getPropertyValue('--nav-viewport-x')).toBe(
+      '140px',
+    );
+  });
+});
