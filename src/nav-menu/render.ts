@@ -30,6 +30,7 @@ export function createRenderer({
   function applyState(
     value: string | null,
     previousValue: string | null,
+    activeTrigger: HTMLElement | null = null,
   ): void {
     const { viewport } = refs;
     const prevIdx = previousValue ? ordered.indexOf(previousValue) : -1;
@@ -80,7 +81,7 @@ export function createRenderer({
         const isRemount = !isViewportOpen;
         show(viewport);
         if (isRemount) viewport.style.transition = 'none';
-        sizeViewport(value);
+        sizeViewport(value, activeTrigger);
         if (isRemount) {
           void viewport.offsetHeight; // force reflow at the new size
           viewport.style.transition = '';
@@ -123,7 +124,10 @@ export function createRenderer({
     return attr;
   }
 
-  function sizeViewport(value: string): void {
+  function sizeViewport(
+    value: string,
+    activeTrigger: HTMLElement | null,
+  ): void {
     const content = refs.contentMap.get(value);
     const { viewport } = refs;
     if (!content || !viewport) return;
@@ -141,7 +145,11 @@ export function createRenderer({
       `${content.scrollHeight}px`,
     );
 
-    positionViewport(value, isMobile ? null : content.scrollWidth);
+    positionViewport(
+      value,
+      activeTrigger,
+      isMobile ? null : content.scrollWidth,
+    );
   }
 
   /**
@@ -150,9 +158,14 @@ export function createRenderer({
    * to the viewport's positioning ancestor, so they can feed `left`/`translate`
    * directly. `panelWidth` is null on mobile, where the panel spans the overlay.
    */
-  function positionViewport(value: string, panelWidth: number | null): void {
+  function positionViewport(
+    value: string,
+    activeTrigger: HTMLElement | null,
+    panelWidth: number | null,
+  ): void {
     const { viewport } = refs;
-    const trigger = refs.triggerByValue.get(value);
+    // The trigger that opened the panel, not the item's first: items may own several.
+    const trigger = activeTrigger ?? refs.triggerByValue.get(value);
     if (!viewport || !trigger) return;
 
     const anchor = viewport.offsetParent ?? root;
@@ -176,12 +189,15 @@ export function createRenderer({
     viewport.style.setProperty('--nav-viewport-x', `${x}px`);
   }
 
-  function observeResize(getActiveValue: () => string | null): NavMenuCleanup {
+  function observeResize(
+    getActiveValue: () => string | null,
+    getActiveTrigger: () => HTMLElement | null,
+  ): NavMenuCleanup {
     if (!refs.viewport) return () => {};
 
     const remeasure = () => {
       const value = getActiveValue();
-      if (value) sizeViewport(value);
+      if (value) sizeViewport(value, getActiveTrigger());
     };
     // Trigger geometry moves with the window even when no panel resizes.
     window.addEventListener('resize', remeasure);

@@ -391,3 +391,41 @@ describe('trigger geometry', () => {
     expect(prop(menu.viewport, '--nav-viewport-x')).toBe('100px');
   });
 });
+
+describe('trigger geometry with several triggers per item', () => {
+  it('should measure the trigger that opened the panel, not the first', () => {
+    const chevron = document.createElement('button');
+    chevron.type = 'button';
+    chevron.setAttribute('data-nav-trigger', '');
+    menu.trigger('a').after(chevron);
+
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(100, 600),
+    );
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rectOf(154, 60),
+    );
+    vi.spyOn(chevron, 'getBoundingClientRect').mockReturnValue(rectOf(225, 20));
+
+    initNavigationMenu();
+    flushFrame();
+    chevron.click();
+
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('125px');
+    expect(menu.root.style.getPropertyValue('--nav-trigger-width')).toBe(
+      '20px',
+    );
+  });
+});
