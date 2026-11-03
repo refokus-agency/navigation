@@ -1,8 +1,8 @@
 import type {
   NavMenuController,
-  NavMenuOptions,
   NavMenuRefs,
   NavMenuRenderer,
+  ResolvedNavMenuOptions,
 } from './types.ts';
 
 type TriggerPointerState = {
@@ -19,7 +19,7 @@ export function createController({
   renderer,
 }: {
   refs: NavMenuRefs;
-  options: NavMenuOptions;
+  options: ResolvedNavMenuOptions;
   renderer: NavMenuRenderer;
 }): NavMenuController {
   let activeValue: string | null = null;

@@ -31,6 +31,7 @@ import type {
   NavMenuOptions,
   NavMenuOrientation,
   NavMenuRefs,
+  ResolvedNavMenuOptions,
 } from './types.ts';
 
 // Ids must be unique per instance: the feature is built for several menus on
@@ -38,7 +39,7 @@ import type {
 // shape), and positional fallback values collide across roots.
 let instanceCount = 0;
 
-const DEFAULT_OPTIONS: NavMenuOptions = {
+const DEFAULT_OPTIONS: ResolvedNavMenuOptions = {
   delayDuration: 200,
   skipDelayDuration: 300,
   closeDelay: NAV_MENU_CONFIG.timing.closeDelay,
@@ -116,7 +117,7 @@ const readDirection = readEnumAttr<NavMenuDirection>(DIRECTIONS);
 function resolveMenuOptions(
   root: HTMLElement,
   merged: NavMenuOptions,
-): NavMenuOptions {
+): ResolvedNavMenuOptions {
   const { attributes } = NAV_MENU_CONFIG;
 
   return {

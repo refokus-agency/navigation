@@ -1,4 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  vi,
+} from 'vitest';
+import type { NavMenuOptions } from '../../index.ts';
 import { NAV_MENU_CONFIG } from '../config.ts';
 import { initNavigationMenu } from '../index.ts';
 import type { InitNavigationMenuOptions } from '../types.ts';
@@ -260,6 +269,22 @@ describe('close delay (AC-7)', () => {
     init();
 
     expect(measureCloseDelay()).toBe(150);
+  });
+
+  it('should keep closeDelay optional on the public NavMenuOptions type', () => {
+    // Compiles only while closeDelay is optional: `pnpm typecheck` covers tests.
+    const options: NavMenuOptions = {
+      delayDuration: 200,
+      skipDelayDuration: 300,
+      orientation: 'horizontal',
+      dir: 'ltr',
+      skipInWebflowEditor: true,
+    };
+
+    expect(options).not.toHaveProperty('closeDelay');
+    expectTypeOf<NavMenuOptions['closeDelay']>().toEqualTypeOf<
+      number | undefined
+    >();
   });
 
   it('should wait 150 ms by default', () => {
