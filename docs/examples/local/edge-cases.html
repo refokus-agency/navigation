@@ -157,7 +157,7 @@
 
   <!-- 3 ─ panel outside the viewport + no-viewport exit -->
   <div class="case">
-    <h3>3 · Panel living in its item, viewport present but empty</h3>
+    <h3>3 · Panel living in its item, no viewport</h3>
     <p class="why">
       A panel taking the in-item fallback got no hover target, so the close timer
       ran on and shut it ~150ms after the cursor arrived. Closing also snapped shut
@@ -174,7 +174,6 @@
           <div data-nav-content="two"><a href="#z">Link three</a></div>
         </div>
       </div>
-      <div data-nav-viewport></div>
     </nav>
     <p class="try">
       Hover a trigger, then move onto the panel → it must <b>stay open</b>. Then

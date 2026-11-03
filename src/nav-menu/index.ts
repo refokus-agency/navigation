@@ -58,6 +58,7 @@ export function initNavigationMenu(
   }
 
   const refs = discoverRefs(root);
+  const restorePanels = relocatePanels(refs);
   setupAria(root, refs, resolvedOptions, `nav-${++instanceCount}`);
 
   const renderer = createRenderer({ refs, options: resolvedOptions, root });
@@ -79,6 +80,8 @@ export function initNavigationMenu(
   attachMobile(context);
 
   cleanups.push(renderer.observeResize(controller.getActiveValue));
+  // Last, so panels go back only after every other teardown has run.
+  cleanups.push(restorePanels);
 
   renderer.applyState(null, null);
 
@@ -86,7 +89,18 @@ export function initNavigationMenu(
     open: (value: string) => controller.open(value),
     close: () => controller.close(),
     destroy() {
-      for (const cleanup of cleanups) cleanup();
+      // Drained, so a second call is a no-op instead of tearing down (or
+      // moving panels out of) a newer instance on the same root. Every cleanup
+      // runs even if an earlier one throws, so panels are never stranded.
+      const errors: unknown[] = [];
+      for (const cleanup of cleanups.splice(0)) {
+        try {
+          cleanup();
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+      if (errors.length > 0) throw errors[0];
     },
   };
 }
@@ -122,9 +136,7 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
     const value = item.getAttribute(attributes.item) || `item-${index}`;
     item.setAttribute(attributes.item, value);
 
-    const content =
-      viewportContents.get(value) ??
-      item.querySelector<HTMLElement>(selectors.content);
+    const content = viewportContents.get(value) ?? findOwnedContent(item);
 
     if (content) {
       content.setAttribute(attributes.content, value);
@@ -152,6 +164,90 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
     triggerByValue,
     valueByTrigger,
     contentMap,
+  };
+}
+
+/**
+ * The item's first panel that is its own — a panel inside a nested item
+ * belongs to that nested item, never to this one.
+ */
+function findOwnedContent(item: HTMLElement): HTMLElement | null {
+  const { selectors } = NAV_MENU_CONFIG;
+
+  for (const content of item.querySelectorAll<HTMLElement>(selectors.content)) {
+    if (content.closest(selectors.item) === item) return content;
+  }
+
+  return null;
+}
+
+/** Where a relocated panel came from, so destroy() can put it back. */
+interface PanelOrigin {
+  parent: Node;
+  nextSibling: Node | null;
+  /** The live instance allowed to restore it; a re-init adopts the panel. */
+  owner: symbol;
+}
+
+// Keyed by panel, so a second init on the same root (without destroying the
+// first) adopts the panels the first one moved, and the stale handle's
+// destroy() can no longer pull them out from under the live instance.
+const relocated = new WeakMap<HTMLElement, PanelOrigin>();
+
+/**
+ * Moves every panel authored inside its item (slot markup) into the shared
+ * viewport, so one element can animate between panel sizes. Panels already in
+ * the viewport stay put, and without a viewport nothing moves.
+ *
+ * Returns the undo: it walks the moves backwards, so a recorded next sibling
+ * that was itself moved is already back in place when it is used as anchor.
+ */
+function relocatePanels(refs: NavMenuRefs): NavMenuCleanup {
+  const { viewport, contentMap, itemValues } = refs;
+  const owner = Symbol('nav-menu');
+  const panels: HTMLElement[] = [];
+
+  if (viewport) {
+    for (const value of new Set(itemValues)) {
+      const panel = contentMap.get(value);
+      if (!panel?.parentNode) continue;
+
+      if (viewport.contains(panel)) {
+        // Moved by an instance that is still live: take over its restore.
+        const origin = relocated.get(panel);
+        if (origin) {
+          origin.owner = owner;
+          panels.push(panel);
+        }
+        continue;
+      }
+
+      // A panel wrapping the viewport cannot move into it.
+      if (panel.contains(viewport)) continue;
+
+      relocated.set(panel, {
+        parent: panel.parentNode,
+        nextSibling: panel.nextSibling,
+        owner,
+      });
+      panels.push(panel);
+      viewport.appendChild(panel);
+    }
+  }
+
+  return () => {
+    for (const panel of [...panels].reverse()) {
+      const origin = relocated.get(panel);
+      if (origin?.owner !== owner) continue;
+      relocated.delete(panel);
+
+      const { parent, nextSibling } = origin;
+      // Moved inside the panel since init: putting it back would be a cycle.
+      if (panel.contains(parent)) continue;
+      // The anchor may have been removed or moved since init: append instead.
+      const anchor = nextSibling?.parentNode === parent ? nextSibling : null;
+      parent.insertBefore(panel, anchor);
+    }
   };
 }
 
