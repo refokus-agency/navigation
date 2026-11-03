@@ -135,6 +135,8 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
 | `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
 | `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
+| `data-nav-toggle`     | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
+| `data-nav-card`       | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their
 `[data-nav-item]`. The viewport form is preferred: it lets one element animate
@@ -307,6 +309,33 @@ inside a Webflow `.w-nav`, closing the burger overlay resets the menu so
 reopening it always starts on the main list, and crossing the breakpoint
 closes any open panel. Add `[data-nav-back]` inside the menu for a back control
 that closes the panel without dismissing the overlay.
+
+### Mobile menu (toggle, card, accordion)
+
+Opt in with markup alone — no project JS beyond `initNavigationMenu()`:
+
+```html
+<nav data-nav-menu>
+  <button data-nav-toggle>Menu</button>
+  <div data-nav-card>
+    <div data-nav-list>…items…</div>
+  </div>
+</nav>
+```
+
+In `[data-nav-mode="mobile"]`:
+
+- the toggle opens/closes the card (`data-state="open|closed"`, written only
+  in mobile mode, so `[data-nav-card][data-state='closed']` rules cannot hide
+  the desktop menu); Escape and a
+  click outside close it, and Escape returns focus to the toggle. A panel's own
+  Escape closes the panel first;
+- triggers behave as an accordion — one panel open at a time, `data-state` on
+  the item and the content, and focus moves to the first link on open;
+- closing the card, or crossing the breakpoint, closes any open panel.
+
+On desktop none of this applies and existing behavior is unchanged. CSS owns
+all visuals; hide `[data-nav-toggle]` above the breakpoint yourself.
 
 ## Development
 
