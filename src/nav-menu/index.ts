@@ -85,7 +85,12 @@ export function initNavigationMenu(
   attachKeyboardEvents(context);
   attachMobile(context);
 
-  cleanups.push(renderer.observeResize(controller.getActiveValue));
+  cleanups.push(
+    renderer.observeResize(
+      controller.getActiveValue,
+      controller.getActiveTrigger,
+    ),
+  );
 
   renderer.applyState(null, null);
 
