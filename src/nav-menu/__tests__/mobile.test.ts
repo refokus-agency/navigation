@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initNavigationMenu } from '../index.ts';
 import {
+  firePointer,
   type NavMenuMarkup,
   renderNavMenu,
   stubResizeObserver,
@@ -90,6 +91,9 @@ function stubViewport(initialWidth: number): ViewportStub {
   };
 }
 
+/** Comfortably past the default hover-open delay. */
+const hoverSettle = 400;
+
 let menu: NavMenuMarkup;
 
 beforeEach(() => {
@@ -98,6 +102,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
 });
@@ -153,17 +158,44 @@ describe('mobile mode', () => {
       expect(viewport.queries).toEqual(['(max-width: 991px)']);
     });
 
-    it('should switch data-nav-mode at the custom breakpoint', () => {
+    it('should be mobile at or below the custom breakpoint', () => {
       stubViewport(900);
       menu.root.setAttribute('data-nav-breakpoint', '991');
       initNavigationMenu();
-      expect(menu.root.dataset.navMode).toBe('mobile');
 
-      menu = renderNavMenu();
+      expect(menu.root.dataset.navMode).toBe('mobile');
+    });
+
+    it('should be desktop above the custom breakpoint', () => {
       stubViewport(1000);
       menu.root.setAttribute('data-nav-breakpoint', '991');
       initNavigationMenu();
+
       expect(menu.root.dataset.navMode).toBe('desktop');
+    });
+
+    it('should ignore mouse hover below the custom breakpoint', () => {
+      vi.useFakeTimers();
+      stubViewport(900);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      initNavigationMenu();
+
+      firePointer(menu.trigger('a'), 'pointerenter');
+      vi.advanceTimersByTime(hoverSettle);
+
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should open on mouse hover above the custom breakpoint', () => {
+      vi.useFakeTimers();
+      stubViewport(1000);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      initNavigationMenu();
+
+      firePointer(menu.trigger('a'), 'pointerenter');
+      vi.advanceTimersByTime(hoverSettle);
+
+      expect(menu.trigger('a').dataset.state).toBe('open');
     });
 
     it('should close the open panel when crossing the custom breakpoint', () => {
