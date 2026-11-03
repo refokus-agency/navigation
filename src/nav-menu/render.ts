@@ -228,7 +228,9 @@ export function createRenderer({
     refs.contentMap.forEach((content) => {
       observer.observe(content);
     });
-    observer.observe(root);
+    // The list, not the root: an in-flow viewport animating its height resizes
+    // the root every frame, which would re-measure the triggers on each one.
+    observer.observe(refs.list ?? root);
     // A trigger resizing (font swap, label change) moves its siblings even when
     // neither the root nor any panel changes size.
     for (const trigger of refs.triggers) observer.observe(trigger);

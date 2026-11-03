@@ -630,6 +630,11 @@ describe('trigger observation', () => {
     for (const value of ['a', 'b', 'c']) {
       expect(observed).toContain(menu.trigger(value));
     }
+    // The root resizes on every frame of an in-flow viewport height transition.
+    expect(observed).toContain(
+      menu.root.querySelector('[data-nav-list]') as Element,
+    );
+    expect(observed).not.toContain(menu.root);
 
     spy.mockReturnValue(rectOf(411, 50));
     for (const callback of resizeCallbacks) callback([], {} as ResizeObserver);
