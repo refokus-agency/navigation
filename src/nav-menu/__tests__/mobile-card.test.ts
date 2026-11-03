@@ -73,6 +73,27 @@ describe('mobile card', () => {
     expect(card.dataset.state).toBe('closed');
   });
 
+  it('should not treat a tap in a panel outside the card as outside', () => {
+    const { menu } = setup();
+    toggle.click();
+    menu.trigger('a').click();
+    expect(card.contains(menu.content('a'))).toBe(false);
+    firePointer(
+      menu.content('a').querySelector('a') as HTMLElement,
+      'pointerdown',
+    );
+    expect(card.dataset.state).toBe('open');
+    expect(menu.content('a').dataset.state).toBe('open');
+  });
+
+  it('should close the card when a link in an outside panel is followed', () => {
+    const { menu } = setup();
+    toggle.click();
+    menu.trigger('a').click();
+    (menu.content('a').querySelector('a') as HTMLElement).click();
+    expect(card.dataset.state).toBe('closed');
+  });
+
   it('should close an open panel along with the card', () => {
     const { menu } = setup();
     toggle.click();

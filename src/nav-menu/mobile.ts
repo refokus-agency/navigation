@@ -151,7 +151,9 @@ function attachCard(
   const onPointerDown = (event: Event) => {
     const target = event.target;
     if (!isOpen || !isMobile() || !(target instanceof Node)) return;
-    if (card.contains(target) || toggle.contains(target)) return;
+    // The root, not just the card: panels may live in a viewport outside it,
+    // and closing on a tap inside one swallows the click on its link.
+    if (root.contains(target)) return;
     setOpen(false);
   };
 
@@ -164,7 +166,7 @@ function attachCard(
 
   // A followed link leaves the card covering where the user just went. Plain
   // modifier-clicks keep it open, like panel links; triggers are not links.
-  const onCardClick = (event: MouseEvent) => {
+  const onLinkClick = (event: MouseEvent) => {
     if (!isOpen || !isMobile() || event.metaKey || event.ctrlKey) return;
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -173,13 +175,13 @@ function attachCard(
   };
 
   toggle.addEventListener('click', onToggleClick);
-  card.addEventListener('click', onCardClick);
+  root.addEventListener('click', onLinkClick);
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('focusin', onFocusIn);
   cleanups.push(() => {
     toggle.removeEventListener('click', onToggleClick);
-    card.removeEventListener('click', onCardClick);
+    root.removeEventListener('click', onLinkClick);
     document.removeEventListener('keydown', onKeyDown);
     document.removeEventListener('pointerdown', onPointerDown);
     document.removeEventListener('focusin', onFocusIn);
