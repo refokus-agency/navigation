@@ -57,6 +57,11 @@ import { initNavbarAnimation } from '@refokus-agency/navigation';
 const success = initNavbarAnimation({
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
+  threshold: 50,              // scroll distance (px) before show/hide
+  hiddenOffset: '-100%',      // GSAP y while hidden
+  visibleOffset: '0%',        // GSAP y while visible
+  pauseWhileMenuOpen: true,   // never hide while a panel is open
+  shouldHide: () => true,     // optional: return false to veto hiding
 });
 
 if (success) {
@@ -67,7 +72,10 @@ if (success) {
 ### How It Works
 
 - **Initial Animation**: Navbar slides in smoothly on page load
-- **Scroll Down**: Navbar hides when scrolling down past threshold (50px)
+- **Scroll Down**: Navbar hides when scrolling down past `threshold` (default 50px)
+- **Open panel**: While the nav root has `[data-state="open"]`, the navbar does
+  not hide (`pauseWhileMenuOpen`, default `true`). Set it to `false` to hide
+  regardless, or pass `shouldHide()` returning `false` to veto hiding yourself
 - **Scroll Up**: Navbar shows when scrolling up
 - **Focus**: A hidden navbar slides back in when focus moves into it, so
   tabbing back up to the nav never lands on an off-screen element

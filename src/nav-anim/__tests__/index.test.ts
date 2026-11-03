@@ -59,11 +59,11 @@ describe('initNavbarAnimation', () => {
     expect(initNavbarAnimation(options)).toBe(true);
     expect(mockedPerformInitialAnimation).toHaveBeenCalledWith(
       [navbarA, navbarB],
-      options,
+      expect.objectContaining(options),
     );
     expect(mockedInitScrollBehavior).toHaveBeenCalledWith(
       [navbarA, navbarB],
-      options,
+      expect.objectContaining(options),
     );
   });
 
@@ -98,10 +98,36 @@ describe('initNavbarAnimation', () => {
     expect(mockedPerformInitialAnimation).toHaveBeenCalledWith([navbar], {
       animationDuration: 0.8,
       animationEasing: 'power2.inOut',
+      threshold: 50,
+      hiddenOffset: '-100%',
+      visibleOffset: '0%',
+      pauseWhileMenuOpen: true,
     });
     expect(mockedInitScrollBehavior).toHaveBeenCalledWith([navbar], {
       animationDuration: 0.8,
       animationEasing: 'power2.inOut',
+      threshold: 50,
+      hiddenOffset: '-100%',
+      visibleOffset: '0%',
+      pauseWhileMenuOpen: true,
     });
+  });
+
+  it('should accept custom scroll options and default pauseWhileMenuOpen to true', () => {
+    const navbar = { id: 'only' } as unknown as Element;
+    mockNavbarQuery([navbar]);
+
+    expect(initNavbarAnimation({ threshold: 120, hiddenOffset: '-50%' })).toBe(
+      true,
+    );
+    expect(mockedInitScrollBehavior).toHaveBeenCalledWith(
+      [navbar],
+      expect.objectContaining({
+        threshold: 120,
+        hiddenOffset: '-50%',
+        visibleOffset: '0%',
+        pauseWhileMenuOpen: true,
+      }),
+    );
   });
 });
