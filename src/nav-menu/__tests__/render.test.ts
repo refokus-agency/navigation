@@ -550,3 +550,39 @@ describe('viewport clamp with padding and border', () => {
     expect(open('border-box')).toBe('500px');
   });
 });
+
+describe('fixed viewport', () => {
+  it('should anchor --nav-viewport-x to the window, not the root', () => {
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    menu.viewport.dataset.navAlign = 'trigger';
+    menu.viewport.style.position = 'fixed';
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(150, 900),
+    );
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rectOf(304.5, 80),
+    );
+    setScrollSize(menu.content('a'), 200, 100);
+
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('a');
+
+    expect(menu.viewport.style.getPropertyValue('--nav-viewport-x')).toBe(
+      '304.5px',
+    );
+    // the root-relative trigger var is unaffected
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('154.5px');
+  });
+});

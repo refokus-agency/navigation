@@ -221,7 +221,8 @@ hidden. Without an animation, hiding is immediate.
 
 Set `data-nav-align="trigger"` on the viewport and `--nav-viewport-x` follows the
 active trigger's left edge, clamped so the panel never overflows the root (not
-applied on mobile), relative to the viewport's positioning ancestor.
+applied on mobile), relative to the viewport's positioning ancestor (the window
+when the viewport is `position: fixed`).
 `--nav-trigger-x` / `--nav-trigger-width` are always published, measured from the
 **root's** left edge, so a pill needs no JS as long as the root is its
 positioning ancestor:

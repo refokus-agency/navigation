@@ -191,10 +191,15 @@ export function createRenderer({
 
     // --nav-viewport-x is the one value relative to the viewport's own
     // positioning ancestor, since it feeds that element's left/translate.
-    const anchorRect = (viewport.offsetParent ?? root).getBoundingClientRect();
-    const triggerX = triggerRect.left - anchorRect.left;
+    // A fixed viewport has no offsetParent and is placed against the window,
+    // not the root, so its origin is 0.
+    const anchorLeft =
+      getComputedStyle(viewport).position === 'fixed'
+        ? 0
+        : (viewport.offsetParent ?? root).getBoundingClientRect().left;
+    const triggerX = triggerRect.left - anchorLeft;
     // Clamp inside the root so a trigger near the edge never pushes the panel out.
-    const min = rootRect.left - anchorRect.left;
+    const min = rootRect.left - anchorLeft;
     const max = Math.max(
       min,
       min + rootRect.width - renderedWidth(viewport, panelWidth),
