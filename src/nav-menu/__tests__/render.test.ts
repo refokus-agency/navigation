@@ -509,3 +509,44 @@ describe('trigger geometry reference points', () => {
     );
   });
 });
+
+describe('viewport clamp with padding and border', () => {
+  function open(boxSizing: string) {
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    menu.viewport.dataset.navAlign = 'trigger';
+    menu.viewport.style.boxSizing = boxSizing;
+    menu.viewport.style.padding = '0 24px';
+    menu.viewport.style.border = '2px solid';
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(0, 700),
+    );
+    vi.spyOn(menu.trigger('c'), 'getBoundingClientRect').mockReturnValue(
+      rectOf(650, 50),
+    );
+    setScrollSize(menu.content('c'), 200, 100);
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('c');
+    return menu.viewport.style.getPropertyValue('--nav-viewport-x');
+  }
+
+  it('should include padding and border under content-box', () => {
+    // rendered width 200 + 48 + 4 = 252 -> max x = 700 - 252
+    expect(open('content-box')).toBe('448px');
+  });
+
+  it('should not double count them under border-box', () => {
+    expect(open('border-box')).toBe('500px');
+  });
+});

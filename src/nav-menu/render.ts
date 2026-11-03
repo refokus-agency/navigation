@@ -195,7 +195,10 @@ export function createRenderer({
     const triggerX = triggerRect.left - anchorRect.left;
     // Clamp inside the root so a trigger near the edge never pushes the panel out.
     const min = rootRect.left - anchorRect.left;
-    const max = Math.max(min, min + rootRect.width - panelWidth);
+    const max = Math.max(
+      min,
+      min + rootRect.width - renderedWidth(viewport, panelWidth),
+    );
     const x = Math.min(Math.max(triggerX, min), max);
     viewport.style.setProperty('--nav-viewport-x', `${x}px`);
   }
@@ -229,6 +232,22 @@ export function createRenderer({
   }
 
   return { applyState, observeResize };
+}
+
+/**
+ * The viewport's rendered width for a content width. Under `content-box` its
+ * padding and border add to `width`; under `border-box` they sit inside it.
+ * Read from the target width, not `offsetWidth`, which is mid-transition.
+ */
+function renderedWidth(viewport: HTMLElement, contentWidth: number): number {
+  const style = getComputedStyle(viewport);
+  if (style.boxSizing === 'border-box') return contentWidth;
+  const extra =
+    parseFloat(style.paddingLeft) +
+    parseFloat(style.paddingRight) +
+    parseFloat(style.borderLeftWidth) +
+    parseFloat(style.borderRightWidth);
+  return contentWidth + (Number.isFinite(extra) ? extra : 0);
 }
 
 // Inline, because Webflow's class-based display:flex beats [hidden] on specificity.
