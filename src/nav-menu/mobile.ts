@@ -2,15 +2,23 @@ import { NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
 
 /**
- * The root's own breakpoint when [data-nav-breakpoint] is a plain positive
- * integer ("991"); anything else ("991px", " 991 ", "0") falls back to the default.
+ * The root's own breakpoint when [data-nav-breakpoint] is a plain integer from 1
+ * to the configured maximum ("991"). An absent attribute uses the default
+ * silently; anything else ("991px", " 991 ", "0991", "0", "9910") warns and
+ * falls back to the default.
  */
 function readBreakpoint(root: HTMLElement): number {
-  const value = root.getAttribute(NAV_MENU_CONFIG.attributes.breakpoint);
-  const breakpoint = value !== null && /^\d+$/.test(value) ? Number(value) : 0;
-  return breakpoint > 0 && Number.isSafeInteger(breakpoint)
-    ? breakpoint
-    : NAV_MENU_CONFIG.mobile.breakpoint;
+  const { attributes, mobile } = NAV_MENU_CONFIG;
+  const value = root.getAttribute(attributes.breakpoint);
+  if (value === null) return mobile.breakpoint;
+
+  const breakpoint = /^[1-9]\d*$/.test(value) ? Number(value) : Number.NaN;
+  if (breakpoint <= mobile.maxBreakpoint) return breakpoint;
+
+  console.warn(
+    `[nav-menu] Ignoring ${attributes.breakpoint}="${value}": expected a plain integer from 1 to ${mobile.maxBreakpoint} like "991". Using ${mobile.breakpoint}.`,
+  );
+  return mobile.breakpoint;
 }
 
 /**

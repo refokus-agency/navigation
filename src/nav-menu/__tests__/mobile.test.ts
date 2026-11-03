@@ -178,21 +178,52 @@ describe('mobile mode', () => {
       expect(menu.trigger('a').dataset.state).toBe('closed');
     });
 
+    it('should use 767px without warning when the attribute is absent', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const viewport = stubViewport(1024);
+      initNavigationMenu();
+
+      expect(viewport.queries).toEqual(['(max-width: 767px)']);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
     it.each([
-      ['absent', null],
       ['non-numeric', 'abc'],
       ['zero', '0'],
+      ['zero-padded', '0991'],
       ['negative', '-5'],
       ['suffixed', '991px'],
       ['padded', ' 991 '],
       ['fractional', '991.5'],
+      ['above the maximum', '9910'],
       ['unsafe integer', '99999999999999999999'],
-    ])('should fall back to 767px when the value is %s', (_label, value) => {
-      const viewport = stubViewport(1024);
-      if (value !== null) menu.root.setAttribute('data-nav-breakpoint', value);
+    ])(
+      'should warn and fall back to 767px when the value is %s',
+      (_label, value) => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const viewport = stubViewport(1024);
+        menu.root.setAttribute('data-nav-breakpoint', value);
 
-      expect(() => initNavigationMenu()).not.toThrow();
-      expect(viewport.queries).toEqual(['(max-width: 767px)']);
+        expect(() => initNavigationMenu()).not.toThrow();
+        expect(viewport.queries).toEqual(['(max-width: 767px)']);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn.mock.calls[0]?.[0]).toContain(
+          `data-nav-breakpoint="${value}"`,
+        );
+        warn.mockRestore();
+      },
+    );
+
+    it('should accept the maximum breakpoint without warning', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const viewport = stubViewport(1024);
+      menu.root.setAttribute('data-nav-breakpoint', '4000');
+      initNavigationMenu();
+
+      expect(viewport.queries).toEqual(['(max-width: 4000px)']);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
     });
 
     it('should read the breakpoint per root', () => {
