@@ -25,7 +25,7 @@ A TypeScript package for Webflow and custom-code navigations: GSAP-powered scrol
 
 ## Requirements
 
-- Node.js >= 22.0.0
+- Node.js ^22.22.2 || ^24.15.0 || >=26
 
 ## Installation
 

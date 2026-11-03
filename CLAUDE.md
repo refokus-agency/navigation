@@ -21,7 +21,7 @@ pnpm example        # build + open docs/examples/local/
 pnpm commit         # commitizen — required for commits
 ```
 
-Node >= 22.
+Node `^22.22.2 || ^24.15.0 || >=26` (jsdom 30 → undici 8 need it; older 22.x fails to start vitest workers).
 
 ## Non-obvious invariants
 
