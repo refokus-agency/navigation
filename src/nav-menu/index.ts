@@ -58,51 +58,70 @@ export function initNavigationMenu(
   }
 
   const refs = discoverRefs(root);
-  const restorePanels = relocatePanels(refs);
-  setupAria(root, refs, resolvedOptions, `nav-${++instanceCount}`);
-
-  const renderer = createRenderer({ refs, options: resolvedOptions, root });
-  const controller = createController({
-    refs,
-    options: resolvedOptions,
-    renderer,
-  });
-
   const cleanups: NavMenuCleanup[] = [];
-  const context: NavMenuContext = { root, refs, controller, cleanups };
+  // Kept out of `cleanups` until init succeeds, so it always runs last: panels
+  // go back only after every other teardown has run.
+  const restorePanels = relocatePanels(refs);
 
-  cleanups.push(() => controller.destroy());
+  try {
+    setupAria(root, refs, resolvedOptions, `nav-${++instanceCount}`);
 
-  attachPointerEvents(context);
-  attachDismiss(context);
-  attachLinkClicks(context);
-  attachKeyboardEvents(context);
-  attachMobile(context);
+    const renderer = createRenderer({ refs, options: resolvedOptions, root });
+    const controller = createController({
+      refs,
+      options: resolvedOptions,
+      renderer,
+    });
 
-  cleanups.push(renderer.observeResize(controller.getActiveValue));
-  // Last, so panels go back only after every other teardown has run.
-  cleanups.push(restorePanels);
+    const context: NavMenuContext = { root, refs, controller, cleanups };
 
-  renderer.applyState(null, null);
+    cleanups.push(() => controller.destroy());
 
-  return {
-    open: (value: string) => controller.open(value),
-    close: () => controller.close(),
-    destroy() {
-      // Drained, so a second call is a no-op instead of tearing down (or
-      // moving panels out of) a newer instance on the same root. Every cleanup
-      // runs even if an earlier one throws, so panels are never stranded.
-      const errors: unknown[] = [];
-      for (const cleanup of cleanups.splice(0)) {
-        try {
-          cleanup();
-        } catch (error) {
-          errors.push(error);
-        }
-      }
-      if (errors.length > 0) throw errors[0];
-    },
-  };
+    attachPointerEvents(context);
+    attachDismiss(context);
+    attachLinkClicks(context);
+    attachKeyboardEvents(context);
+    attachMobile(context);
+
+    cleanups.push(renderer.observeResize(controller.getActiveValue));
+    cleanups.push(restorePanels);
+
+    renderer.applyState(null, null);
+
+    return {
+      open: (value: string) => controller.open(value),
+      close: () => controller.close(),
+      destroy() {
+        // Drained, so a second call is a no-op instead of tearing down (or
+        // moving panels out of) a newer instance on the same root.
+        const error = drain(cleanups);
+        if (error) throw error.cause;
+      },
+    };
+  } catch (error) {
+    // Init is atomic: undo what was wired so far, panels last, and surface the
+    // original failure rather than a teardown one.
+    cleanups.push(restorePanels);
+    drain(cleanups);
+    throw error;
+  }
+}
+
+/**
+ * Runs and empties every cleanup, in order, even if an earlier one throws, so
+ * panels are never stranded. Returns the first failure, wrapped so a thrown
+ * `undefined` is still reported.
+ */
+function drain(cleanups: NavMenuCleanup[]): { cause: unknown } | null {
+  let first: { cause: unknown } | null = null;
+  for (const cleanup of cleanups.splice(0)) {
+    try {
+      cleanup();
+    } catch (error) {
+      first ??= { cause: error };
+    }
+  }
+  return first;
 }
 
 function discoverRefs(root: HTMLElement): NavMenuRefs {
@@ -136,7 +155,11 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
     const value = item.getAttribute(attributes.item) || `item-${index}`;
     item.setAttribute(attributes.item, value);
 
-    const content = viewportContents.get(value) ?? findOwnedContent(item);
+    const found = viewportContents.get(value) ?? findOwnedContent(item);
+    // A "panel" wrapping the viewport is layout, not a panel: hiding it while
+    // inactive would hide the viewport and every other panel with it.
+    const content =
+      found && viewport && found.contains(viewport) ? null : found;
 
     if (content) {
       content.setAttribute(attributes.content, value);
@@ -222,9 +245,6 @@ function relocatePanels(refs: NavMenuRefs): NavMenuCleanup {
         continue;
       }
 
-      // A panel wrapping the viewport cannot move into it.
-      if (panel.contains(viewport)) continue;
-
       relocated.set(panel, {
         parent: panel.parentNode,
         nextSibling: panel.nextSibling,
@@ -244,11 +264,25 @@ function relocatePanels(refs: NavMenuRefs): NavMenuCleanup {
       const { parent, nextSibling } = origin;
       // Moved inside the panel since init: putting it back would be a cycle.
       if (panel.contains(parent)) continue;
+      resetRendererState(panel);
       // The anchor may have been removed or moved since init: append instead.
       const anchor = nextSibling?.parentNode === parent ? nextSibling : null;
       parent.insertBefore(panel, anchor);
     }
   };
+}
+
+/**
+ * Clears what the renderer wrote, so a restored panel is not left hidden,
+ * inert or mid-animation in its item. Dropping `data-state` also neutralizes
+ * any pending hide callback, which only acts on a panel still marked closed.
+ */
+function resetRendererState(panel: HTMLElement): void {
+  panel.removeAttribute('data-state');
+  panel.removeAttribute('data-motion');
+  panel.removeAttribute('inert');
+  panel.style.display = '';
+  panel.style.pointerEvents = '';
 }
 
 function indexViewportContents(

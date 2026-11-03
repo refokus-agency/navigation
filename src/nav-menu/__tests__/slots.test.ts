@@ -111,6 +111,19 @@ describe('item panel ownership', () => {
       'item-b',
     );
 
+    // The wrapper is not a panel: hiding it would hide the viewport too.
+    instance?.open('a');
+    const panelA = document.querySelector<HTMLElement>('#panel-a');
+    expect(panelA?.dataset.state).toBe('open');
+    const root = document.querySelector('[data-nav-menu]');
+    for (
+      let node: HTMLElement | null | undefined = panelA;
+      node && node !== root;
+      node = node.parentElement
+    ) {
+      expect(node.style.display).not.toBe('none');
+    }
+
     instance?.destroy();
     expect(document.querySelector('#panel-a')?.parentElement?.id).toBe(
       'item-a',
@@ -242,6 +255,48 @@ describe('destroy', () => {
   });
 });
 
+describe('restored panels', () => {
+  it('should carry no renderer state after destroy with a panel open', () => {
+    const instance = initNavigationMenu();
+    instance?.open('a');
+    expect(menu.content('a').dataset.state).toBe('open');
+
+    instance?.destroy();
+
+    for (const value of ['a', 'b', 'c']) {
+      expectPristine(menu.content(value));
+      expect(menu.content(value).parentElement).toBe(
+        menu.trigger(value).parentElement,
+      );
+    }
+  });
+
+  it('should carry no renderer state after destroy with every panel closed', () => {
+    initNavigationMenu()?.destroy();
+
+    for (const value of ['a', 'b', 'c']) {
+      expectPristine(menu.content(value));
+    }
+  });
+
+  it('should put panels back and rethrow when init fails after relocating', () => {
+    const failure = new Error('matchMedia unavailable');
+    vi.stubGlobal('matchMedia', () => {
+      throw failure;
+    });
+
+    expect(() => initNavigationMenu()).toThrow(failure);
+
+    for (const value of ['a', 'b', 'c']) {
+      expect(menu.content(value).parentElement).toBe(
+        menu.trigger(value).parentElement,
+      );
+      expectPristine(menu.content(value));
+    }
+    expect(menu.viewport.children).toHaveLength(0);
+  });
+});
+
 describe('no relocation', () => {
   it('should move nothing in the Webflow editor', () => {
     document.documentElement.classList.add('w-editor');
@@ -297,4 +352,13 @@ function structure(element: Element): string {
   const id =
     element.id && !element.id.startsWith('nav-') ? `#${element.id}` : '';
   return `<${element.tagName}${id}>${children}</${element.tagName}>`;
+}
+
+/** No state the renderer writes is left behind on the panel. */
+function expectPristine(panel: HTMLElement): void {
+  expect(panel.hasAttribute('data-state')).toBe(false);
+  expect(panel.hasAttribute('data-motion')).toBe(false);
+  expect(panel.hasAttribute('inert')).toBe(false);
+  expect(panel.style.display).toBe('');
+  expect(panel.style.pointerEvents).toBe('');
 }
