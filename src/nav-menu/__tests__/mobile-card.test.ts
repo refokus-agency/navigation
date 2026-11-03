@@ -120,10 +120,44 @@ describe('mobile card', () => {
     expect(card.dataset.state).toBe('open');
   });
 
-  it('should do nothing on desktop', () => {
+  it('should do nothing on desktop and leave the card unmarked', () => {
     setup(false);
     toggle.click();
+    expect(card.dataset.state).toBeUndefined();
+    expect(card.hasAttribute('inert')).toBe(false);
+  });
+
+  it('should add and remove card state as the breakpoint is crossed', () => {
+    const listeners = new Set<() => void>();
+    let matches = false;
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return matches;
+      },
+      addEventListener: (_: string, l: () => void) => listeners.add(l),
+      removeEventListener: (_: string, l: () => void) => listeners.delete(l),
+    }));
+    stubResizeObserver();
+    const menu = renderNavMenu();
+    menu.root.insertAdjacentHTML(
+      'afterbegin',
+      '<button type="button" data-nav-toggle>menu</button>',
+    );
+    card = menu.root.querySelector('[data-nav-list]') as HTMLElement;
+    card.setAttribute('data-nav-card', '');
+    initNavigationMenu();
+    const cross = (next: boolean) => {
+      matches = next;
+      for (const listener of listeners) listener();
+    };
+
+    expect(card.dataset.state).toBeUndefined();
+    cross(true);
     expect(card.dataset.state).toBe('closed');
+    expect(card.hasAttribute('inert')).toBe(true);
+    cross(false);
+    expect(card.dataset.state).toBeUndefined();
+    expect(card.hasAttribute('inert')).toBe(false);
   });
 
   it('should stop listening and hand the card back on destroy', () => {

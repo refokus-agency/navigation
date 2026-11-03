@@ -136,7 +136,7 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
 | `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
 | `data-nav-toggle`     | Mobile menu button. Gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
-| `data-nav-card`       | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed |
+| `data-nav-card`       | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their
 `[data-nav-item]`. The viewport form is preferred: it lets one element animate
@@ -303,7 +303,9 @@ Opt in with markup alone — no project JS beyond `initNavigationMenu()`:
 
 In `[data-nav-mode="mobile"]`:
 
-- the toggle opens/closes the card (`data-state="open|closed"`); Escape and a
+- the toggle opens/closes the card (`data-state="open|closed"`, written only
+  in mobile mode, so `[data-nav-card][data-state='closed']` rules cannot hide
+  the desktop menu); Escape and a
   click outside close it, and Escape returns focus to the toggle. A panel's own
   Escape closes the panel first;
 - triggers behave as an accordion — one panel open at a time, `data-state` on

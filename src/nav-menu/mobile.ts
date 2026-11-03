@@ -119,10 +119,18 @@ function attachCard(
 
   const render = () => {
     toggle.setAttribute('aria-expanded', String(isOpen));
+    // Desktop never sees the card state: a consumer's natural
+    // `[data-nav-card][data-state='closed'] { display: none }` would otherwise
+    // hide the whole desktop menu. Crossing the breakpoint re-renders.
+    if (!isMobile()) {
+      delete card.dataset.state;
+      card.removeAttribute('inert');
+      return;
+    }
     card.dataset.state = isOpen ? 'open' : 'closed';
-    // A closed mobile card must leave the tab order; desktop is never touched.
-    if (isMobile() && !isOpen) card.setAttribute('inert', '');
-    else card.removeAttribute('inert');
+    // A closed card must leave the tab order.
+    if (isOpen) card.removeAttribute('inert');
+    else card.setAttribute('inert', '');
   };
 
   const setOpen = (next: boolean) => {
