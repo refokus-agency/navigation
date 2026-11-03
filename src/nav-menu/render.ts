@@ -30,6 +30,7 @@ export function createRenderer({
   function applyState(
     value: string | null,
     previousValue: string | null,
+    activeTrigger: HTMLElement | null = null,
   ): void {
     const { viewport } = refs;
     const prevIdx = previousValue ? ordered.indexOf(previousValue) : -1;
@@ -64,8 +65,16 @@ export function createRenderer({
       }
     });
 
-    for (const { trigger, value: triggerValue, content } of refs.entries) {
+    for (const {
+      item,
+      trigger,
+      value: triggerValue,
+      content,
+    } of refs.entries) {
       const isOpen = triggerValue === value;
+      // Accordion hook. Unconditional so a breakpoint crossing cannot strand
+      // a stale `open` on an item.
+      if (content) item.dataset.state = isOpen ? 'open' : 'closed';
       trigger.dataset.state = isOpen ? 'open' : 'closed';
       // A plain link must not announce collapsible content it does not have.
       if (content) trigger.setAttribute('aria-expanded', String(isOpen));
@@ -80,7 +89,7 @@ export function createRenderer({
         const isRemount = !isViewportOpen;
         show(viewport);
         if (isRemount) viewport.style.transition = 'none';
-        sizeViewport(value);
+        sizeViewport(value, activeTrigger);
         if (isRemount) {
           void viewport.offsetHeight; // force reflow at the new size
           viewport.style.transition = '';
@@ -94,6 +103,10 @@ export function createRenderer({
         });
       }
     }
+
+    // Without a viewport nothing sizes the panel, but a pill still needs the
+    // trigger's geometry.
+    if (!viewport && value) positionViewport(value, activeTrigger, null);
 
     root.dataset.state = value ? 'open' : 'closed';
   }
@@ -123,7 +136,10 @@ export function createRenderer({
     return attr;
   }
 
-  function sizeViewport(value: string): void {
+  function sizeViewport(
+    value: string,
+    activeTrigger: HTMLElement | null,
+  ): void {
     const content = refs.contentMap.get(value);
     const { viewport } = refs;
     if (!content || !viewport) return;
@@ -140,25 +156,116 @@ export function createRenderer({
       '--nav-viewport-height',
       `${content.scrollHeight}px`,
     );
+
+    positionViewport(
+      value,
+      activeTrigger,
+      isMobile ? null : content.scrollWidth,
+    );
   }
 
-  function observeResize(getActiveValue: () => string | null): NavMenuCleanup {
-    if (!refs.viewport || typeof ResizeObserver === 'undefined') {
-      return () => {};
+  /**
+   * Publishes the active trigger's geometry, and `--nav-viewport-x` when the
+   * viewport opts in with `[data-nav-align="trigger"]`. The trigger vars are
+   * relative to the root; `--nav-viewport-x` to the viewport's positioning
+   * ancestor, so it can feed `left`/`translate` directly. `panelWidth` is null on mobile, where the panel spans the overlay.
+   */
+  function positionViewport(
+    value: string,
+    activeTrigger: HTMLElement | null,
+    panelWidth: number | null,
+  ): void {
+    const { viewport } = refs;
+    // The trigger that opened the panel, not the item's first: items may own several.
+    const trigger = activeTrigger ?? refs.triggerByValue.get(value);
+    if (!trigger) return;
+
+    const rootRect = root.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
+
+    // Measured against the root, a stable reference that does not depend on
+    // where the viewport happens to be positioned.
+    root.style.setProperty(
+      '--nav-trigger-x',
+      `${triggerRect.left - rootRect.left}px`,
+    );
+    root.style.setProperty('--nav-trigger-width', `${triggerRect.width}px`);
+
+    if (!viewport) return;
+    if (viewport.dataset.navAlign !== 'trigger' || panelWidth === null) {
+      viewport.style.removeProperty('--nav-viewport-x');
+      return;
     }
 
-    const observer = new ResizeObserver(() => {
+    // --nav-viewport-x is the one value relative to the viewport's own
+    // positioning ancestor, since it feeds that element's left/translate.
+    // A fixed viewport has no offsetParent and is placed against the window,
+    // not the root, so its origin is 0.
+    const anchorLeft =
+      getComputedStyle(viewport).position === 'fixed'
+        ? 0
+        : (viewport.offsetParent ?? root).getBoundingClientRect().left;
+    const triggerX = triggerRect.left - anchorLeft;
+    // Clamp inside the root so a trigger near the edge never pushes the panel out.
+    const min = rootRect.left - anchorLeft;
+    const max = Math.max(
+      min,
+      min + rootRect.width - renderedWidth(viewport, panelWidth),
+    );
+    const x = Math.min(Math.max(triggerX, min), max);
+    viewport.style.setProperty('--nav-viewport-x', `${x}px`);
+  }
+
+  function observeResize(
+    getActiveValue: () => string | null,
+    getActiveTrigger: () => HTMLElement | null,
+  ): NavMenuCleanup {
+    const remeasure = () => {
       const value = getActiveValue();
-      if (value) sizeViewport(value);
-    });
+      if (!value) return;
+      if (refs.viewport) sizeViewport(value, getActiveTrigger());
+      else positionViewport(value, getActiveTrigger(), null);
+    };
+    // Trigger geometry moves with the window even when no panel resizes.
+    window.addEventListener('resize', remeasure);
+    const stopWindow = () => window.removeEventListener('resize', remeasure);
+
+    if (typeof ResizeObserver === 'undefined') return stopWindow;
+
+    const observer = new ResizeObserver(remeasure);
     refs.contentMap.forEach((content) => {
       observer.observe(content);
     });
+    // The list, not the root: an in-flow viewport animating its height resizes
+    // the root every frame, which would re-measure the triggers on each one.
+    observer.observe(refs.list ?? root);
+    // A trigger resizing (font swap, label change) moves its siblings even when
+    // neither the root nor any panel changes size.
+    for (const trigger of refs.triggers) observer.observe(trigger);
 
-    return () => observer.disconnect();
+    return () => {
+      stopWindow();
+      observer.disconnect();
+    };
   }
 
   return { applyState, observeResize };
+}
+
+/**
+ * The viewport's rendered width for a content width. Under `content-box` its
+ * padding and border add to `width`; under `border-box` they sit inside it.
+ * Read from the target width, not `offsetWidth`, which is mid-transition.
+ */
+function renderedWidth(viewport: HTMLElement, contentWidth: number): number {
+  const style = getComputedStyle(viewport);
+  if (style.boxSizing === 'border-box') return contentWidth;
+  const extra =
+    parseFloat(style.paddingLeft) +
+    parseFloat(style.paddingRight) +
+    parseFloat(style.borderLeftWidth) +
+    parseFloat(style.borderRightWidth);
+  return contentWidth + (Number.isFinite(extra) ? extra : 0);
 }
 
 // Inline, because Webflow's class-based display:flex beats [hidden] on specificity.

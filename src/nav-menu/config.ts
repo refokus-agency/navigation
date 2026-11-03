@@ -10,12 +10,15 @@ export const NAV_MENU_CONFIG = {
     link: '[data-nav-link]',
     viewport: '[data-nav-viewport]',
     back: '[data-nav-back]',
+    toggle: '[data-nav-toggle]',
+    card: '[data-nav-card]',
     webflowNav: '.w-nav',
     webflowBurger: '.w-nav-button',
   },
   attributes: {
     item: 'data-nav-item',
     content: 'data-nav-content',
+    triggerMode: 'data-nav-trigger-mode',
     breakpoint: 'data-nav-breakpoint',
   },
   timing: {
@@ -29,3 +32,10 @@ export const NAV_MENU_CONFIG = {
   },
   editorClass: 'w-editor',
 };
+
+/** True when a trigger is a link that should navigate instead of toggling. */
+export function isNavigateTrigger(trigger: HTMLElement): boolean {
+  return (
+    trigger.getAttribute(NAV_MENU_CONFIG.attributes.triggerMode) === 'navigate'
+  );
+}
