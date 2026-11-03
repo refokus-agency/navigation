@@ -185,10 +185,9 @@ describe('nav-anim invalid attributes (AC-4)', () => {
 describe('nav-anim numeric attributes (AC-5)', () => {
   it.each([
     ['0', 0],
-    ['-20', -20],
     ['99999', 99999],
   ])(
-    'should use data-nav-scroll-threshold="%s" unclamped',
+    'should use data-nav-scroll-threshold="%s" as given',
     (value, expected) => {
       renderRoots({
         'data-nav-scroll-threshold': value,
@@ -201,6 +200,25 @@ describe('nav-anim numeric attributes (AC-5)', () => {
       });
     },
   );
+
+  it('should fall back to the JS option for a negative attribute', () => {
+    renderRoots({
+      'data-nav-scroll-threshold': '-20',
+      'data-nav-anim-duration': '-20',
+    });
+
+    expect(
+      resolvedOptions({ scrollThreshold: 10, animationDuration: 2 }),
+    ).toMatchObject({ scrollThreshold: 10, animationDuration: 2 });
+  });
+
+  it('should fall back to the default for a negative JS option', () => {
+    renderRoots({});
+
+    expect(
+      resolvedOptions({ scrollThreshold: -20, animationDuration: -1 }),
+    ).toMatchObject({ scrollThreshold: 50, animationDuration: 0.3 });
+  });
 });
 
 describe('hide on scroll (AC-6)', () => {

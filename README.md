@@ -130,8 +130,10 @@ any custom code:
 option wins over the default. A missing, empty or invalid value (`"300ms"`,
 `"vertcal"`, `" 200 "`, `"Vertical"`) is skipped silently — nothing is logged
 or thrown. Values are matched exactly: no trimming, no case folding. Numbers
-are used as given, unclamped (`"0"`, `".5"` and `"-20"` are valid; `"5."`,
-`"+5"` and `"1e3"` are not). An easing must resolve to a working GSAP ease, so
+must be non-negative, since each is a time or a distance (`"0"`, `".5"` and
+`"99999"` are valid; `"-20"`, `"5."`, `"+5"` and `"1e3"` are not). A negative
+value falls back the same way, whether it comes from an attribute or a JS
+option. An easing must resolve to a working GSAP ease, so
 malformed arguments such as `"steps(abc)"` are skipped too.
 
 Attributes are read **once, at init**; changing them afterwards has no effect

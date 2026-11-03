@@ -2,7 +2,7 @@ import { gsap } from 'gsap';
 import {
   type AttributeReader,
   isBoolean,
-  isFiniteNumber,
+  isNonNegativeNumber,
   readBooleanAttr,
   readNumberAttr,
   resolveSetting,
@@ -106,13 +106,13 @@ function resolveAnimOptions(
     scrollThreshold: resolveSetting({
       attribute: readNumberAttr(firstRoot, attributes.scrollThreshold),
       js: merged.scrollThreshold,
-      isValid: isFiniteNumber,
+      isValid: isNonNegativeNumber,
       fallback: DEFAULT_OPTIONS.scrollThreshold,
     }),
     animationDuration: resolveSetting({
       attribute: readNumberAttr(firstRoot, attributes.animDuration),
       js: merged.animationDuration,
-      isValid: isFiniteNumber,
+      isValid: isNonNegativeNumber,
       fallback: DEFAULT_OPTIONS.animationDuration,
     }),
     animationEasing: resolveSetting({

@@ -15,8 +15,11 @@ export type SettingSource<T> = {
   fallback: T;
 };
 
-/** `"0.5"`, `".5"`, `"-20"`; not `"5."`, `"+5"`, `"1e3"` or `"300ms"`. */
-const NUMBER_PATTERN = /^-?(\d+(\.\d+)?|\.\d+)$/;
+/**
+ * Non-negative decimals only: `"0"`, `"0.5"`, `".5"`; not `"-20"`, `"5."`,
+ * `"+5"`, `"1e3"` or `"300ms"`. Every numeric setting is a time or distance.
+ */
+const NUMBER_PATTERN = /^(\d+(\.\d+)?|\.\d+)$/;
 
 export const readNumberAttr: AttributeReader<number> = (el, name) => {
   const value = el.getAttribute(name);
@@ -49,6 +52,10 @@ export function resolveSetting<T>(source: SettingSource<T>): T {
 
 export const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
+
+/** JS-option counterpart of `readNumberAttr`: times and distances only. */
+export const isNonNegativeNumber = (value: unknown): value is number =>
+  isFiniteNumber(value) && value >= 0;
 
 export const isBoolean = (value: unknown): value is boolean =>
   typeof value === 'boolean';

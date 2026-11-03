@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isNonNegativeNumber,
   readBooleanAttr,
   readEnumAttr,
   readNumberAttr,
@@ -55,7 +56,7 @@ describe('invalid, empty and missing values (AC-4)', () => {
 
   it.each([
     ['.5', 0.5],
-    ['-.5', -0.5],
+    ['0.5', 0.5],
   ])(
     'readNumberAttr should accept the leading-dot decimal "%s"',
     (value, expected) => {
@@ -105,10 +106,29 @@ describe('invalid, empty and missing values (AC-4)', () => {
 describe('numeric attributes (AC-5)', () => {
   it.each([
     ['0', 0],
-    ['-20', -20],
+    ['.5', 0.5],
     ['99999', 99999],
-    ['-0.5', -0.5],
-  ])('readNumberAttr should read %s unclamped', (value, expected) => {
+  ])('readNumberAttr should read %s as given', (value, expected) => {
     expect(readNumberAttr(withAttribute(value), 'data-x')).toBe(expected);
   });
+
+  it.each(['-20', '-0.5', '-.5', '-0'])(
+    'readNumberAttr should reject %s',
+    (value) => {
+      expect(readNumberAttr(withAttribute(value), 'data-x')).toBeUndefined();
+    },
+  );
+});
+
+describe('isNonNegativeNumber', () => {
+  it.each([0, 0.5, 99999])('should accept %s', (value) => {
+    expect(isNonNegativeNumber(value)).toBe(true);
+  });
+
+  it.each([-20, -0.5, Number.NaN, Number.POSITIVE_INFINITY, '10'])(
+    'should reject %s',
+    (value) => {
+      expect(isNonNegativeNumber(value)).toBe(false);
+    },
+  );
 });

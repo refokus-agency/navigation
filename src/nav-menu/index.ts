@@ -5,7 +5,7 @@
  */
 
 import {
-  isFiniteNumber,
+  isNonNegativeNumber,
   isOneOf,
   readEnumAttr,
   readNumberAttr,
@@ -124,19 +124,19 @@ function resolveMenuOptions(
     delayDuration: resolveSetting({
       attribute: readNumberAttr(root, attributes.delay),
       js: merged.delayDuration,
-      isValid: isFiniteNumber,
+      isValid: isNonNegativeNumber,
       fallback: DEFAULT_OPTIONS.delayDuration,
     }),
     skipDelayDuration: resolveSetting({
       attribute: readNumberAttr(root, attributes.skipDelay),
       js: merged.skipDelayDuration,
-      isValid: isFiniteNumber,
+      isValid: isNonNegativeNumber,
       fallback: DEFAULT_OPTIONS.skipDelayDuration,
     }),
     closeDelay: resolveSetting({
       attribute: readNumberAttr(root, attributes.closeDelay),
       js: merged.closeDelay,
-      isValid: isFiniteNumber,
+      isValid: isNonNegativeNumber,
       fallback: DEFAULT_OPTIONS.closeDelay,
     }),
     orientation: resolveSetting({

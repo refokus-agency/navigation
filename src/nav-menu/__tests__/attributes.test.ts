@@ -200,12 +200,17 @@ describe('nav-menu numeric attributes (AC-5)', () => {
     expect(menu.trigger('a').dataset.state).toBe('open');
   });
 
-  it('should use "-20" as given', () => {
+  it('should fall back to the JS option for a negative attribute', () => {
     setAttributes({ 'data-nav-delay': '-20' });
     init({ delayDuration: 500 });
 
-    // setTimeout treats a negative delay as 0, so it must not fall back to 500.
-    expect(measureOpenDelay('a')).toBe(0);
+    expect(measureOpenDelay('a')).toBe(500);
+  });
+
+  it('should fall back to the default for a negative JS option', () => {
+    init({ delayDuration: -20 });
+
+    expect(measureOpenDelay('a')).toBe(200);
   });
 });
 
@@ -242,6 +247,19 @@ describe('close delay (AC-7)', () => {
     init({ closeDelay: 500 });
 
     expect(measureCloseDelay()).toBe(40);
+  });
+
+  it('should fall back to the default for a negative closeDelay', () => {
+    init({ closeDelay: -20 });
+
+    expect(measureCloseDelay()).toBe(150);
+  });
+
+  it('should fall back to the default for a negative data-nav-close-delay', () => {
+    setAttributes({ 'data-nav-close-delay': '-20' });
+    init();
+
+    expect(measureCloseDelay()).toBe(150);
   });
 
   it('should wait 150 ms by default', () => {
