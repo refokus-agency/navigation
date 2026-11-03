@@ -96,6 +96,10 @@ export function createRenderer({
       }
     }
 
+    // Without a viewport nothing sizes the panel, but a pill still needs the
+    // trigger's geometry.
+    if (!viewport && value) positionViewport(value, activeTrigger, null);
+
     root.dataset.state = value ? 'open' : 'closed';
   }
 
@@ -166,9 +170,9 @@ export function createRenderer({
     const { viewport } = refs;
     // The trigger that opened the panel, not the item's first: items may own several.
     const trigger = activeTrigger ?? refs.triggerByValue.get(value);
-    if (!viewport || !trigger) return;
+    if (!trigger) return;
 
-    const anchor = viewport.offsetParent ?? root;
+    const anchor = viewport?.offsetParent ?? root;
     const anchorRect = anchor.getBoundingClientRect();
     const triggerRect = trigger.getBoundingClientRect();
     const triggerX = triggerRect.left - anchorRect.left;
@@ -176,6 +180,7 @@ export function createRenderer({
     root.style.setProperty('--nav-trigger-x', `${triggerX}px`);
     root.style.setProperty('--nav-trigger-width', `${triggerRect.width}px`);
 
+    if (!viewport) return;
     if (viewport.dataset.navAlign !== 'trigger' || panelWidth === null) {
       viewport.style.removeProperty('--nav-viewport-x');
       return;
@@ -193,11 +198,11 @@ export function createRenderer({
     getActiveValue: () => string | null,
     getActiveTrigger: () => HTMLElement | null,
   ): NavMenuCleanup {
-    if (!refs.viewport) return () => {};
-
     const remeasure = () => {
       const value = getActiveValue();
-      if (value) sizeViewport(value, getActiveTrigger());
+      if (!value) return;
+      if (refs.viewport) sizeViewport(value, getActiveTrigger());
+      else positionViewport(value, getActiveTrigger(), null);
     };
     // Trigger geometry moves with the window even when no panel resizes.
     window.addEventListener('resize', remeasure);

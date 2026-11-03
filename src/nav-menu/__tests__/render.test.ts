@@ -429,3 +429,41 @@ describe('trigger geometry with several triggers per item', () => {
     );
   });
 });
+
+describe('trigger geometry without a viewport', () => {
+  it('should still publish the trigger geometry on open and resize', () => {
+    menu.viewport.replaceWith(...Array.from(menu.viewport.children));
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(100, 600),
+    );
+    const trigger = menu.trigger('a');
+    const spy = vi
+      .spyOn(trigger, 'getBoundingClientRect')
+      .mockReturnValue(rectOf(150, 80));
+
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('a');
+
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('50px');
+    expect(menu.root.style.getPropertyValue('--nav-trigger-width')).toBe(
+      '80px',
+    );
+
+    spy.mockReturnValue(rectOf(200, 90));
+    window.dispatchEvent(new Event('resize'));
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('100px');
+  });
+});
