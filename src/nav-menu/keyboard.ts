@@ -1,4 +1,4 @@
-import { NAV_MENU_CONFIG } from './config.ts';
+import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type {
   NavMenuContext,
   NavMenuController,
@@ -105,6 +105,10 @@ function handleTriggerKey(
         trigger
           .closest(NAV_MENU_CONFIG.selectors.item)
           ?.getAttribute(NAV_MENU_CONFIG.attributes.item);
+
+      // Enter on a navigate-mode link must follow it; Space never activates a
+      // link, so it still toggles.
+      if (event.key === 'Enter' && isNavigateTrigger(trigger)) break;
 
       if (value && refs.contentMap.has(value)) {
         event.preventDefault();

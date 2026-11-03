@@ -130,6 +130,19 @@ describe('click behavior', () => {
     expect(menu.trigger('a').dataset.state).toBe('closed');
   });
 
+  it('should let a navigate-mode trigger follow its link without toggling', () => {
+    menu.trigger('a').setAttribute('data-nav-trigger-mode', 'navigate');
+
+    const notPrevented = menu
+      .trigger('a')
+      .dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      );
+
+    expect(notPrevented).toBe(true);
+    expect(menu.trigger('a').dataset.state).toBe('closed');
+  });
+
   it('should require leaving the trigger before hover can reopen it', () => {
     menu.trigger('a').click();
     menu.trigger('a').click();

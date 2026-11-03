@@ -16,6 +16,7 @@ export const NAV_MENU_CONFIG = {
   attributes: {
     item: 'data-nav-item',
     content: 'data-nav-content',
+    triggerMode: 'data-nav-trigger-mode',
   },
   timing: {
     closeDelay: 150,
@@ -25,3 +26,10 @@ export const NAV_MENU_CONFIG = {
   },
   editorClass: 'w-editor',
 };
+
+/** True when a trigger is a link that should navigate instead of toggling. */
+export function isNavigateTrigger(trigger: HTMLElement): boolean {
+  return (
+    trigger.getAttribute(NAV_MENU_CONFIG.attributes.triggerMode) === 'navigate'
+  );
+}
