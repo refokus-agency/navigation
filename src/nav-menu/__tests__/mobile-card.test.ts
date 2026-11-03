@@ -94,6 +94,15 @@ describe('mobile card', () => {
     expect(card.dataset.state).toBe('closed');
   });
 
+  it('should keep the card open when an <a href> back control is tapped', () => {
+    const { menu } = setup();
+    card.insertAdjacentHTML('beforeend', '<a href="#" data-nav-back>back</a>');
+    toggle.click();
+    menu.trigger('a').click();
+    (card.querySelector('a[data-nav-back]') as HTMLElement).click();
+    expect(card.dataset.state).toBe('open');
+  });
+
   it('should close an open panel along with the card', () => {
     const { menu } = setup();
     toggle.click();

@@ -165,13 +165,16 @@ function attachCard(
   };
 
   // A followed link leaves the card covering where the user just went. Plain
-  // modifier-clicks keep it open, like panel links; triggers are not links.
+  // modifier-clicks keep it open, like panel links; triggers and back controls
+  // are not links, even when authored as <a href> (Webflow's default).
   const onLinkClick = (event: MouseEvent) => {
     if (!isOpen || !isMobile() || event.metaKey || event.ctrlKey) return;
     const target = event.target;
     if (!(target instanceof Element)) return;
     const link = target.closest(`a[href], ${selectors.link}`);
-    if (link && !link.closest(selectors.trigger)) setOpen(false);
+    if (link && !link.closest(`${selectors.trigger}, ${selectors.back}`)) {
+      setOpen(false);
+    }
   };
 
   toggle.addEventListener('click', onToggleClick);
