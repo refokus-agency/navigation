@@ -125,17 +125,17 @@ then exposes data attributes and custom properties for your CSS to animate.
 </nav>
 ```
 
-| Attribute             | Purpose                                                                             |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| `data-nav-menu`       | Menu root. Gets `role="navigation"` unless you set a role yourself                   |
-| `data-nav-list`       | Wrapper around the items (optional, receives `[data-orientation]`)                  |
-| `data-nav-item`       | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted |
-| `data-nav-trigger`    | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel    |
-| `data-nav-content`    | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                |
-| `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
-| `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
-| `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
-| `data-nav-breakpoint` | Mobile breakpoint in px as a plain integer (`991`); defaults to 767. Match your CSS |
+| Attribute             | Purpose                                                                                                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-nav-menu`       | Menu root. Gets `role="navigation"` unless you set a role yourself                                                                                                    |
+| `data-nav-list`       | Wrapper around the items (optional, receives `[data-orientation]`)                                                                                                    |
+| `data-nav-item`       | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted                                                                                   |
+| `data-nav-trigger`    | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel                                                                                     |
+| `data-nav-content`    | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                                                                                                  |
+| `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions                                                                                          |
+| `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                                                                                                      |
+| `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay                                                                                      |
+| `data-nav-breakpoint` | Mobile breakpoint in px, an integer from 1 to 4000 (`991`); invalid values warn and use the 767 default. Read once at init, later changes are ignored. Match your CSS |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their
 `[data-nav-item]`. The viewport form is preferred: it lets one element animate
@@ -310,8 +310,9 @@ pnpm example           # Build, then open docs/examples/local/
 styles it with nothing but the `[data-state]` / `[data-motion]` /
 `--nav-viewport-*` hooks, so it doubles as a check that those hooks are enough
 to build with. It carries a live state inspector and a checklist covering
-pointer, keyboard, screen-reader, mobile and scroll behavior — resize below
-767px for the mobile layer and the Webflow burger integration. Not published
+pointer, keyboard, screen-reader, mobile and scroll behavior — resize to or
+below the mobile breakpoint (767px by default, or `[data-nav-breakpoint]`) for
+the mobile layer and the Webflow burger integration. Not published
 (`files` in `package.json` excludes it).
 
 #### Testing
@@ -416,7 +417,8 @@ any selector is a **breaking change** for every consumer.
     closeDelay: 150        // Grace period after the pointer leaves, in ms
   },
   mobile: {
-    breakpoint: 767        // Max viewport width in px; [data-nav-breakpoint] overrides it
+    breakpoint: 767,       // Max viewport width in px; [data-nav-breakpoint] overrides it
+    maxBreakpoint: 4000    // Largest accepted [data-nav-breakpoint]; invalid values warn and use 767
   },
   editorClass: 'w-editor'  // Webflow Designer canvas marker
 }
