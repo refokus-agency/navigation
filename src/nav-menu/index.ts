@@ -64,7 +64,8 @@ export function initNavigationMenu(
   const restorePanels = relocatePanels(refs);
 
   try {
-    setupAria(root, refs, resolvedOptions, `nav-${++instanceCount}`);
+    const idPrefix = `nav-${++instanceCount}`;
+    setupAria(root, refs, resolvedOptions, idPrefix);
 
     const renderer = createRenderer({ refs, options: resolvedOptions, root });
     const controller = createController({
@@ -73,7 +74,13 @@ export function initNavigationMenu(
       renderer,
     });
 
-    const context: NavMenuContext = { root, refs, controller, cleanups };
+    const context: NavMenuContext = {
+      root,
+      refs,
+      controller,
+      cleanups,
+      idPrefix,
+    };
 
     cleanups.push(() => controller.destroy());
 
@@ -83,7 +90,12 @@ export function initNavigationMenu(
     attachKeyboardEvents(context);
     attachMobile(context);
 
-    cleanups.push(renderer.observeResize(controller.getActiveValue));
+    cleanups.push(
+      renderer.observeResize(
+        controller.getActiveValue,
+        controller.getActiveTrigger,
+      ),
+    );
     cleanups.push(restorePanels);
 
     renderer.applyState(null, null);
