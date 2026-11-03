@@ -1,7 +1,7 @@
 import { NAV_MENU_CONFIG } from './config.ts';
 import type {
   NavMenuController,
-  NavMenuOptions,
+  ResolvedNavMenuOptions,
   NavMenuRefs,
   NavMenuRenderer,
 } from './types.ts';
@@ -20,7 +20,7 @@ export function createController({
   renderer,
 }: {
   refs: NavMenuRefs;
-  options: NavMenuOptions;
+  options: ResolvedNavMenuOptions;
   renderer: NavMenuRenderer;
 }): NavMenuController {
   let activeValue: string | null = null;

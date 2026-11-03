@@ -244,7 +244,8 @@ switches panels. The keyboard behaves the same in both modes.
 
 The mode is read once, at init, with this precedence: the attribute, when it is
 exactly `hover` or `click`; else the `interaction` option, when valid; else
-`hover`. Values are case-sensitive — `"Click"` is ignored.
+`hover`. Values are case-sensitive — `"Click"` is ignored, with a
+`console.warn` naming the received value.
 
 ### Keyboard
 

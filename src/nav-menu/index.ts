@@ -10,8 +10,9 @@ import { attachKeyboardEvents } from './keyboard.ts';
 import { attachMobile } from './mobile.ts';
 import {
   attachDismiss,
+  attachHoverEvents,
   attachLinkClicks,
-  attachPointerEvents,
+  attachTriggerClicks,
 } from './pointer.ts';
 import { createRenderer } from './render.ts';
 import type {
@@ -21,8 +22,8 @@ import type {
   NavMenuContext,
   NavMenuEntry,
   NavMenuInteraction,
-  NavMenuOptions,
   NavMenuRefs,
+  ResolvedNavMenuOptions,
 } from './types.ts';
 
 // Ids must be unique per instance: the feature is built for several menus on
@@ -30,7 +31,7 @@ import type {
 // shape), and positional fallback values collide across roots.
 let instanceCount = 0;
 
-const DEFAULT_OPTIONS: NavMenuOptions = {
+const DEFAULT_OPTIONS: ResolvedNavMenuOptions = {
   delayDuration: 200,
   skipDelayDuration: 300,
   orientation: 'horizontal',
@@ -50,18 +51,19 @@ export function initNavigationMenu(
 
   if (!root) return null;
 
-  const resolvedOptions: NavMenuOptions = { ...DEFAULT_OPTIONS, ...options };
-  resolvedOptions.interaction = resolveInteraction(
-    root,
-    resolvedOptions.interaction,
-  );
+  const merged = { ...DEFAULT_OPTIONS, ...options };
 
   if (
-    resolvedOptions.skipInWebflowEditor &&
+    merged.skipInWebflowEditor &&
     document.documentElement.classList.contains(NAV_MENU_CONFIG.editorClass)
   ) {
     return null;
   }
+
+  const resolvedOptions: ResolvedNavMenuOptions = {
+    ...merged,
+    interaction: resolveInteraction(root, merged.interaction),
+  };
 
   const refs = discoverRefs(root);
   setupAria(root, refs, resolvedOptions, `nav-${++instanceCount}`);
@@ -84,7 +86,8 @@ export function initNavigationMenu(
 
   cleanups.push(() => controller.destroy());
 
-  attachPointerEvents(context);
+  attachTriggerClicks(context);
+  if (resolvedOptions.interaction === 'hover') attachHoverEvents(context);
   attachDismiss(context);
   attachLinkClicks(context);
   attachKeyboardEvents(context);
@@ -111,8 +114,15 @@ function resolveInteraction(
   root: HTMLElement,
   jsValue: unknown,
 ): NavMenuInteraction {
-  const attribute = root.getAttribute(NAV_MENU_CONFIG.attributes.interaction);
+  const name = NAV_MENU_CONFIG.attributes.interaction;
+  const attribute = root.getAttribute(name);
   if (isInteraction(attribute)) return attribute;
+  if (attribute !== null) {
+    // Silent fallback hides Webflow typos like "Click"; say what was ignored.
+    console.warn(
+      `[nav-menu] Ignoring ${name}="${attribute}": expected "hover" or "click". Falling back to the interaction option, else "hover".`,
+    );
+  }
   if (isInteraction(jsValue)) return jsValue;
   return 'hover';
 }
@@ -207,7 +217,7 @@ function indexViewportContents(
 function setupAria(
   root: HTMLElement,
   refs: NavMenuRefs,
-  options: NavMenuOptions,
+  options: ResolvedNavMenuOptions,
   idPrefix: string,
 ): void {
   if (!root.getAttribute('role')) root.setAttribute('role', 'navigation');

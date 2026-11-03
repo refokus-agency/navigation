@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NAV_MENU_CONFIG } from '../config.ts';
 import { initNavigationMenu } from '../index.ts';
-import type { InitNavigationMenuOptions } from '../types.ts';
+import type {
+  InitNavigationMenuOptions,
+  NavigationMenuInstance,
+  NavMenuOptions,
+} from '../types.ts';
 import {
   fireKey,
   firePointer,
@@ -10,7 +14,7 @@ import {
   stubResizeObserver,
 } from './helpers.ts';
 
-// Mirrors DEFAULT_OPTIONS in nav-menu/index.ts
+// Passed explicitly by init(), so the tests own the hover delay.
 const delayDuration = 200;
 const closeDelay = NAV_MENU_CONFIG.timing.closeDelay;
 
@@ -19,11 +23,11 @@ let menu: NavMenuMarkup;
 function init(
   attribute: string | null,
   options: InitNavigationMenuOptions = {},
-): void {
+): NavigationMenuInstance | null {
   if (attribute !== null) {
     menu.root.setAttribute(NAV_MENU_CONFIG.attributes.interaction, attribute);
   }
-  initNavigationMenu(menu.root, options);
+  return initNavigationMenu(menu.root, { delayDuration, ...options });
 }
 
 /** Whether a mouse hover alone opens a panel — the observable mode. */
@@ -40,9 +44,51 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
+});
+
+describe('public options type', () => {
+  it('should accept a full NavMenuOptions without interaction', () => {
+    // Type-level guard, enforced by `pnpm typecheck`: `interaction` was added
+    // after release, so it must stay optional for consumers.
+    const options: NavMenuOptions = {
+      delayDuration,
+      skipDelayDuration: 300,
+      orientation: 'horizontal',
+      dir: 'ltr',
+      skipInWebflowEditor: true,
+    };
+    init(null, options);
+
+    expect(hoverOpens()).toBe(true);
+  });
+});
+
+describe('invalid data-nav-interaction', () => {
+  it.each(['tap', '', 'Click'])(
+    'should warn about attribute %j and fall back',
+    (attribute) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      init(attribute, { interaction: 'click' });
+
+      expect(warn).toHaveBeenCalledOnce();
+      expect(warn.mock.calls[0]?.[0]).toContain(`"${attribute}"`);
+      expect(hoverOpens()).toBe(false);
+    },
+  );
+
+  it.each([null, 'hover', 'click'])(
+    'should not warn for attribute %j',
+    (attribute) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      init(attribute);
+
+      expect(warn).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('interaction mode resolution', () => {
@@ -114,8 +160,10 @@ describe('hover mode', () => {
 });
 
 describe('click mode', () => {
+  let instance: NavigationMenuInstance | null;
+
   beforeEach(() => {
-    init('click');
+    instance = init('click');
   });
 
   it('should not open a panel on mouse hover', () => {
@@ -123,6 +171,20 @@ describe('click mode', () => {
     vi.advanceTimersByTime(delayDuration);
 
     expect(menu.trigger('a').dataset.state).toBe('closed');
+    expect(menu.content('a').dataset.state).toBe('closed');
+  });
+
+  it('should not open a panel on touch pointerenter', () => {
+    firePointer(menu.trigger('a'), 'pointerenter', 'touch');
+    vi.advanceTimersByTime(delayDuration + closeDelay);
+
+    expect(menu.content('a').dataset.state).toBe('closed');
+  });
+
+  it('should not open a panel on click after destroy', () => {
+    instance?.destroy();
+    menu.trigger('a').click();
+
     expect(menu.content('a').dataset.state).toBe('closed');
   });
 

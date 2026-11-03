@@ -1,6 +1,6 @@
 import type {
   NavMenuCleanup,
-  NavMenuOptions,
+  ResolvedNavMenuOptions,
   NavMenuRefs,
   NavMenuRenderer,
 } from './types.ts';
@@ -12,7 +12,7 @@ export function createRenderer({
   root,
 }: {
   refs: NavMenuRefs;
-  options: NavMenuOptions;
+  options: ResolvedNavMenuOptions;
   root: HTMLElement;
 }): NavMenuRenderer {
   // A panel that is neither entering nor leaving keeps its prior motion.

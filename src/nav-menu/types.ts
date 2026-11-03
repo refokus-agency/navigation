@@ -11,14 +11,26 @@ export type NavMenuOptions = {
   skipDelayDuration: number;
   orientation: NavMenuOrientation;
   dir: NavMenuDirection;
-  /** What opens a panel with the mouse. Overridden by `data-nav-interaction` on the root. */
-  interaction: NavMenuInteraction;
+  /**
+   * What opens a panel with the mouse. Overridden by `data-nav-interaction` on
+   * the root. Optional so option objects written before it existed still
+   * typecheck; it is always resolved internally.
+   */
+  interaction?: NavMenuInteraction;
   /** No-op inside the Webflow Designer so panels stay editable in canvas. */
   skipInWebflowEditor: boolean;
   onValueChange?: (value: string | null) => void;
 };
 
 export type InitNavigationMenuOptions = Partial<NavMenuOptions>;
+
+/**
+ * Internal only — not re-exported. `interaction` is always resolved, so
+ * `pointer.ts` can never read `undefined` as click mode.
+ */
+export type ResolvedNavMenuOptions = NavMenuOptions & {
+  interaction: NavMenuInteraction;
+};
 
 export type NavMenuEntry = {
   item: HTMLElement;
@@ -72,7 +84,7 @@ export type NavMenuContext = {
   refs: NavMenuRefs;
   controller: NavMenuController;
   cleanups: NavMenuCleanup[];
-  options: NavMenuOptions;
+  options: ResolvedNavMenuOptions;
 };
 
 export type NavigationMenuInstance = {

@@ -1,16 +1,35 @@
 import { NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
 
-/** Mouse only — touch falls through to the click handler. */
-export function attachPointerEvents({
+/** Trigger clicks toggle in both modes — touch always lands here. */
+export function attachTriggerClicks({
+  refs,
+  controller,
+  cleanups,
+}: NavMenuContext): void {
+  for (const { trigger, value } of refs.entries) {
+    if (!refs.contentMap.has(value)) continue;
+
+    const onClick = (event: MouseEvent) => {
+      event.preventDefault();
+      controller.triggerClick(value, trigger);
+    };
+
+    trigger.addEventListener('click', onClick);
+    cleanups.push(() => trigger.removeEventListener('click', onClick));
+  }
+}
+
+/**
+ * Hover mode only — click mode never calls this, so no hover timer can ever be
+ * scheduled. Mouse only: touch falls through to the click handler.
+ */
+export function attachHoverEvents({
   root,
   refs,
   controller,
   cleanups,
-  options,
 }: NavMenuContext): void {
-  const hover = options.interaction === 'hover';
-
   // One guard for all four handlers, so it cannot be dropped from one of them:
   // a touchscreen laptop at desktop width has isMobile() false, and an
   // unfiltered touch pointerenter would clear the close timer with no
@@ -29,27 +48,15 @@ export function attachPointerEvents({
       if (!isMouseHover(event)) return;
       controller.triggerPointerLeave(trigger);
     };
-    const onClick = (event: MouseEvent) => {
-      event.preventDefault();
-      controller.triggerClick(value, trigger);
-    };
 
-    // Click mode attaches no hover listeners at all, so no hover timer can
-    // ever be scheduled.
-    if (hover) {
-      trigger.addEventListener('pointerenter', onEnter);
-      trigger.addEventListener('pointerleave', onLeave);
-    }
-    trigger.addEventListener('click', onClick);
+    trigger.addEventListener('pointerenter', onEnter);
+    trigger.addEventListener('pointerleave', onLeave);
 
     cleanups.push(() => {
       trigger.removeEventListener('pointerenter', onEnter);
       trigger.removeEventListener('pointerleave', onLeave);
-      trigger.removeEventListener('click', onClick);
     });
   }
-
-  if (!hover) return;
 
   // Panels can fall back to living inside their item even when a viewport
   // exists, and such a panel needs its own hover target or the close timer
