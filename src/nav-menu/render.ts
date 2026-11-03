@@ -229,6 +229,9 @@ export function createRenderer({
       observer.observe(content);
     });
     observer.observe(root);
+    // A trigger resizing (font swap, label change) moves its siblings even when
+    // neither the root nor any panel changes size.
+    for (const trigger of refs.triggers) observer.observe(trigger);
 
     return () => {
       stopWindow();

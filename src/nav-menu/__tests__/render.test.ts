@@ -586,3 +586,53 @@ describe('fixed viewport', () => {
     expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('154.5px');
   });
 });
+
+describe('trigger observation', () => {
+  it('should observe every trigger so a reflow re-publishes the geometry', () => {
+    const observed: Element[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resizeCallbacks.push(callback);
+        }
+        observe(element: Element): void {
+          observed.push(element);
+        }
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+    resizeCallbacks = [];
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(0, 600),
+    );
+    const spy = vi
+      .spyOn(menu.trigger('c'), 'getBoundingClientRect')
+      .mockReturnValue(rectOf(363, 50));
+
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('c');
+
+    for (const value of ['a', 'b', 'c']) {
+      expect(observed).toContain(menu.trigger(value));
+    }
+
+    spy.mockReturnValue(rectOf(411, 50));
+    for (const callback of resizeCallbacks) callback([], {} as ResizeObserver);
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('411px');
+  });
+});
