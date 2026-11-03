@@ -288,17 +288,23 @@ describe('mobile accordion', () => {
     expect(document.activeElement).toBe(menu.content('a').querySelector('a'));
   });
 
-  it('should not steal focus on arrow traversal or programmatic open', () => {
-    const { menu, instance } = setup();
+  it('should keep focus on the trigger during arrow traversal', () => {
+    const { menu } = setup();
     menu.trigger('a').click();
     menu.trigger('a').focus();
     fireKey(menu.trigger('a'), 'ArrowRight');
+    // The next panel opened, yet focus stayed on its trigger.
+    expect(menu.content('b').dataset.state).toBe('open');
     expect(document.activeElement).toBe(menu.trigger('b'));
-    menu.trigger('c').blur();
+  });
+
+  it('should not move focus on a programmatic open', () => {
+    const { menu, instance } = setup();
+    menu.trigger('b').focus();
     instance?.open('c');
-    expect(document.activeElement).not.toBe(
-      menu.content('c').querySelector('a'),
-    );
+    expect(menu.content('c').dataset.state).toBe('open');
+    // Exact element, so focus landing anywhere else fails the test.
+    expect(document.activeElement).toBe(menu.trigger('b'));
   });
 
   it('should mirror item state on desktop so a crossing cannot strand it', () => {
