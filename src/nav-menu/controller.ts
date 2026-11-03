@@ -58,7 +58,7 @@ export function createController({
       }, options.skipDelayDuration);
     }
 
-    renderer.applyState(value, previousValue);
+    renderer.applyState(value, previousValue, activeTrigger);
     options.onValueChange?.(value);
   }
 

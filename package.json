@@ -69,7 +69,7 @@
     "gsap": "^3.14.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.2",
+    "@biomejs/biome": "2.6.4",
     "@total-typescript/tsconfig": "^1.0.4",
     "@types/node": "^26.2.0",
     "@types/webidl-conversions": "^7.0.3",
@@ -84,7 +84,7 @@
     "vitest": "^5.0.3"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",

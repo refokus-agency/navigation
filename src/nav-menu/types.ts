@@ -51,8 +51,15 @@ export type NavMenuRefs = {
 };
 
 export type NavMenuRenderer = {
-  applyState(value: string | null, previousValue: string | null): void;
-  observeResize(getActiveValue: () => string | null): NavMenuCleanup;
+  applyState(
+    value: string | null,
+    previousValue: string | null,
+    activeTrigger?: HTMLElement | null,
+  ): void;
+  observeResize(
+    getActiveValue: () => string | null,
+    getActiveTrigger: () => HTMLElement | null,
+  ): NavMenuCleanup;
 };
 
 export type NavMenuController = {
@@ -85,6 +92,8 @@ export type NavMenuContext = {
   controller: NavMenuController;
   cleanups: NavMenuCleanup[];
   options: ResolvedNavMenuOptions;
+  /** Per-instance id prefix, so generated ids never collide across roots. */
+  idPrefix: string;
 };
 
 export type NavigationMenuInstance = {

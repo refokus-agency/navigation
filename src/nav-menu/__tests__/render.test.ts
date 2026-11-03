@@ -314,3 +314,330 @@ describe('markup without a viewport', () => {
     expect(content?.style.display).toBe('none');
   });
 });
+
+describe('trigger geometry', () => {
+  function rect(left: number, width: number): DOMRect {
+    return {
+      left,
+      width,
+      right: left + width,
+      top: 0,
+      bottom: 0,
+      height: 0,
+      x: left,
+      y: 0,
+      toJSON() {},
+    } as DOMRect;
+  }
+
+  function setup(align?: string) {
+    if (align) menu.viewport.dataset.navAlign = align;
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rect(100, 600),
+    );
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rect(150, 80),
+    );
+    vi.spyOn(menu.trigger('c'), 'getBoundingClientRect').mockReturnValue(
+      rect(620, 70),
+    );
+    setScrollSize(menu.content('a'), 200, 100);
+    setScrollSize(menu.content('c'), 200, 100);
+    const instance = initNavigationMenu();
+    flushFrame();
+    return instance;
+  }
+
+  const prop = (el: HTMLElement, name: string) =>
+    el.style.getPropertyValue(name);
+
+  it('should publish the active trigger x and width on the root', () => {
+    const instance = setup();
+    instance?.open('a');
+
+    expect(prop(menu.root, '--nav-trigger-x')).toBe('50px');
+    expect(prop(menu.root, '--nav-trigger-width')).toBe('80px');
+    instance?.open('c');
+    expect(prop(menu.root, '--nav-trigger-x')).toBe('520px');
+    expect(prop(menu.root, '--nav-trigger-width')).toBe('70px');
+  });
+
+  it('should not publish --nav-viewport-x by default', () => {
+    setup()?.open('a');
+    expect(prop(menu.viewport, '--nav-viewport-x')).toBe('');
+  });
+
+  it('should anchor the panel to its trigger with data-nav-align="trigger"', () => {
+    setup('trigger')?.open('a');
+    expect(prop(menu.viewport, '--nav-viewport-x')).toBe('50px');
+  });
+
+  it('should clamp the panel inside the root', () => {
+    setup('trigger')?.open('c');
+    // trigger at 520, panel 200 wide, root 600 wide -> max 400
+    expect(prop(menu.viewport, '--nav-viewport-x')).toBe('400px');
+  });
+
+  it('should recompute on window resize', () => {
+    const instance = setup('trigger');
+    instance?.open('a');
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rect(200, 80),
+    );
+
+    window.dispatchEvent(new Event('resize'));
+
+    expect(prop(menu.root, '--nav-trigger-x')).toBe('100px');
+    expect(prop(menu.viewport, '--nav-viewport-x')).toBe('100px');
+  });
+});
+
+describe('trigger geometry with several triggers per item', () => {
+  it('should measure the trigger that opened the panel, not the first', () => {
+    const chevron = document.createElement('button');
+    chevron.type = 'button';
+    chevron.setAttribute('data-nav-trigger', '');
+    menu.trigger('a').after(chevron);
+
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(100, 600),
+    );
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rectOf(154, 60),
+    );
+    vi.spyOn(chevron, 'getBoundingClientRect').mockReturnValue(rectOf(225, 20));
+
+    initNavigationMenu();
+    flushFrame();
+    chevron.click();
+
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('125px');
+    expect(menu.root.style.getPropertyValue('--nav-trigger-width')).toBe(
+      '20px',
+    );
+  });
+});
+
+describe('trigger geometry without a viewport', () => {
+  it('should still publish the trigger geometry on open and resize', () => {
+    menu.viewport.replaceWith(...Array.from(menu.viewport.children));
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(100, 600),
+    );
+    const trigger = menu.trigger('a');
+    const spy = vi
+      .spyOn(trigger, 'getBoundingClientRect')
+      .mockReturnValue(rectOf(150, 80));
+
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('a');
+
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('50px');
+    expect(menu.root.style.getPropertyValue('--nav-trigger-width')).toBe(
+      '80px',
+    );
+
+    spy.mockReturnValue(rectOf(200, 90));
+    window.dispatchEvent(new Event('resize'));
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('100px');
+  });
+});
+
+describe('trigger geometry reference points', () => {
+  it('should measure trigger vars from the root, not the viewport offsetParent', () => {
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    const anchor = document.createElement('div');
+    vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue(rectOf(160, 500));
+    Object.defineProperty(menu.viewport, 'offsetParent', {
+      value: anchor,
+      configurable: true,
+    });
+    menu.viewport.dataset.navAlign = 'trigger';
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(100, 600),
+    );
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rectOf(300, 80),
+    );
+    setScrollSize(menu.content('a'), 200, 100);
+
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('a');
+
+    // root-relative: 300 - 100
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('200px');
+    // anchor-relative: 300 - 160, within [min=-60, max=340]
+    expect(menu.viewport.style.getPropertyValue('--nav-viewport-x')).toBe(
+      '140px',
+    );
+  });
+});
+
+describe('viewport clamp with padding and border', () => {
+  function open(boxSizing: string) {
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    menu.viewport.dataset.navAlign = 'trigger';
+    menu.viewport.style.boxSizing = boxSizing;
+    menu.viewport.style.padding = '0 24px';
+    menu.viewport.style.border = '2px solid';
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(0, 700),
+    );
+    vi.spyOn(menu.trigger('c'), 'getBoundingClientRect').mockReturnValue(
+      rectOf(650, 50),
+    );
+    setScrollSize(menu.content('c'), 200, 100);
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('c');
+    return menu.viewport.style.getPropertyValue('--nav-viewport-x');
+  }
+
+  it('should include padding and border under content-box', () => {
+    // rendered width 200 + 48 + 4 = 252 -> max x = 700 - 252
+    expect(open('content-box')).toBe('448px');
+  });
+
+  it('should not double count them under border-box', () => {
+    expect(open('border-box')).toBe('500px');
+  });
+});
+
+describe('fixed viewport', () => {
+  it('should anchor --nav-viewport-x to the window, not the root', () => {
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    menu.viewport.dataset.navAlign = 'trigger';
+    menu.viewport.style.position = 'fixed';
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(150, 900),
+    );
+    vi.spyOn(menu.trigger('a'), 'getBoundingClientRect').mockReturnValue(
+      rectOf(304.5, 80),
+    );
+    setScrollSize(menu.content('a'), 200, 100);
+
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('a');
+
+    expect(menu.viewport.style.getPropertyValue('--nav-viewport-x')).toBe(
+      '304.5px',
+    );
+    // the root-relative trigger var is unaffected
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('154.5px');
+  });
+});
+
+describe('trigger observation', () => {
+  it('should observe every trigger so a reflow re-publishes the geometry', () => {
+    const observed: Element[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resizeCallbacks.push(callback);
+        }
+        observe(element: Element): void {
+          observed.push(element);
+        }
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    );
+    resizeCallbacks = [];
+    const rectOf = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON() {},
+      }) as DOMRect;
+    vi.spyOn(menu.root, 'getBoundingClientRect').mockReturnValue(
+      rectOf(0, 600),
+    );
+    const spy = vi
+      .spyOn(menu.trigger('c'), 'getBoundingClientRect')
+      .mockReturnValue(rectOf(363, 50));
+
+    const instance = initNavigationMenu();
+    flushFrame();
+    instance?.open('c');
+
+    for (const value of ['a', 'b', 'c']) {
+      expect(observed).toContain(menu.trigger(value));
+    }
+    // The root resizes on every frame of an in-flow viewport height transition.
+    expect(observed).toContain(
+      menu.root.querySelector('[data-nav-list]') as Element,
+    );
+    expect(observed).not.toContain(menu.root);
+
+    spy.mockReturnValue(rectOf(411, 50));
+    for (const callback of resizeCallbacks) callback([], {} as ResizeObserver);
+    expect(menu.root.style.getPropertyValue('--nav-trigger-x')).toBe('411px');
+  });
+});

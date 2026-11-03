@@ -25,7 +25,7 @@ A TypeScript package for Webflow and custom-code navigations: GSAP-powered scrol
 
 ## Requirements
 
-- Node.js >= 22.0.0
+- Node.js ^22.22.2 || ^24.15.0 || >=26
 
 ## Installation
 
@@ -125,17 +125,19 @@ then exposes data attributes and custom properties for your CSS to animate.
 </nav>
 ```
 
-| Attribute             | Purpose                                                                             |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| `data-nav-menu`       | Menu root. Gets `role="navigation"` unless you set a role yourself                   |
-| `data-nav-list`       | Wrapper around the items (optional, receives `[data-orientation]`)                  |
-| `data-nav-item`       | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted |
-| `data-nav-trigger`    | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel    |
-| `data-nav-content`    | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                |
-| `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
-| `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
-| `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
-| `data-nav-interaction` | On the root: `hover` (default) or `click` — what opens a panel with the mouse. Overrides the `interaction` option |
+| Attribute              | Purpose                                                                                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-nav-menu`        | Menu root. Gets `role="navigation"` unless you set a role yourself                                                                                       |
+| `data-nav-list`        | Wrapper around the items (optional, receives `[data-orientation]`)                                                                                       |
+| `data-nav-item`        | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted                                                                      |
+| `data-nav-trigger`     | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel                                                                        |
+| `data-nav-content`     | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                                                                                     |
+| `data-nav-viewport`    | Optional shared container for all panels — enables animated size transitions                                                                             |
+| `data-nav-link`        | A plain link. Inside a panel it also dismisses the menu on click                                                                                         |
+| `data-nav-back`        | Mobile "back" control — closes the open panel without closing the burger overlay                                                                         |
+| `data-nav-interaction` | On the root: `hover` (default) or `click` — what opens a panel with the mouse. Overrides the `interaction` option                                        |
+| `data-nav-toggle`      | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
+| `data-nav-card`        | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only                                               |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their
 `[data-nav-item]`. The viewport form is preferred: it lets one element animate
@@ -192,6 +194,10 @@ Designer (see `skipInWebflowEditor`).
 | `[data-nav-mode]`          | `mobile` \| `desktop`                                     | root                                  |
 | `--nav-viewport-width`     | e.g. `480px` (`100%` on mobile)                           | viewport                              |
 | `--nav-viewport-height`    | e.g. `320px`                                              | viewport                              |
+| `[data-nav-align]`         | `viewport` (default) \| `trigger`                         | viewport (you set it)                 |
+| `--nav-viewport-x`         | e.g. `120px` — only with `data-nav-align="trigger"`       | viewport                              |
+| `--nav-trigger-x`          | e.g. `96px`, the active trigger's left edge, from the root's left | root                        |
+| `--nav-trigger-width`      | e.g. `88px`                                               | root                                  |
 
 Panels stay mounted for the duration of their CSS **animation** (not
 transition), so `@keyframes` exit animations play out before the element is
@@ -215,6 +221,40 @@ hidden. Without an animation, hiding is immediate.
 }
 ```
 
+#### Anchoring to the trigger
+
+Set `data-nav-align="trigger"` on the viewport and `--nav-viewport-x` follows the
+active trigger's left edge, clamped so the panel never overflows the root (not
+applied on mobile), relative to the viewport's positioning ancestor (the window
+when the viewport is `position: fixed`).
+`--nav-trigger-x` / `--nav-trigger-width` are always published, measured from the
+**root's** left edge, so a pill needs no JS as long as the root is its
+positioning ancestor:
+
+```css
+[data-nav-viewport] {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  transform: translateX(var(--nav-viewport-x, 0px));
+  transition: transform 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+[data-nav-menu] { position: relative; }
+.nav-pill {
+  position: absolute;
+  left: 0;
+  width: var(--nav-trigger-width);
+  transform: translateX(var(--nav-trigger-x));
+  transition: transform 0.25s ease, width 0.25s ease;
+}
+[data-nav-menu][data-state='closed'] .nav-pill { opacity: 0; }
+```
+
+Make the root `position: relative` and place the pill in it (not inside
+`[data-nav-list]`): `--nav-trigger-x` is measured from the root, so the pill
+stays aligned however much sits before the list, such as a logo.
+
 > **Sizing rule — the one way to break this.** `--nav-viewport-*` is measured
 > from the active panel's `scrollWidth`/`scrollHeight`, so the panel must have
 > **no imposed size of its own**. Position it with `top`/`left` only. Give it
@@ -231,10 +271,15 @@ hidden. Without an animation, hiding is immediate.
 - **Pointer** over the viewport keeps the menu open; leaving closes it after 150ms
 - **Click** a trigger to toggle it — after a click-to-close the cursor must
   leave and re-enter before hover reopens it
+- **Click** a trigger with `data-nav-trigger-mode="navigate"` follows its link
+  instead of toggling (see "Trigger mode" below)
 - **Click** a link inside a panel closes the menu; ⌘/Ctrl-click keeps it open
 - **Click or focus** outside the nav closes the menu
+
 Hover is mouse-only and disabled in mobile mode — touch devices fall through
 to the click handler.
+
+#### Click interaction
 
 Set `data-nav-interaction="click"` on the root (or pass `interaction: 'click'`)
 to drop hover entirely: a panel opens and closes only on trigger click, stays
@@ -246,6 +291,29 @@ The mode is read once, at init, with this precedence: the attribute, when it is
 exactly `hover` or `click`; else the `interaction` option, when valid; else
 `hover`. Values are case-sensitive — `"Click"` is ignored, with a
 `console.warn` naming the received value.
+
+#### Trigger mode
+
+A trigger that is also a link to the section's overview page can opt out of
+click-toggling:
+
+```html
+<a href="/products" data-nav-trigger data-nav-trigger-mode="navigate">Products</a>
+```
+
+| Mode               | Click / `Enter`                         | Opens from                 |
+| ------------------ | --------------------------------------- | -------------------------- |
+| `toggle` (default) | Toggles the panel, navigation prevented | Click, hover, keyboard     |
+| `navigate`         | Not prevented — the link navigates      | Hover, arrow keys, `Space` |
+
+In click interaction mode there is no hover, so a `navigate` trigger's panel
+opens from the keyboard only (arrow keys, `Space`); a click still navigates.
+
+Trade-off: touch has no hover, so a `navigate` trigger on a touch device just
+navigates and its panel is unreachable. Keep `toggle` (the default) wherever
+touch users need the panel. ⌘/Ctrl-click on a `navigate` trigger opens the link
+in a new tab and leaves the menu as it is; a ⌘/Ctrl-click on a link inside a
+panel already keeps the menu open.
 
 ### Keyboard
 
@@ -298,6 +366,33 @@ inside a Webflow `.w-nav`, closing the burger overlay resets the menu so
 reopening it always starts on the main list, and crossing the breakpoint
 closes any open panel. Add `[data-nav-back]` inside the menu for a back control
 that closes the panel without dismissing the overlay.
+
+### Mobile menu (toggle, card, accordion)
+
+Opt in with markup alone — no project JS beyond `initNavigationMenu()`:
+
+```html
+<nav data-nav-menu>
+  <button data-nav-toggle>Menu</button>
+  <div data-nav-card>
+    <div data-nav-list>…items…</div>
+  </div>
+</nav>
+```
+
+In `[data-nav-mode="mobile"]`:
+
+- the toggle opens/closes the card (`data-state="open|closed"`, written only
+  in mobile mode, so `[data-nav-card][data-state='closed']` rules cannot hide
+  the desktop menu); Escape and a
+  click outside close it, and Escape returns focus to the toggle. A panel's own
+  Escape closes the panel first;
+- triggers behave as an accordion — one panel open at a time, `data-state` on
+  the item and the content, and focus moves to the first link on open;
+- closing the card, or crossing the breakpoint, closes any open panel.
+
+On desktop none of this applies and existing behavior is unchanged. CSS owns
+all visuals; hide `[data-nav-toggle]` above the breakpoint yourself.
 
 ## Development
 

@@ -21,7 +21,7 @@ pnpm example        # build + open docs/examples/local/
 pnpm commit         # commitizen — required for commits
 ```
 
-Node >= 22.
+Node `^22.22.2 || ^24.15.0 || >=26` (jsdom 30 → undici 8 need it; older 22.x fails to start vitest workers).
 
 ## Non-obvious invariants
 
@@ -47,8 +47,10 @@ used only to keep generated ids unique across roots.)
 
 **`render.ts` is the only module that writes *reactive* DOM state**, and it
 animates nothing. Two deliberate exceptions: `setupAria` in `index.ts` writes
-the ARIA wiring once at init, and `mobile.ts` writes `[data-nav-mode]`, which
-tracks the breakpoint rather than the open/closed state.
+the ARIA wiring once at init, and `mobile.ts` writes `[data-nav-mode]` (tracks
+the breakpoint) and owns the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair
+(`aria-expanded`, card `data-state`/`inert`). Card state is separate from the
+panel state machine, and `destroy()` undoes it.
 
 Whether a viewport mount skips the size transition comes from the renderer's
 own `isViewportOpen` flag — **never** from reading back `style.display`, which only
