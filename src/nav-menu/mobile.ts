@@ -100,25 +100,32 @@ export function attachMobile(context: NavMenuContext): void {
 }
 
 /**
- * Opt-in `[data-nav-toggle]` / `[data-nav-card]` pair. Returns a function that
- * closes the card, for breakpoint crossings. No-ops when either is absent.
+ * Opt-in `[data-nav-toggle]` / `[data-nav-card]` pair. Every toggle is wired,
+ * so a close button inside the card works like the header's open button.
+ * Returns a function that closes the card, for breakpoint crossings. No-ops
+ * when there is no toggle or no card.
  */
 function attachCard(
   { root, controller, cleanups, idPrefix }: NavMenuContext,
   isMobile: () => boolean,
 ): () => void {
   const { selectors } = NAV_MENU_CONFIG;
-  const toggle = root.querySelector<HTMLElement>(selectors.toggle);
+  const toggles = [...root.querySelectorAll<HTMLElement>(selectors.toggle)];
   const card = root.querySelector<HTMLElement>(selectors.card);
-  if (!toggle || !card) return () => {};
+  if (toggles.length === 0 || !card) return () => {};
 
   card.id ||= `${idPrefix}-card`;
-  toggle.setAttribute('aria-controls', card.id);
+  for (const toggle of toggles) toggle.setAttribute('aria-controls', card.id);
 
   let isOpen = false;
+  // The toggle that opened the card, so focus returns there on close — a close
+  // button inside the card goes inert with it and cannot keep focus.
+  let opener: HTMLElement | null = null;
 
   const render = () => {
-    toggle.setAttribute('aria-expanded', String(isOpen));
+    for (const toggle of toggles) {
+      toggle.setAttribute('aria-expanded', String(isOpen));
+    }
     // Desktop never sees the card state: a consumer's natural
     // `[data-nav-card][data-state='closed'] { display: none }` would otherwise
     // hide the whole desktop menu. Crossing the breakpoint re-renders.
@@ -146,7 +153,16 @@ function attachCard(
   const onToggleClick = (event: MouseEvent) => {
     if (!isMobile()) return;
     event.preventDefault();
-    setOpen(!isOpen);
+    const toggle = event.currentTarget as HTMLElement;
+    if (isOpen) {
+      setOpen(false);
+      // Only when the close control lived in the card: a header toggle keeps
+      // the focus it already has.
+      if (card.contains(toggle)) opener?.focus();
+    } else {
+      opener = toggle;
+      setOpen(true);
+    }
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
@@ -154,7 +170,7 @@ function attachCard(
     if (event.key !== 'Escape' || event.defaultPrevented) return;
     if (!isOpen || !isMobile()) return;
     setOpen(false);
-    toggle.focus();
+    opener?.focus();
   };
 
   const onPointerDown = (event: Event) => {
@@ -174,25 +190,31 @@ function attachCard(
   };
 
   // A followed link leaves the card covering where the user just went. Clicks
-  // that do not follow it keep the card open, like panel links; triggers and back controls
-  // are not links, even when authored as <a href> (Webflow's default).
+  // that do not follow it keep the card open, like panel links. Triggers, back
+  // controls and toggles are not links, even when authored as <a href>
+  // (Webflow's default).
   const onLinkClick = (event: MouseEvent) => {
     if (!isOpen || !isMobile() || !isFollowedClick(event)) return;
     const target = event.target;
     if (!(target instanceof Element)) return;
     const link = target.closest(`a[href], ${selectors.link}`);
-    if (link && !link.closest(`${selectors.trigger}, ${selectors.back}`)) {
-      setOpen(false);
-    }
+    const controls = `${selectors.trigger}, ${selectors.back}, ${selectors.toggle}`;
+    if (link && !link.closest(controls)) setOpen(false);
   };
 
-  toggle.addEventListener('click', onToggleClick);
+  for (const toggle of toggles) {
+    toggle.addEventListener('click', onToggleClick);
+  }
   root.addEventListener('click', onLinkClick);
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('focusin', onFocusIn);
   cleanups.push(() => {
-    toggle.removeEventListener('click', onToggleClick);
+    for (const toggle of toggles) {
+      toggle.removeEventListener('click', onToggleClick);
+      toggle.removeAttribute('aria-expanded');
+      toggle.removeAttribute('aria-controls');
+    }
     root.removeEventListener('click', onLinkClick);
     document.removeEventListener('keydown', onKeyDown);
     document.removeEventListener('pointerdown', onPointerDown);
@@ -201,8 +223,6 @@ function attachCard(
     // the menu dead and unreachable after a re-init.
     card.removeAttribute('inert');
     delete card.dataset.state;
-    toggle.removeAttribute('aria-expanded');
-    toggle.removeAttribute('aria-controls');
   });
 
   render();

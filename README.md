@@ -135,7 +135,7 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
 | `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
 | `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
-| `data-nav-toggle`     | Mobile menu button. Gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
+| `data-nav-toggle`     | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
 | `data-nav-card`       | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only |
 
 Panels may live inside a shared `[data-nav-viewport]` or directly inside their

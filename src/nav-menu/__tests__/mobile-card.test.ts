@@ -11,17 +11,19 @@ import {
 let toggle: HTMLElement;
 let card: HTMLElement;
 
-function setup(mobile = true) {
+function setup(
+  mobile = true,
+  extraMarkup = '',
+  toggleMarkup = '<button type="button" data-nav-toggle>menu</button>',
+) {
   stubResizeObserver();
   stubMatchMedia(mobile);
   const menu = renderNavMenu();
-  menu.root.insertAdjacentHTML(
-    'afterbegin',
-    '<button type="button" data-nav-toggle>menu</button>',
-  );
+  menu.root.insertAdjacentHTML('afterbegin', toggleMarkup);
   card = menu.root.querySelector('[data-nav-list]') as HTMLElement;
   card.setAttribute('data-nav-card', '');
   toggle = menu.root.querySelector('[data-nav-toggle]') as HTMLElement;
+  card.insertAdjacentHTML('beforeend', extraMarkup);
   document.body.insertAdjacentHTML('beforeend', '<p id="outside">x</p>');
   return { menu, instance: initNavigationMenu() };
 }
@@ -51,6 +53,37 @@ describe('mobile card', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     toggle.click();
     expect(card.dataset.state).toBe('closed');
+  });
+
+  it('should wire every toggle, such as a close button inside the card', () => {
+    setup(
+      true,
+      '<button type="button" data-nav-toggle id="close">close</button>',
+    );
+    const close = document.getElementById('close') as HTMLElement;
+    expect(close.getAttribute('aria-controls')).toBe(card.id);
+    expect(close.getAttribute('aria-expanded')).toBe('false');
+
+    toggle.click();
+    expect(close.getAttribute('aria-expanded')).toBe('true');
+    close.click();
+    expect(card.dataset.state).toBe('closed');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(close.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it('should not close the card on tap inside any toggle', () => {
+    setup();
+    toggle.click();
+    firePointer(toggle, 'pointerdown');
+    expect(card.dataset.state).toBe('open');
+  });
+
+  it('should open from an <a href> toggle without immediately closing', () => {
+    setup(true, '', '<a href="#" data-nav-toggle>menu</a>');
+    toggle.click();
+    expect(card.dataset.state).toBe('open');
   });
 
   it('should close on Escape and refocus the toggle', () => {
