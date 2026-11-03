@@ -1,5 +1,6 @@
 import { NAV_MENU_CONFIG } from './config.ts';
 import { focusFirst, getTabbableCandidates } from './keyboard.ts';
+import { isFollowedClick } from './pointer.ts';
 import type { NavMenuContext } from './types.ts';
 
 /**
@@ -164,11 +165,11 @@ function attachCard(
     if (!root.contains(target)) setOpen(false);
   };
 
-  // A followed link leaves the card covering where the user just went. Plain
-  // modifier-clicks keep it open, like panel links; triggers and back controls
+  // A followed link leaves the card covering where the user just went. Clicks
+  // that do not follow it keep the card open, like panel links; triggers and back controls
   // are not links, even when authored as <a href> (Webflow's default).
   const onLinkClick = (event: MouseEvent) => {
-    if (!isOpen || !isMobile() || event.metaKey || event.ctrlKey) return;
+    if (!isOpen || !isMobile() || !isFollowedClick(event)) return;
     const target = event.target;
     if (!(target instanceof Element)) return;
     const link = target.closest(`a[href], ${selectors.link}`);

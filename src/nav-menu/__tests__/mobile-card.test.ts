@@ -153,6 +153,38 @@ describe('mobile card', () => {
     expect(card.dataset.state).toBe('closed');
   });
 
+  it('should stay open when a link click is not followed', () => {
+    const { menu } = setup();
+    const link = menu.root.querySelector('[data-nav-link]') as HTMLElement;
+    link.addEventListener('click', (event) => event.preventDefault());
+    toggle.click();
+    link.click();
+    expect(card.dataset.state).toBe('open');
+  });
+
+  it('should stay open for a shift-click on a link', () => {
+    const { menu } = setup();
+    toggle.click();
+    (menu.root.querySelector('[data-nav-link]') as HTMLElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true, shiftKey: true }),
+    );
+    expect(card.dataset.state).toBe('open');
+  });
+
+  it('should keep a panel open for unfollowed clicks on its links', () => {
+    const { menu } = setup();
+    toggle.click();
+    menu.trigger('a').click();
+    const link = menu.content('a').querySelector('a') as HTMLElement;
+    link.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, shiftKey: true }),
+    );
+    expect(menu.content('a').dataset.state).toBe('open');
+    link.addEventListener('click', (event) => event.preventDefault());
+    link.click();
+    expect(menu.content('a').dataset.state).toBe('open');
+  });
+
   it('should stay open for a modifier-click on a link', () => {
     const { menu } = setup();
     toggle.click();

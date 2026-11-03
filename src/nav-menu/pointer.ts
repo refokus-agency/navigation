@@ -94,6 +94,21 @@ export function attachDismiss({
   });
 }
 
+/**
+ * Whether a click on a link actually leaves the page (or its place in it).
+ * Modifier-clicks open a new tab or window and the user stays here, and a
+ * handler that called preventDefault (a modal opener, say) navigates nowhere —
+ * dismissing on either would close the menu on a click that did nothing.
+ */
+export function isFollowedClick(event: MouseEvent): boolean {
+  return (
+    !event.defaultPrevented &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey
+  );
+}
+
 export function attachLinkClicks({
   root,
   controller,
@@ -101,7 +116,7 @@ export function attachLinkClicks({
 }: NavMenuContext): void {
   const { selectors } = NAV_MENU_CONFIG;
 
-  // meta/ctrl keeps it open so opening in a new tab does not lose context.
+  // A click that does not follow the link keeps the menu open.
   const onClick = (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -111,9 +126,7 @@ export function attachLinkClicks({
       target.closest(`${selectors.content} ${selectors.link}`);
     if (!link) return;
 
-    if (!event.metaKey && !event.ctrlKey) {
-      controller.close();
-    }
+    if (isFollowedClick(event)) controller.close();
   };
 
   root.addEventListener('click', onClick);
