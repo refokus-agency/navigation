@@ -20,6 +20,32 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+describe('keyboard navigation (rtl)', () => {
+  beforeEach(() => {
+    initNavigationMenu(undefined, { dir: 'rtl' });
+  });
+
+  it('should invert ArrowRight/ArrowLeft', () => {
+    menu.trigger('b').focus();
+
+    fireKey(menu.trigger('b'), 'ArrowRight');
+    expect(document.activeElement).toBe(menu.trigger('a'));
+
+    fireKey(menu.trigger('a'), 'ArrowLeft');
+    expect(document.activeElement).toBe(menu.trigger('b'));
+  });
+
+  it('should invert Home/End to the visual first/last trigger', () => {
+    menu.trigger('b').focus();
+
+    fireKey(menu.trigger('b'), 'Home');
+    expect(document.activeElement).toBe(menu.trigger('c'));
+
+    fireKey(menu.trigger('c'), 'End');
+    expect(document.activeElement).toBe(menu.trigger('a'));
+  });
+});
+
 describe('keyboard navigation (horizontal)', () => {
   beforeEach(() => {
     initNavigationMenu();

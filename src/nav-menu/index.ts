@@ -75,7 +75,7 @@ export function initNavigationMenu(
   attachPointerEvents(context);
   attachDismiss(context);
   attachLinkClicks(context);
-  attachKeyboardEvents(context);
+  attachKeyboardEvents(context, resolvedOptions.dir);
   attachMobile(context);
 
   cleanups.push(renderer.observeResize(controller.getActiveValue));
