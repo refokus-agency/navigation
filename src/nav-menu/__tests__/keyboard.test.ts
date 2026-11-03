@@ -74,6 +74,15 @@ describe('keyboard navigation (horizontal)', () => {
     expect(menu.trigger('a').dataset.state).toBe('closed');
   });
 
+  it('should leave Enter to the link on a navigate-mode trigger', () => {
+    menu.trigger('a').setAttribute('data-nav-trigger-mode', 'navigate');
+
+    const event = fireKey(menu.trigger('a'), 'Enter');
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(menu.trigger('a').dataset.state).toBe('closed');
+  });
+
   it('should let Enter reopen a panel closed by click on the same trigger', () => {
     menu.trigger('a').click();
     menu.trigger('a').click();
