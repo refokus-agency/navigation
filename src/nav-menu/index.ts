@@ -8,6 +8,7 @@ import { NAV_MENU_CONFIG } from './config.ts';
 import { createController } from './controller.ts';
 import { attachKeyboardEvents } from './keyboard.ts';
 import { attachMobile } from './mobile.ts';
+import { attachOverlay } from './overlay.ts';
 import {
   attachDismiss,
   attachLinkClicks,
@@ -73,6 +74,7 @@ export function initNavigationMenu(
     root,
     refs,
     controller,
+    renderer,
     cleanups,
     idPrefix,
   };
@@ -83,7 +85,7 @@ export function initNavigationMenu(
   attachDismiss(context);
   attachLinkClicks(context);
   attachKeyboardEvents(context);
-  attachMobile(context);
+  attachOverlay(context, attachMobile(context));
 
   cleanups.push(
     renderer.observeResize(
@@ -164,7 +166,22 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
     triggerByValue,
     valueByTrigger,
     contentMap,
+    overlay: discoverOverlay(root),
   };
+}
+
+/**
+ * Inside the root first. Outside, only an overlay no other nav root contains,
+ * so two roots on one page never fight over one backdrop.
+ */
+function discoverOverlay(root: HTMLElement): HTMLElement | null {
+  const { selectors } = NAV_MENU_CONFIG;
+  const inside = root.querySelector<HTMLElement>(selectors.overlay);
+  if (inside) return inside;
+  for (const el of document.querySelectorAll<HTMLElement>(selectors.overlay)) {
+    if (!el.closest(selectors.root)) return el;
+  }
+  return null;
 }
 
 function indexViewportContents(

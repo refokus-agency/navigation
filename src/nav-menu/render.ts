@@ -23,6 +23,20 @@ export function createRenderer({
   // animate from the stale size (constant via Enter, invisible via hover).
   let isViewportOpen = false;
 
+  // The overlay covers a panel or the mobile card, whichever is open.
+  let isPanelOpen = false;
+  let isCardOpen = false;
+
+  function applyOverlay(): void {
+    if (!refs.overlay) return;
+    refs.overlay.dataset.state = isPanelOpen || isCardOpen ? 'open' : 'closed';
+  }
+
+  function setCardOpen(open: boolean): void {
+    isCardOpen = open;
+    applyOverlay();
+  }
+
   // `dir` is fixed for the instance, so order it once rather than per render.
   const ordered =
     options.dir === 'rtl' ? [...refs.itemValues].reverse() : refs.itemValues;
@@ -109,6 +123,8 @@ export function createRenderer({
     if (!viewport && value) positionViewport(value, activeTrigger, null);
 
     root.dataset.state = value ? 'open' : 'closed';
+    isPanelOpen = value !== null;
+    applyOverlay();
   }
 
   function computeMotion(
@@ -249,7 +265,7 @@ export function createRenderer({
     };
   }
 
-  return { applyState, observeResize };
+  return { applyState, setCardOpen, observeResize };
 }
 
 /**
