@@ -60,6 +60,69 @@ export function renderNavMenu(
 }
 
 /**
+ * Builds the slot-based structure: each panel sits inside its own
+ * `[data-nav-item]` and the `[data-nav-viewport]` starts empty, which is what
+ * a Webflow component with a dropdown slot renders.
+ */
+export function renderSlotNavMenu(
+  values: string[] = ['a', 'b', 'c'],
+): NavMenuMarkup {
+  document.body.innerHTML = `
+    <div class="w-nav">
+      <a class="w-nav-button" aria-expanded="false" href="#">menu</a>
+      <nav data-nav-menu>
+        <div data-nav-list>
+          ${values
+            .map(
+              (value) => `
+                <div data-nav-item="${value}">
+                  <button type="button" data-nav-trigger>${value}</button>
+                  <div data-nav-content>
+                    <a href="/${value}">${value} link</a>
+                  </div>
+                </div>`,
+            )
+            .join('')}
+          <div data-nav-item="plain">
+            <a data-nav-link href="/plain">plain</a>
+          </div>
+        </div>
+        <div data-nav-viewport></div>
+        <button type="button" data-nav-back>back</button>
+      </nav>
+    </div>
+  `;
+
+  // Panels are looked up by item before init (they carry no value yet) and by
+  // value after it, so each lookup is resolved once and kept.
+  const contents = new Map<string, HTMLElement>();
+  for (const value of values) {
+    const content = document.querySelector<HTMLElement>(
+      `[data-nav-item="${value}"] [data-nav-content]`,
+    );
+    if (!content) throw new Error(`Missing panel for "${value}"`);
+    contents.set(value, content);
+  }
+
+  const query = <T extends HTMLElement>(selector: string): T => {
+    const element = document.querySelector<T>(selector);
+    if (!element) throw new Error(`Missing element for "${selector}"`);
+    return element;
+  };
+
+  return {
+    root: query('[data-nav-menu]'),
+    trigger: (value) => query(`[data-nav-item="${value}"] [data-nav-trigger]`),
+    content: (value) => {
+      const content = contents.get(value);
+      if (!content) throw new Error(`Missing panel for "${value}"`);
+      return content;
+    },
+    viewport: query('[data-nav-viewport]'),
+  };
+}
+
+/**
  * jsdom implements neither PointerEvent nor ResizeObserver — the pointer
  * modules only read `pointerType`, so a tagged Event is enough.
  */
