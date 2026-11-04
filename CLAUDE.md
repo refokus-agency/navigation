@@ -43,14 +43,18 @@ is not exported from the package root.
 `{ open, close, destroy }`. Every teardown goes onto the shared `cleanups`
 array, the controller's included, so `destroy()` is just draining that array
 and nothing can be forgotten. (`index.ts` owns a module-level instance counter,
-used only to keep generated ids unique across roots.)
+used only to keep generated ids unique across roots, and a `WeakMap` of
+relocated panels to their origin and owning instance, so a re-init on the same
+root adopts them and a stale handle's `destroy()` cannot pull them out.)
 
 **`render.ts` is the only module that writes *reactive* DOM state**, and it
-animates nothing. Two deliberate exceptions: `setupAria` in `index.ts` writes
-the ARIA wiring once at init, and `mobile.ts` writes `[data-nav-mode]` (tracks
-the breakpoint) and owns the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair
-(`aria-expanded`, card `data-state`/`inert`). Card state is separate from the
-panel state machine, and `destroy()` undoes it.
+animates nothing. Three deliberate exceptions: `setupAria` in `index.ts` writes
+the ARIA wiring once at init; `mobile.ts` writes `[data-nav-mode]` (tracks the
+breakpoint) and owns the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair
+(`aria-expanded`, card `data-state`/`inert`), whose state is separate from the
+panel state machine and undone by `destroy()`; and `relocatePanels` in
+`index.ts` moves slot panels (authored inside their item) into the viewport
+once at init — a structural move, undone by the last entry of `cleanups`.
 
 Whether a viewport mount skips the size transition comes from the renderer's
 own `isViewportOpen` flag — **never** from reading back `style.display`, which only

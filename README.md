@@ -193,9 +193,28 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-toggle`      | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
 | `data-nav-card`        | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only                                               |
 
-Panels may live inside a shared `[data-nav-viewport]` or directly inside their
-`[data-nav-item]`. The viewport form is preferred: it lets one element animate
-between panel sizes.
+Panels may be authored inside a shared `[data-nav-viewport]` or inside their
+`[data-nav-item]`. The viewport is what lets one element animate between panel
+sizes, so when one exists, every panel ends up in it:
+
+- **Slot markup.** A panel authored inside its item (what a Webflow component
+  with a dropdown slot renders) is moved into the viewport at init, paired with
+  its item's value. `destroy()` puts it back under its original parent, before
+  its original next sibling.
+- An item uses its **first** owned `[data-nav-content]` (a nested item owns its
+  own). A second panel in the same item is left where it is.
+- A viewport panel that already carries the item's value wins; the panel inside
+  the item is not moved.
+- A panel left where it is (the two cases above) is **not managed**: it gets no
+  `data-state`, no `inert` and no hiding, so it stays visible and tabbable.
+  Treat it as an authoring error and remove it.
+- Without a viewport, nothing moves and panels work in place.
+- Inside the Webflow Designer (`skipInWebflowEditor`), nothing moves, so the
+  panel stays editable inside its item.
+
+> **Breaking change.** Before this, a page with a viewport *and* panels inside
+> items left those panels in place. They now move into the viewport. Pin the
+> previous major version if a site depends on the old layout.
 
 > **Note:** `data-nav-menu` is the same attribute the scroll animation uses, so
 > a single `<nav data-nav-menu>` can run both features. The `data-nav-*` names
@@ -318,6 +337,13 @@ stays aligned however much sits before the list, such as a logo.
 > from the panel — with two visible symptoms: the viewport settles on the
 > tallest panel and never shrinks, and the `ResizeObserver` re-measures on
 > every frame of the size transition, so the height visibly chases itself.
+
+> **Relocated panels and descendant selectors.** A panel moved out of its item
+> no longer matches CSS that reaches it *through* the item, such as
+> `.dropdown .panel`. The Designer does not move panels, so that CSS still
+> looks right there and breaks only on the published site. Style panels by
+> their own class or `[data-nav-content]`, and keep the sizing rule above in
+> mind: inside the viewport, a panel must not impose its own size.
 
 ### Interaction model
 

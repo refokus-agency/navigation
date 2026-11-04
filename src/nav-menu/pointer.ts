@@ -62,9 +62,9 @@ export function attachHoverEvents({
     });
   }
 
-  // Panels can fall back to living inside their item even when a viewport
-  // exists, and such a panel needs its own hover target or the close timer
-  // runs on under the cursor.
+  // Without a viewport, panels live inside their item, and such a panel needs
+  // its own hover target or the close timer runs on under the cursor. (With
+  // one, init has already relocated every panel into it.)
   const outsideViewport = [...refs.contentMap.values()].filter(
     (content) => !refs.viewport?.contains(content),
   );
