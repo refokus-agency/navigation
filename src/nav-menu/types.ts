@@ -2,6 +2,8 @@ export type NavMenuOrientation = 'horizontal' | 'vertical';
 
 export type NavMenuDirection = 'ltr' | 'rtl';
 
+export type NavMenuInteraction = 'hover' | 'click';
+
 export type NavMenuOptions = {
   /** Delay before a hovered trigger opens its panel, in ms. */
   delayDuration: number;
@@ -11,16 +13,27 @@ export type NavMenuOptions = {
   closeDelay?: number;
   orientation: NavMenuOrientation;
   dir: NavMenuDirection;
+  /**
+   * What opens a panel with the mouse. Overridden by `data-nav-interaction` on
+   * the root. Optional so option objects written before it existed still
+   * typecheck; it is always resolved internally.
+   */
+  interaction?: NavMenuInteraction;
   /** No-op inside the Webflow Designer so panels stay editable in canvas. */
   skipInWebflowEditor: boolean;
   onValueChange?: (value: string | null) => void;
 };
 
 /**
- * Internal: options after defaults are applied. `closeDelay` stays optional on
- * the public `NavMenuOptions` so adding it was not a breaking type change.
+ * Internal only — not re-exported: options after defaults are applied.
+ * `closeDelay` and `interaction` stay optional on the public `NavMenuOptions`
+ * so adding them was not a breaking type change. `interaction` is always
+ * resolved, so `pointer.ts` can never read `undefined` as click mode.
  */
-export type ResolvedNavMenuOptions = NavMenuOptions & { closeDelay: number };
+export type ResolvedNavMenuOptions = NavMenuOptions & {
+  closeDelay: number;
+  interaction: NavMenuInteraction;
+};
 
 export type InitNavigationMenuOptions = Partial<NavMenuOptions>;
 
@@ -83,6 +96,7 @@ export type NavMenuContext = {
   refs: NavMenuRefs;
   controller: NavMenuController;
   cleanups: NavMenuCleanup[];
+  options: ResolvedNavMenuOptions;
   /** Per-instance id prefix, so generated ids never collide across roots. */
   idPrefix: string;
 };

@@ -1,8 +1,34 @@
 import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
 
-/** Mouse only — touch falls through to the click handler. */
-export function attachPointerEvents({
+/** Trigger clicks toggle in both modes — touch always lands here. */
+export function attachTriggerClicks({
+  refs,
+  controller,
+  cleanups,
+}: NavMenuContext): void {
+  for (const { trigger, value } of refs.entries) {
+    if (!refs.contentMap.has(value)) continue;
+
+    const onClick = (event: MouseEvent) => {
+      // Read per click so the attribute can change after init. Navigate mode
+      // leaves the link alone in both interaction modes: its panel opens from
+      // hover (hover mode) or the keyboard.
+      if (isNavigateTrigger(trigger)) return;
+      event.preventDefault();
+      controller.triggerClick(value, trigger);
+    };
+
+    trigger.addEventListener('click', onClick);
+    cleanups.push(() => trigger.removeEventListener('click', onClick));
+  }
+}
+
+/**
+ * Hover mode only — click mode never calls this, so no hover timer can ever be
+ * scheduled. Mouse only: touch falls through to the click handler.
+ */
+export function attachHoverEvents({
   root,
   refs,
   controller,
@@ -26,22 +52,13 @@ export function attachPointerEvents({
       if (!isMouseHover(event)) return;
       controller.triggerPointerLeave(trigger);
     };
-    const onClick = (event: MouseEvent) => {
-      // Read per click so the attribute can change after init. Navigate mode
-      // leaves the link alone: opening is hover/keyboard only.
-      if (isNavigateTrigger(trigger)) return;
-      event.preventDefault();
-      controller.triggerClick(value, trigger);
-    };
 
     trigger.addEventListener('pointerenter', onEnter);
     trigger.addEventListener('pointerleave', onLeave);
-    trigger.addEventListener('click', onClick);
 
     cleanups.push(() => {
       trigger.removeEventListener('pointerenter', onEnter);
       trigger.removeEventListener('pointerleave', onLeave);
-      trigger.removeEventListener('click', onClick);
     });
   }
 

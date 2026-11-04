@@ -1,7 +1,9 @@
 /**
  * Shared root-attribute resolution for both features. Precedence is always
  * attribute → JS option → default. Values match exactly — no trimming, no case
- * folding — and anything unparseable is skipped silently.
+ * folding — and anything unparseable is skipped silently. The one exception
+ * is nav-menu's `data-nav-interaction`, which `nav-menu/index.ts` warns about
+ * separately; resolution here stays silent.
  */
 
 /** `undefined` means the attribute is missing, empty or invalid. */

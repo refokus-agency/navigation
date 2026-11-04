@@ -23,6 +23,7 @@ export const NAV_MENU_CONFIG = {
     closeDelay: 'data-nav-close-delay',
     orientation: 'data-nav-orientation',
     dir: 'data-nav-dir',
+    interaction: 'data-nav-interaction',
     triggerMode: 'data-nav-trigger-mode',
   },
   timing: {

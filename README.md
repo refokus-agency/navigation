@@ -121,6 +121,7 @@ any custom code:
 | `data-nav-close-delay`      | nav-menu | number, in ms                   | `closeDelay`         | `150`            |
 | `data-nav-orientation`      | nav-menu | `horizontal` \| `vertical`      | `orientation`        | `horizontal`     |
 | `data-nav-dir`              | nav-menu | `ltr` \| `rtl`                  | `dir`                | `ltr`            |
+| `data-nav-interaction`      | nav-menu | `hover` \| `click`              | `interaction`        | `hover`          |
 | `data-nav-hide-on-scroll`   | nav-anim | `true` \| `false`               | `hideOnScroll`       | `true`           |
 | `data-nav-scroll-threshold` | nav-anim | number, in px                   | `scrollThreshold`    | `50`             |
 | `data-nav-anim-duration`    | nav-anim | number, in seconds              | `animationDuration`  | `0.3`            |
@@ -129,8 +130,11 @@ any custom code:
 **Precedence:** a valid attribute wins over the JS option, and a valid JS
 option wins over the default. A missing, empty or invalid value (`"300ms"`,
 `"vertcal"`, `" 200 "`, `"Vertical"`) is skipped silently — nothing is logged
-or thrown. Values are matched exactly: no trimming, no case folding. Numbers
-must be non-negative, since each is a time or a distance (`"0"`, `".5"` and
+or thrown. The one exception is `data-nav-interaction`: an invalid value falls
+back the same way but also logs a `console.warn` naming it, since a mistyped
+`"Click"` would otherwise look like click mode being broken (see
+[Click interaction](#click-interaction)). Values are matched exactly: no
+trimming, no case folding. Numbers must be non-negative, since each is a time or a distance (`"0"`, `".5"` and
 `"99999"` are valid; `"-20"`, `"5."`, `"+5"` and `"1e3"` are not). A negative
 value falls back the same way, whether it comes from an attribute or a JS
 option. An easing must resolve to a working GSAP ease, so
@@ -175,18 +179,19 @@ then exposes data attributes and custom properties for your CSS to animate.
 </nav>
 ```
 
-| Attribute             | Purpose                                                                             |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| `data-nav-menu`       | Menu root. Gets `role="navigation"` unless you set a role yourself                   |
-| `data-nav-list`       | Wrapper around the items (optional, receives `[data-orientation]`)                  |
-| `data-nav-item`       | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted |
-| `data-nav-trigger`    | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel    |
-| `data-nav-content`    | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                |
-| `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
-| `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
-| `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
-| `data-nav-toggle`     | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
-| `data-nav-card`       | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only |
+| Attribute              | Purpose                                                                                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-nav-menu`        | Menu root. Gets `role="navigation"` unless you set a role yourself                                                                                       |
+| `data-nav-list`        | Wrapper around the items (optional, receives `[data-orientation]`)                                                                                       |
+| `data-nav-item`        | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted                                                                      |
+| `data-nav-trigger`     | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel                                                                        |
+| `data-nav-content`     | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                                                                                     |
+| `data-nav-viewport`    | Optional shared container for all panels — enables animated size transitions                                                                             |
+| `data-nav-link`        | A plain link. Inside a panel it also dismisses the menu on click                                                                                         |
+| `data-nav-back`        | Mobile "back" control — closes the open panel without closing the burger overlay                                                                         |
+| `data-nav-interaction` | On the root: `hover` (default) or `click` — what opens a panel with the mouse. Overrides the `interaction` option                                        |
+| `data-nav-toggle`      | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
+| `data-nav-card`        | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only                                               |
 
 Panels may be authored inside a shared `[data-nav-viewport]` or inside their
 `[data-nav-item]`. The viewport is what lets one element animate between panel
@@ -249,6 +254,7 @@ Designer (see `skipInWebflowEditor`).
 | `closeDelay`          | `number`                       | `150`          | Grace period after the pointer leaves before the panel closes, in ms        |
 | `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
 | `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction                                       |
+| `interaction`         | `'hover' \| 'click'`           | `'hover'`      | What opens a panel with the mouse. `data-nav-interaction` on the root wins  |
 | `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
 | `onValueChange`       | `(value: string \| null) => void` | —          | Called with the open item's value, or `null` when the menu closes           |
 
@@ -350,6 +356,23 @@ stays aligned however much sits before the list, such as a logo.
   instead of toggling (see "Trigger mode" below)
 - **Click** a link inside a panel closes the menu; ⌘/Ctrl-click keeps it open
 - **Click or focus** outside the nav closes the menu
+
+Hover is mouse-only and disabled in mobile mode — touch devices fall through
+to the click handler.
+
+#### Click interaction
+
+Set `data-nav-interaction="click"` on the root (or pass `interaction: 'click'`)
+to drop hover entirely: a panel opens and closes only on trigger click, stays
+open when the pointer leaves, and still closes on outside click, `Escape`, a
+link click inside it, or focus leaving the nav. Clicking another trigger
+switches panels. The keyboard behaves the same in both modes.
+
+The mode is read once, at init, with this precedence: the attribute, when it is
+exactly `hover` or `click`; else the `interaction` option, when valid; else
+`hover`. Values are case-sensitive — `"Click"` is ignored, with a
+`console.warn` naming the received value.
+
 #### Trigger mode
 
 A trigger that is also a link to the section's overview page can opt out of
@@ -364,14 +387,14 @@ click-toggling:
 | `toggle` (default) | Toggles the panel, navigation prevented | Click, hover, keyboard     |
 | `navigate`         | Not prevented — the link navigates      | Hover, arrow keys, `Space` |
 
+In click interaction mode there is no hover, so a `navigate` trigger's panel
+opens from the keyboard only (arrow keys, `Space`); a click still navigates.
+
 Trade-off: touch has no hover, so a `navigate` trigger on a touch device just
 navigates and its panel is unreachable. Keep `toggle` (the default) wherever
 touch users need the panel. ⌘/Ctrl-click on a `navigate` trigger opens the link
 in a new tab and leaves the menu as it is; a ⌘/Ctrl-click on a link inside a
 panel already keeps the menu open.
-
-Hover is mouse-only and disabled in mobile mode — touch devices fall through
-to the click handler.
 
 ### Keyboard
 
@@ -584,7 +607,8 @@ any selector is a **breaking change** for every consumer.
     skipDelay: 'data-nav-skip-delay',
     closeDelay: 'data-nav-close-delay',
     orientation: 'data-nav-orientation',
-    dir: 'data-nav-dir'
+    dir: 'data-nav-dir',
+    interaction: 'data-nav-interaction'
   },
   timing: {
     closeDelay: 150        // Default for the closeDelay option, in ms

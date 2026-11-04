@@ -17,8 +17,9 @@ import { attachKeyboardEvents } from './keyboard.ts';
 import { attachMobile } from './mobile.ts';
 import {
   attachDismiss,
+  attachHoverEvents,
   attachLinkClicks,
-  attachPointerEvents,
+  attachTriggerClicks,
 } from './pointer.ts';
 import { createRenderer } from './render.ts';
 import type {
@@ -28,6 +29,7 @@ import type {
   NavMenuContext,
   NavMenuDirection,
   NavMenuEntry,
+  NavMenuInteraction,
   NavMenuOptions,
   NavMenuOrientation,
   NavMenuRefs,
@@ -45,6 +47,7 @@ const DEFAULT_OPTIONS: ResolvedNavMenuOptions = {
   closeDelay: NAV_MENU_CONFIG.timing.closeDelay,
   orientation: 'horizontal',
   dir: 'ltr',
+  interaction: 'hover',
   skipInWebflowEditor: true,
 };
 
@@ -71,6 +74,8 @@ export function initNavigationMenu(
     return null;
   }
 
+  warnInvalidInteraction(root);
+
   const refs = discoverRefs(root);
   const cleanups: NavMenuCleanup[] = [];
   // Kept out of `cleanups` until init succeeds, so it always runs last: panels
@@ -93,12 +98,14 @@ export function initNavigationMenu(
       refs,
       controller,
       cleanups,
+      options: resolvedOptions,
       idPrefix,
     };
 
     cleanups.push(() => controller.destroy());
 
-    attachPointerEvents(context);
+    attachTriggerClicks(context);
+    if (resolvedOptions.interaction === 'hover') attachHoverEvents(context);
     attachDismiss(context);
     attachLinkClicks(context);
     attachKeyboardEvents(context);
@@ -152,8 +159,10 @@ function drain(cleanups: NavMenuCleanup[]): { cause: unknown } | null {
 
 const ORIENTATIONS = ['horizontal', 'vertical'] as const;
 const DIRECTIONS = ['ltr', 'rtl'] as const;
+const INTERACTIONS = ['hover', 'click'] as const;
 const readOrientation = readEnumAttr<NavMenuOrientation>(ORIENTATIONS);
 const readDirection = readEnumAttr<NavMenuDirection>(DIRECTIONS);
+const readInteraction = readEnumAttr<NavMenuInteraction>(INTERACTIONS);
 
 /**
  * Root attributes override the merged JS options; read once, at init. Invalid
@@ -197,7 +206,30 @@ function resolveMenuOptions(
       isValid: isOneOf(DIRECTIONS),
       fallback: DEFAULT_OPTIONS.dir,
     }),
+    interaction: resolveSetting({
+      attribute: readInteraction(root, attributes.interaction),
+      js: merged.interaction,
+      isValid: isOneOf(INTERACTIONS),
+      fallback: DEFAULT_OPTIONS.interaction,
+    }),
   };
+}
+
+/**
+ * The one exception to silent attribute resolution. A mistyped interaction
+ * (`"Click"`, `"tap"`) silently becomes hover, which reads as "click mode is
+ * broken" rather than as a typo — unlike a bad delay, whose fallback is merely
+ * a slightly different timing. Resolution itself stays silent; this only says
+ * what was ignored. Called after the Webflow editor check, so the Designer
+ * never logs it.
+ */
+function warnInvalidInteraction(root: HTMLElement): void {
+  const name = NAV_MENU_CONFIG.attributes.interaction;
+  const attribute = root.getAttribute(name);
+  if (attribute === null || readInteraction(root, name) !== undefined) return;
+  console.warn(
+    `[nav-menu] Ignoring ${name}="${attribute}": expected "hover" or "click". Falling back to the interaction option, else "hover".`,
+  );
 }
 
 function discoverRefs(root: HTMLElement): NavMenuRefs {
@@ -382,7 +414,7 @@ function indexViewportContents(
 function setupAria(
   root: HTMLElement,
   refs: NavMenuRefs,
-  options: NavMenuOptions,
+  options: ResolvedNavMenuOptions,
   idPrefix: string,
 ): void {
   if (!root.getAttribute('role')) root.setAttribute('role', 'navigation');
@@ -432,6 +464,7 @@ export type {
   InitNavigationMenuOptions,
   NavigationMenuInstance,
   NavMenuDirection,
+  NavMenuInteraction,
   NavMenuOptions,
   NavMenuOrientation,
 } from './types.ts';
