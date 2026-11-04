@@ -89,6 +89,17 @@ describe('invalid data-nav-interaction', () => {
       expect(warn).not.toHaveBeenCalled();
     },
   );
+
+  it('should not warn inside the Webflow editor', () => {
+    document.documentElement.classList.add(NAV_MENU_CONFIG.editorClass);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(init('Click')).toBeNull();
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      document.documentElement.classList.remove(NAV_MENU_CONFIG.editorClass);
+    }
+  });
 });
 
 describe('interaction mode resolution', () => {

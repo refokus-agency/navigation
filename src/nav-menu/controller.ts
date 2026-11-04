@@ -1,9 +1,8 @@
-import { NAV_MENU_CONFIG } from './config.ts';
 import type {
   NavMenuController,
-  ResolvedNavMenuOptions,
   NavMenuRefs,
   NavMenuRenderer,
+  ResolvedNavMenuOptions,
 } from './types.ts';
 
 type TriggerPointerState = {
@@ -134,10 +133,7 @@ export function createController({
 
   function startCloseTimer(): void {
     clearTimeout(closeTimer);
-    closeTimer = setTimeout(
-      () => setValue(null),
-      NAV_MENU_CONFIG.timing.closeDelay,
-    );
+    closeTimer = setTimeout(() => setValue(null), options.closeDelay);
   }
 
   function handleEscape(): HTMLElement | null {

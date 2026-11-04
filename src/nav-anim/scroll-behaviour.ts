@@ -41,24 +41,27 @@ function hideNavbar(): void {
 /**
  * Determines if scroll distance is significant enough to trigger animation
  * @param currentScrollY - Current scroll position
+ * @param threshold - Minimum distance, from `scrollThreshold`
  * @returns Whether scroll is significant
  */
-function isSignificantScroll(currentScrollY: number): boolean {
-  return (
-    Math.abs(currentScrollY - lastScrollY) >= NAVBAR_CONFIG.scroll.threshold
-  );
+function isSignificantScroll(
+  currentScrollY: number,
+  threshold: number,
+): boolean {
+  return Math.abs(currentScrollY - lastScrollY) >= threshold;
 }
 
 /**
  * Determines if user is scrolling down past threshold
  * @param currentScrollY - Current scroll position
+ * @param threshold - Minimum position, from `scrollThreshold`
  * @returns Whether user is scrolling down past threshold
  */
-function isScrollingDownPastThreshold(currentScrollY: number): boolean {
-  return (
-    currentScrollY > lastScrollY &&
-    currentScrollY > NAVBAR_CONFIG.scroll.threshold
-  );
+function isScrollingDownPastThreshold(
+  currentScrollY: number,
+  threshold: number,
+): boolean {
+  return currentScrollY > lastScrollY && currentScrollY > threshold;
 }
 
 /**
@@ -80,11 +83,14 @@ function handleFocusIn(event: FocusEvent): void {
  * Handles scroll events to show/hide navbar based on direction
  */
 function handleScroll(): void {
+  if (!currentOptions) return;
+
   const currentScrollY = window.scrollY;
+  const threshold = currentOptions.scrollThreshold;
 
-  if (!isSignificantScroll(currentScrollY)) return;
+  if (!isSignificantScroll(currentScrollY, threshold)) return;
 
-  if (isScrollingDownPastThreshold(currentScrollY)) {
+  if (isScrollingDownPastThreshold(currentScrollY, threshold)) {
     hideNavbar();
   } else {
     showNavbar();

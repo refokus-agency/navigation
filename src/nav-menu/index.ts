@@ -4,6 +4,13 @@
  * markup contract and the full list of CSS hooks.
  */
 
+import {
+  isNonNegativeNumber,
+  isOneOf,
+  readEnumAttr,
+  readNumberAttr,
+  resolveSetting,
+} from '../attributes.ts';
 import { NAV_MENU_CONFIG } from './config.ts';
 import { createController } from './controller.ts';
 import { attachKeyboardEvents } from './keyboard.ts';
@@ -20,8 +27,11 @@ import type {
   NavigationMenuInstance,
   NavMenuCleanup,
   NavMenuContext,
+  NavMenuDirection,
   NavMenuEntry,
   NavMenuInteraction,
+  NavMenuOptions,
+  NavMenuOrientation,
   NavMenuRefs,
   ResolvedNavMenuOptions,
 } from './types.ts';
@@ -34,6 +44,7 @@ let instanceCount = 0;
 const DEFAULT_OPTIONS: ResolvedNavMenuOptions = {
   delayDuration: 200,
   skipDelayDuration: 300,
+  closeDelay: NAV_MENU_CONFIG.timing.closeDelay,
   orientation: 'horizontal',
   dir: 'ltr',
   interaction: 'hover',
@@ -51,19 +62,19 @@ export function initNavigationMenu(
 
   if (!root) return null;
 
-  const merged = { ...DEFAULT_OPTIONS, ...options };
+  const resolvedOptions = resolveMenuOptions(root, {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  });
 
   if (
-    merged.skipInWebflowEditor &&
+    resolvedOptions.skipInWebflowEditor &&
     document.documentElement.classList.contains(NAV_MENU_CONFIG.editorClass)
   ) {
     return null;
   }
 
-  const resolvedOptions: ResolvedNavMenuOptions = {
-    ...merged,
-    interaction: resolveInteraction(root, merged.interaction),
-  };
+  warnInvalidInteraction(root);
 
   const refs = discoverRefs(root);
   const idPrefix = `nav-${++instanceCount}`;
@@ -113,30 +124,79 @@ export function initNavigationMenu(
   };
 }
 
+const ORIENTATIONS = ['horizontal', 'vertical'] as const;
+const DIRECTIONS = ['ltr', 'rtl'] as const;
+const INTERACTIONS = ['hover', 'click'] as const;
+const readOrientation = readEnumAttr<NavMenuOrientation>(ORIENTATIONS);
+const readDirection = readEnumAttr<NavMenuDirection>(DIRECTIONS);
+const readInteraction = readEnumAttr<NavMenuInteraction>(INTERACTIONS);
+
 /**
- * The root attribute wins, then the JS option, then hover. `jsValue` is
- * `unknown` because browser-bundle callers pass untyped options.
+ * Root attributes override the merged JS options; read once, at init. Invalid
+ * values — attribute or JS — are skipped silently, down to the default.
  */
-function resolveInteraction(
+function resolveMenuOptions(
   root: HTMLElement,
-  jsValue: unknown,
-): NavMenuInteraction {
-  const name = NAV_MENU_CONFIG.attributes.interaction;
-  const attribute = root.getAttribute(name);
-  if (isInteraction(attribute)) return attribute;
-  if (attribute !== null) {
-    // Silent fallback hides Webflow typos like "Click"; say what was ignored.
-    console.warn(
-      `[nav-menu] Ignoring ${name}="${attribute}": expected "hover" or "click". Falling back to the interaction option, else "hover".`,
-    );
-  }
-  if (isInteraction(jsValue)) return jsValue;
-  return 'hover';
+  merged: NavMenuOptions,
+): ResolvedNavMenuOptions {
+  const { attributes } = NAV_MENU_CONFIG;
+
+  return {
+    ...merged,
+    delayDuration: resolveSetting({
+      attribute: readNumberAttr(root, attributes.delay),
+      js: merged.delayDuration,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.delayDuration,
+    }),
+    skipDelayDuration: resolveSetting({
+      attribute: readNumberAttr(root, attributes.skipDelay),
+      js: merged.skipDelayDuration,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.skipDelayDuration,
+    }),
+    closeDelay: resolveSetting({
+      attribute: readNumberAttr(root, attributes.closeDelay),
+      js: merged.closeDelay,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.closeDelay,
+    }),
+    orientation: resolveSetting({
+      attribute: readOrientation(root, attributes.orientation),
+      js: merged.orientation,
+      isValid: isOneOf(ORIENTATIONS),
+      fallback: DEFAULT_OPTIONS.orientation,
+    }),
+    dir: resolveSetting({
+      attribute: readDirection(root, attributes.dir),
+      js: merged.dir,
+      isValid: isOneOf(DIRECTIONS),
+      fallback: DEFAULT_OPTIONS.dir,
+    }),
+    interaction: resolveSetting({
+      attribute: readInteraction(root, attributes.interaction),
+      js: merged.interaction,
+      isValid: isOneOf(INTERACTIONS),
+      fallback: DEFAULT_OPTIONS.interaction,
+    }),
+  };
 }
 
-// Exact match only: Webflow authors typing "Click" get the documented default.
-function isInteraction(value: unknown): value is NavMenuInteraction {
-  return value === 'hover' || value === 'click';
+/**
+ * The one exception to silent attribute resolution. A mistyped interaction
+ * (`"Click"`, `"tap"`) silently becomes hover, which reads as "click mode is
+ * broken" rather than as a typo — unlike a bad delay, whose fallback is merely
+ * a slightly different timing. Resolution itself stays silent; this only says
+ * what was ignored. Called after the Webflow editor check, so the Designer
+ * never logs it.
+ */
+function warnInvalidInteraction(root: HTMLElement): void {
+  const name = NAV_MENU_CONFIG.attributes.interaction;
+  const attribute = root.getAttribute(name);
+  if (attribute === null || readInteraction(root, name) !== undefined) return;
+  console.warn(
+    `[nav-menu] Ignoring ${name}="${attribute}": expected "hover" or "click". Falling back to the interaction option, else "hover".`,
+  );
 }
 
 function discoverRefs(root: HTMLElement): NavMenuRefs {

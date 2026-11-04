@@ -1,8 +1,8 @@
 import type {
   NavMenuCleanup,
-  ResolvedNavMenuOptions,
   NavMenuRefs,
   NavMenuRenderer,
+  ResolvedNavMenuOptions,
 } from './types.ts';
 
 /** Writes DOM state only — CSS owns every transition. */

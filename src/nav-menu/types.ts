@@ -9,6 +9,8 @@ export type NavMenuOptions = {
   delayDuration: number;
   /** Window after a close during which the next open is instant, in ms. */
   skipDelayDuration: number;
+  /** Grace period after the pointer leaves before the panel closes, in ms. */
+  closeDelay?: number;
   orientation: NavMenuOrientation;
   dir: NavMenuDirection;
   /**
@@ -22,15 +24,18 @@ export type NavMenuOptions = {
   onValueChange?: (value: string | null) => void;
 };
 
-export type InitNavigationMenuOptions = Partial<NavMenuOptions>;
-
 /**
- * Internal only — not re-exported. `interaction` is always resolved, so
- * `pointer.ts` can never read `undefined` as click mode.
+ * Internal only — not re-exported: options after defaults are applied.
+ * `closeDelay` and `interaction` stay optional on the public `NavMenuOptions`
+ * so adding them was not a breaking type change. `interaction` is always
+ * resolved, so `pointer.ts` can never read `undefined` as click mode.
  */
 export type ResolvedNavMenuOptions = NavMenuOptions & {
+  closeDelay: number;
   interaction: NavMenuInteraction;
 };
+
+export type InitNavigationMenuOptions = Partial<NavMenuOptions>;
 
 export type NavMenuEntry = {
   item: HTMLElement;
