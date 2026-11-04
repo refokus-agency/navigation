@@ -64,10 +64,17 @@ if (success) {
 }
 ```
 
+| Option              | Type      | Default          | Description                                                       |
+| ------------------- | --------- | ---------------- | ----------------------------------------------------------------- |
+| `animationDuration` | `number`  | `0.3`            | Slide duration, in seconds                                        |
+| `animationEasing`   | `string`  | `'power2.inOut'` | Any GSAP ease name                                                |
+| `hideOnScroll`      | `boolean` | `true`           | When `false`, the navbar slides in once and never hides on scroll |
+| `scrollThreshold`   | `number`  | `50`             | Scroll distance, in px, before the navbar hides or shows          |
+
 ### How It Works
 
 - **Initial Animation**: Navbar slides in smoothly on page load
-- **Scroll Down**: Navbar hides when scrolling down past threshold (50px)
+- **Scroll Down**: Navbar hides when scrolling down past `scrollThreshold` (50px by default)
 - **Scroll Up**: Navbar shows when scrolling up
 - **Focus**: A hidden navbar slides back in when focus moves into it, so
   tabbing back up to the nav never lands on an off-screen element
@@ -90,6 +97,49 @@ initNavigationMenu();
 
 They are independent: the animation reads only the root, the menu reads only
 its own `data-nav-*` descendants. Use either on its own if you prefer.
+
+### Configuring from data attributes
+
+Every behavior setting can also be written as an attribute on the
+`[data-nav-menu]` root, so a Webflow component can expose it as a prop without
+any custom code:
+
+```html
+<nav
+  data-nav-menu
+  data-nav-delay="100"
+  data-nav-close-delay="400"
+  data-nav-orientation="vertical"
+  data-nav-hide-on-scroll="false"
+>
+```
+
+| Attribute                   | Feature  | Accepted values                 | Option               | Default          |
+| --------------------------- | -------- | ------------------------------- | -------------------- | ---------------- |
+| `data-nav-delay`            | nav-menu | number, in ms                   | `delayDuration`      | `200`            |
+| `data-nav-skip-delay`       | nav-menu | number, in ms                   | `skipDelayDuration`  | `300`            |
+| `data-nav-close-delay`      | nav-menu | number, in ms                   | `closeDelay`         | `150`            |
+| `data-nav-orientation`      | nav-menu | `horizontal` \| `vertical`      | `orientation`        | `horizontal`     |
+| `data-nav-dir`              | nav-menu | `ltr` \| `rtl`                  | `dir`                | `ltr`            |
+| `data-nav-hide-on-scroll`   | nav-anim | `true` \| `false`               | `hideOnScroll`       | `true`           |
+| `data-nav-scroll-threshold` | nav-anim | number, in px                   | `scrollThreshold`    | `50`             |
+| `data-nav-anim-duration`    | nav-anim | number, in seconds              | `animationDuration`  | `0.3`            |
+| `data-nav-anim-easing`      | nav-anim | any GSAP ease name              | `animationEasing`    | `power2.inOut`   |
+
+**Precedence:** a valid attribute wins over the JS option, and a valid JS
+option wins over the default. A missing, empty or invalid value (`"300ms"`,
+`"vertcal"`, `" 200 "`, `"Vertical"`) is skipped silently — nothing is logged
+or thrown. Values are matched exactly: no trimming, no case folding. Numbers
+must be non-negative, since each is a time or a distance (`"0"`, `".5"` and
+`"99999"` are valid; `"-20"`, `"5."`, `"+5"` and `"1e3"` are not). A negative
+value falls back the same way, whether it comes from an attribute or a JS
+option. An easing must resolve to a working GSAP ease, so
+malformed arguments such as `"steps(abc)"` are skipped too.
+
+Attributes are read **once, at init**; changing them afterwards has no effect
+until the feature is initialized again. nav-menu reads the root it attaches
+to, so several menus resolve independently. nav-anim animates every root but
+reads its attributes from the **first** `[data-nav-menu]` only.
 
 > **Upgrading from a 1.x release:** `initNavbarAnimation` used to select
 > `[r-navbar]`. Rename that attribute to `data-nav-menu` on your nav element —
@@ -177,6 +227,7 @@ Designer (see `skipInWebflowEditor`).
 | --------------------- | ------------------------------ | -------------- | --------------------------------------------------------------------------- |
 | `delayDuration`       | `number`                       | `200`          | Hover dwell time before a panel opens, in ms                                |
 | `skipDelayDuration`   | `number`                       | `300`          | Window after a close during which the next hover opens instantly            |
+| `closeDelay`          | `number`                       | `150`          | Grace period after the pointer leaves before the panel closes, in ms        |
 | `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
 | `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction                                       |
 | `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
@@ -470,10 +521,16 @@ any selector is a **breaking change** for every consumer.
     visible: '0%'      // Y position when visible
   },
   scroll: {
-    threshold: 50      // Minimum scroll distance to trigger animation
+    threshold: 50      // Default for the scrollThreshold option
   },
   selectors: {
     navbar: '[data-nav-menu]' // Shared NAV_ROOT_SELECTOR from src/config.ts
+  },
+  attributes: {
+    hideOnScroll: 'data-nav-hide-on-scroll',
+    scrollThreshold: 'data-nav-scroll-threshold',
+    animDuration: 'data-nav-anim-duration',
+    animEasing: 'data-nav-anim-easing'
   }
 }
 ```
@@ -494,8 +551,17 @@ any selector is a **breaking change** for every consumer.
     webflowNav: '.w-nav',
     webflowBurger: '.w-nav-button'
   },
+  attributes: {
+    item: 'data-nav-item',
+    content: 'data-nav-content',
+    delay: 'data-nav-delay',
+    skipDelay: 'data-nav-skip-delay',
+    closeDelay: 'data-nav-close-delay',
+    orientation: 'data-nav-orientation',
+    dir: 'data-nav-dir'
+  },
   timing: {
-    closeDelay: 150        // Grace period after the pointer leaves, in ms
+    closeDelay: 150        // Default for the closeDelay option, in ms
   },
   mobile: {
     query: '(max-width: 767px)'
