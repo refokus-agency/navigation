@@ -7,12 +7,20 @@ export type NavMenuOptions = {
   delayDuration: number;
   /** Window after a close during which the next open is instant, in ms. */
   skipDelayDuration: number;
+  /** Grace period after the pointer leaves before the panel closes, in ms. */
+  closeDelay?: number;
   orientation: NavMenuOrientation;
   dir: NavMenuDirection;
   /** No-op inside the Webflow Designer so panels stay editable in canvas. */
   skipInWebflowEditor: boolean;
   onValueChange?: (value: string | null) => void;
 };
+
+/**
+ * Internal: options after defaults are applied. `closeDelay` stays optional on
+ * the public `NavMenuOptions` so adding it was not a breaking type change.
+ */
+export type ResolvedNavMenuOptions = NavMenuOptions & { closeDelay: number };
 
 export type InitNavigationMenuOptions = Partial<NavMenuOptions>;
 

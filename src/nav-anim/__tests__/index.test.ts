@@ -5,6 +5,7 @@ vi.mock('../initial-animation.ts', () => ({
 }));
 
 vi.mock('../scroll-behaviour.ts', () => ({
+  cleanupNavbarAnimation: vi.fn(),
   initScrollBehavior: vi.fn(),
 }));
 
@@ -19,24 +20,28 @@ import { initScrollBehavior } from '../scroll-behaviour.ts';
 const mockedPerformInitialAnimation = vi.mocked(performInitialAnimation);
 const mockedInitScrollBehavior = vi.mocked(initScrollBehavior);
 
-function mockNavbarQuery(elements: Element[]): void {
-  Object.defineProperty(globalThis, 'document', {
-    value: {
-      querySelectorAll: (selector: string) => {
-        if (selector === NAVBAR_CONFIG.selectors.navbar) {
-          return elements;
-        }
+/** Today's defaults; the new fields must not change what an empty init does. */
+const DEFAULTS = {
+  animationDuration: 0.3,
+  animationEasing: 'power2.inOut',
+  hideOnScroll: true,
+  scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+};
 
-        return [];
-      },
-    },
-    configurable: true,
+/** Renders `count` real `<nav data-nav-menu>` roots. */
+function renderNavbars(count: number): Element[] {
+  document.body.innerHTML = '';
+  return Array.from({ length: count }, () => {
+    const nav = document.createElement('nav');
+    nav.setAttribute('data-nav-menu', '');
+    document.body.append(nav);
+    return nav;
   });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockNavbarQuery([]);
+  document.body.innerHTML = '';
 });
 
 describe('initNavbarAnimation', () => {
@@ -47,61 +52,45 @@ describe('initNavbarAnimation', () => {
   });
 
   it('should initialize animation and scroll behavior when navbar elements exist', () => {
-    const navbarA = { id: 'a' } as unknown as Element;
-    const navbarB = { id: 'b' } as unknown as Element;
+    const [navbarA, navbarB] = renderNavbars(2);
     const options: InitNavbarAnimationOptions = {
       animationDuration: 0.8,
       animationEasing: 'power4.out',
     };
 
-    mockNavbarQuery([navbarA, navbarB]);
-
     expect(initNavbarAnimation(options)).toBe(true);
     expect(mockedPerformInitialAnimation).toHaveBeenCalledWith(
       [navbarA, navbarB],
-      options,
+      { ...DEFAULTS, ...options },
     );
-    expect(mockedInitScrollBehavior).toHaveBeenCalledWith(
-      [navbarA, navbarB],
-      options,
-    );
+    expect(mockedInitScrollBehavior).toHaveBeenCalledWith([navbarA, navbarB], {
+      ...DEFAULTS,
+      ...options,
+    });
   });
 
   it('should use default options when no options are provided', () => {
-    const navbar = { id: 'only' } as unknown as Element;
-
-    mockNavbarQuery([navbar]);
+    const navbars = renderNavbars(1);
 
     expect(initNavbarAnimation()).toBe(true);
     expect(mockedPerformInitialAnimation).toHaveBeenCalledWith(
-      [navbar],
-      expect.objectContaining({
-        animationDuration: 0.3,
-        animationEasing: 'power2.inOut',
-      }),
+      navbars,
+      DEFAULTS,
     );
-    expect(mockedInitScrollBehavior).toHaveBeenCalledWith(
-      [navbar],
-      expect.objectContaining({
-        animationDuration: 0.3,
-        animationEasing: 'power2.inOut',
-      }),
-    );
+    expect(mockedInitScrollBehavior).toHaveBeenCalledWith(navbars, DEFAULTS);
   });
 
   it('should merge partial options with defaults', () => {
-    const navbar = { id: 'only' } as unknown as Element;
-
-    mockNavbarQuery([navbar]);
+    const navbars = renderNavbars(1);
 
     expect(initNavbarAnimation({ animationDuration: 0.8 })).toBe(true);
-    expect(mockedPerformInitialAnimation).toHaveBeenCalledWith([navbar], {
+    expect(mockedPerformInitialAnimation).toHaveBeenCalledWith(navbars, {
+      ...DEFAULTS,
       animationDuration: 0.8,
-      animationEasing: 'power2.inOut',
     });
-    expect(mockedInitScrollBehavior).toHaveBeenCalledWith([navbar], {
+    expect(mockedInitScrollBehavior).toHaveBeenCalledWith(navbars, {
+      ...DEFAULTS,
       animationDuration: 0.8,
-      animationEasing: 'power2.inOut',
     });
   });
 });

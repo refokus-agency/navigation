@@ -4,6 +4,13 @@
  * markup contract and the full list of CSS hooks.
  */
 
+import {
+  isNonNegativeNumber,
+  isOneOf,
+  readEnumAttr,
+  readNumberAttr,
+  resolveSetting,
+} from '../attributes.ts';
 import { NAV_MENU_CONFIG } from './config.ts';
 import { createController } from './controller.ts';
 import { attachKeyboardEvents } from './keyboard.ts';
@@ -19,9 +26,12 @@ import type {
   NavigationMenuInstance,
   NavMenuCleanup,
   NavMenuContext,
+  NavMenuDirection,
   NavMenuEntry,
   NavMenuOptions,
+  NavMenuOrientation,
   NavMenuRefs,
+  ResolvedNavMenuOptions,
 } from './types.ts';
 
 // Ids must be unique per instance: the feature is built for several menus on
@@ -29,9 +39,10 @@ import type {
 // shape), and positional fallback values collide across roots.
 let instanceCount = 0;
 
-const DEFAULT_OPTIONS: NavMenuOptions = {
+const DEFAULT_OPTIONS: ResolvedNavMenuOptions = {
   delayDuration: 200,
   skipDelayDuration: 300,
+  closeDelay: NAV_MENU_CONFIG.timing.closeDelay,
   orientation: 'horizontal',
   dir: 'ltr',
   skipInWebflowEditor: true,
@@ -48,7 +59,10 @@ export function initNavigationMenu(
 
   if (!root) return null;
 
-  const resolvedOptions: NavMenuOptions = { ...DEFAULT_OPTIONS, ...options };
+  const resolvedOptions = resolveMenuOptions(root, {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  });
 
   if (
     resolvedOptions.skipInWebflowEditor &&
@@ -100,6 +114,56 @@ export function initNavigationMenu(
     destroy() {
       for (const cleanup of cleanups) cleanup();
     },
+  };
+}
+
+const ORIENTATIONS = ['horizontal', 'vertical'] as const;
+const DIRECTIONS = ['ltr', 'rtl'] as const;
+const readOrientation = readEnumAttr<NavMenuOrientation>(ORIENTATIONS);
+const readDirection = readEnumAttr<NavMenuDirection>(DIRECTIONS);
+
+/**
+ * Root attributes override the merged JS options; read once, at init. Invalid
+ * values — attribute or JS — are skipped silently, down to the default.
+ */
+function resolveMenuOptions(
+  root: HTMLElement,
+  merged: NavMenuOptions,
+): ResolvedNavMenuOptions {
+  const { attributes } = NAV_MENU_CONFIG;
+
+  return {
+    ...merged,
+    delayDuration: resolveSetting({
+      attribute: readNumberAttr(root, attributes.delay),
+      js: merged.delayDuration,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.delayDuration,
+    }),
+    skipDelayDuration: resolveSetting({
+      attribute: readNumberAttr(root, attributes.skipDelay),
+      js: merged.skipDelayDuration,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.skipDelayDuration,
+    }),
+    closeDelay: resolveSetting({
+      attribute: readNumberAttr(root, attributes.closeDelay),
+      js: merged.closeDelay,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.closeDelay,
+    }),
+    orientation: resolveSetting({
+      attribute: readOrientation(root, attributes.orientation),
+      js: merged.orientation,
+      isValid: isOneOf(ORIENTATIONS),
+      fallback: DEFAULT_OPTIONS.orientation,
+    }),
+    dir: resolveSetting({
+      attribute: readDirection(root, attributes.dir),
+      js: merged.dir,
+      isValid: isOneOf(DIRECTIONS),
+      fallback: DEFAULT_OPTIONS.dir,
+    }),
   };
 }
 
