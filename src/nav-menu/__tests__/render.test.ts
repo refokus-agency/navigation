@@ -203,6 +203,38 @@ describe('motion direction hooks', () => {
     expect(menu.content('a').dataset.motion).toBe('to-end');
   });
 
+  it('should publish a stable position on every panel relative to the active one', () => {
+    const instance = initNavigationMenu();
+    instance?.open('b');
+
+    expect(menu.content('a').dataset.position).toBe('before');
+    expect(menu.content('b').dataset.position).toBe('active');
+
+    instance?.open('a');
+
+    expect(menu.content('a').dataset.position).toBe('active');
+    expect(menu.content('b').dataset.position).toBe('after');
+  });
+
+  it('should mirror the position under dir: rtl', () => {
+    const instance = initNavigationMenu(NAV_MENU_CONFIG.selectors.root, {
+      dir: 'rtl',
+    });
+    instance?.open('b');
+
+    expect(menu.content('a').dataset.position).toBe('after');
+    expect(menu.content('b').dataset.position).toBe('active');
+  });
+
+  it('should remove the position when the menu closes', () => {
+    const instance = initNavigationMenu();
+    instance?.open('a');
+    instance?.close();
+
+    expect(menu.content('a').dataset.position).toBeUndefined();
+    expect(menu.content('b').dataset.position).toBeUndefined();
+  });
+
   it('should clear motion when the menu closes entirely', () => {
     const instance = initNavigationMenu();
     instance?.open('a');
