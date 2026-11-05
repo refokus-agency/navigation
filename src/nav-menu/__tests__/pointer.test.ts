@@ -143,6 +143,64 @@ describe('click behavior', () => {
     expect(menu.trigger('a').dataset.state).toBe('closed');
   });
 
+  describe('click on a hover-opened trigger', () => {
+    const openByHover = () => {
+      firePointer(menu.trigger('a'), 'pointerenter');
+      vi.advanceTimersByTime(delayDuration);
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    };
+    const click = (init: MouseEventInit & { pointerType?: string }) => {
+      const { pointerType, ...rest } = init;
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        ...rest,
+      });
+      if (pointerType) {
+        Object.defineProperty(event, 'pointerType', { value: pointerType });
+      }
+      menu.trigger('a').dispatchEvent(event);
+    };
+
+    it('should stay open on a mouse click', () => {
+      openByHover();
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+
+      // And must not block hover re-entry like a click-close does.
+      firePointer(menu.trigger('a'), 'pointerleave');
+      firePointer(menu.trigger('a'), 'pointerenter');
+      vi.advanceTimersByTime(delayDuration);
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    });
+
+    it('should close on keyboard activation (detail 0)', () => {
+      openByHover();
+      click({ detail: 0 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should close on a touch tap', () => {
+      openByHover();
+      click({ detail: 1, pointerType: 'touch' });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should open a closed trigger on a mouse click', () => {
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    });
+
+    it('should still toggle on a mouse click in mobile mode', () => {
+      document
+        .querySelector('[data-nav-menu]')
+        ?.setAttribute('data-nav-mode', 'mobile');
+      click({ detail: 1 });
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+  });
+
   it('should require leaving the trigger before hover can reopen it', () => {
     menu.trigger('a').click();
     menu.trigger('a').click();

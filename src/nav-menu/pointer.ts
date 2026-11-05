@@ -31,6 +31,18 @@ export function attachPointerEvents({
       // leaves the link alone: opening is hover/keyboard only.
       if (isNavigateTrigger(trigger)) return;
       event.preventDefault();
+      // Hover already opened this panel, so a mouse click must not close it.
+      // Keyboard activation (detail 0) and touch still toggle. Deliberately
+      // not `pointerType === 'mouse'`: engines that dispatch a plain
+      // MouseEvent leave it undefined. Mobile mode has no hover, so it toggles.
+      if (
+        root.dataset.navMode !== 'mobile' &&
+        controller.getActiveValue() === value &&
+        event.detail > 0 &&
+        (event as PointerEvent).pointerType !== 'touch'
+      ) {
+        return;
+      }
       controller.triggerClick(value, trigger);
     };
 
