@@ -109,7 +109,7 @@ export function initNavigationMenu(
     attachDismiss(context);
     attachLinkClicks(context);
     attachKeyboardEvents(context);
-    attachMobile(context);
+    const openCard = attachMobile(context);
 
     cleanups.push(
       renderer.observeResize(
@@ -122,7 +122,11 @@ export function initNavigationMenu(
     renderer.applyState(null, null);
 
     return {
-      open: (value: string) => controller.open(value),
+      open: (value: string) => {
+        // Only a value with a panel opens the card: don't reveal it for nothing.
+        if (refs.contentMap.has(value)) openCard();
+        controller.open(value);
+      },
       close: () => controller.close(),
       destroy() {
         // Drained, so a second call is a no-op instead of tearing down (or

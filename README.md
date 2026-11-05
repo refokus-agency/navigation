@@ -233,6 +233,10 @@ menu?.close();          // close whatever is open
 menu?.destroy();        // remove every listener, timer and observer
 ```
 
+In mobile mode with the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair,
+`open()` also opens the card, since a panel inside a closed (inert) card would
+be invisible. An unknown value is a no-op and leaves the card as it was.
+
 Pass a root element or selector as the first argument to run several menus on
 one page:
 
