@@ -264,6 +264,7 @@ Designer (see `skipInWebflowEditor`).
 | -------------------------- | --------------------------------------------------------- | ------------------------------------- |
 | `[data-state]`             | `open` \| `closed`                                        | root, triggers, contents, viewport    |
 | `[data-motion]`            | `from-start` \| `from-end` \| `to-start` \| `to-end`       | contents (which way the panel slides) |
+| `[data-position]`          | `before` \| `active` \| `after`                           | contents (side of the active panel; removed when closed, mirrored by `dir: 'rtl'`) |
 | `[data-orientation]`       | `horizontal` \| `vertical`                                | root, list, viewport, contents        |
 | `[data-nav-mode]`          | `mobile` \| `desktop`                                     | root                                  |
 | `--nav-viewport-width`     | e.g. `480px` (`100%` on mobile)                           | viewport                              |
