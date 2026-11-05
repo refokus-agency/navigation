@@ -1,6 +1,15 @@
 import { isMobileMode, isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
 
+/**
+ * A click from a mouse, as opposed to keyboard activation (`detail === 0`) or
+ * a touch tap. Deliberately not `pointerType === 'mouse'`: engines that
+ * dispatch a plain MouseEvent leave it undefined.
+ */
+function isMouseClick(event: MouseEvent): boolean {
+  return event.detail > 0 && (event as PointerEvent).pointerType !== 'touch';
+}
+
 /** Mouse only — touch falls through to the click handler. */
 export function attachPointerEvents({
   root,
@@ -32,14 +41,10 @@ export function attachPointerEvents({
       if (isNavigateTrigger(trigger)) return;
       event.preventDefault();
       // Hover already opened this panel, so a mouse click must not close it.
-      // Keyboard activation (detail 0) and touch still toggle. Deliberately
-      // not `pointerType === 'mouse'`: engines that dispatch a plain
-      // MouseEvent leave it undefined. Mobile mode has no hover, so it toggles.
       if (
         !isMobileMode(root) &&
         controller.getActiveValue() === value &&
-        event.detail > 0 &&
-        (event as PointerEvent).pointerType !== 'touch'
+        isMouseClick(event)
       ) {
         return;
       }
