@@ -192,6 +192,7 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-interaction` | On the root: `hover` (default) or `click` — what opens a panel with the mouse. Overrides the `interaction` option                                        |
 | `data-nav-toggle`      | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
 | `data-nav-card`        | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only                                               |
+| `data-nav-breakpoint`  | Mobile breakpoint in px, an integer from 1 to 4000 (`991`); invalid values warn and use the 767 default. Read once at init, later changes are ignored. Match your CSS |
 
 Panels may be authored inside a shared `[data-nav-viewport]` or inside their
 `[data-nav-item]`. The viewport is what lets one element animate between panel
@@ -443,9 +444,10 @@ behave natively:
 
 ### Webflow mobile integration
 
-Below 767px the root is marked `[data-nav-mode="mobile"]`. If the menu sits
-inside a Webflow `.w-nav`, closing the burger overlay resets the menu so
-reopening it always starts on the main list, and crossing the breakpoint
+At or below the mobile breakpoint — 767px by default, or the root's
+`[data-nav-breakpoint]` — the root is marked `[data-nav-mode="mobile"]`. If the
+menu sits inside a Webflow `.w-nav`, closing the burger overlay resets the menu
+so reopening it always starts on the main list, and crossing the breakpoint
 closes any open panel. Add `[data-nav-back]` inside the menu for a back control
 that closes the panel without dismissing the overlay.
 
@@ -498,8 +500,9 @@ pnpm example           # Build, then open docs/examples/local/
 styles it with nothing but the `[data-state]` / `[data-motion]` /
 `--nav-viewport-*` hooks, so it doubles as a check that those hooks are enough
 to build with. It carries a live state inspector and a checklist covering
-pointer, keyboard, screen-reader, mobile and scroll behavior — resize below
-767px for the mobile layer and the Webflow burger integration. Not published
+pointer, keyboard, screen-reader, mobile and scroll behavior — resize to or
+below the mobile breakpoint (767px by default, or `[data-nav-breakpoint]`) for
+the mobile layer and the Webflow burger integration. Not published
 (`files` in `package.json` excludes it).
 
 #### Testing
@@ -609,13 +612,15 @@ any selector is a **breaking change** for every consumer.
     closeDelay: 'data-nav-close-delay',
     orientation: 'data-nav-orientation',
     dir: 'data-nav-dir',
-    interaction: 'data-nav-interaction'
+    interaction: 'data-nav-interaction',
+    breakpoint: 'data-nav-breakpoint'
   },
   timing: {
     closeDelay: 150        // Default for the closeDelay option, in ms
   },
   mobile: {
-    query: '(max-width: 767px)'
+    breakpoint: 767,       // Max viewport width in px; [data-nav-breakpoint] overrides it
+    maxBreakpoint: 4000    // Largest accepted [data-nav-breakpoint]; invalid values warn and use 767
   },
   editorClass: 'w-editor'  // Webflow Designer canvas marker
 }

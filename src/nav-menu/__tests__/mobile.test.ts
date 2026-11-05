@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initNavigationMenu } from '../index.ts';
 import {
+  firePointer,
   type NavMenuMarkup,
   renderNavMenu,
   stubResizeObserver,
@@ -38,6 +39,61 @@ function stubMatchMedia(initialMatches: boolean): MediaQueryStub {
   };
 }
 
+type ViewportStub = {
+  setWidth(width: number): void;
+  queries: string[];
+};
+
+/**
+ * MediaQueryList stub that evaluates `(max-width: <n>px)` against a fake
+ * viewport width, so `matches` depends on the breakpoint actually requested.
+ */
+function stubViewport(initialWidth: number): ViewportStub {
+  const queries: string[] = [];
+  const lists: Array<{ notify(): void }> = [];
+  let width = initialWidth;
+
+  vi.stubGlobal('matchMedia', (media: string) => {
+    queries.push(media);
+    const maxWidth = Number(/^\(max-width: (\d+)px\)$/.exec(media)?.[1]);
+    const evaluate = () => width <= maxWidth;
+    const listeners = new Set<() => void>();
+    let previous = evaluate();
+    lists.push({
+      notify() {
+        const current = evaluate();
+        if (current === previous) return;
+        previous = current;
+        for (const listener of listeners) listener();
+      },
+    });
+
+    return {
+      media,
+      get matches() {
+        return evaluate();
+      },
+      addEventListener: (_type: string, listener: () => void) => {
+        listeners.add(listener);
+      },
+      removeEventListener: (_type: string, listener: () => void) => {
+        listeners.delete(listener);
+      },
+    };
+  });
+
+  return {
+    setWidth(next) {
+      width = next;
+      for (const list of lists) list.notify();
+    },
+    queries,
+  };
+}
+
+/** Comfortably past the default hover-open delay. */
+const hoverSettle = 400;
+
 let menu: NavMenuMarkup;
 
 beforeEach(() => {
@@ -46,6 +102,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
 });
@@ -90,6 +147,134 @@ describe('mobile mode', () => {
 
     instance?.destroy();
     expect(mediaQuery.listenerCount()).toBe(0);
+  });
+
+  describe('configurable breakpoint', () => {
+    it('should query the breakpoint set by data-nav-breakpoint', () => {
+      const viewport = stubViewport(1024);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      initNavigationMenu();
+
+      expect(viewport.queries).toEqual(['(max-width: 991px)']);
+    });
+
+    it('should be mobile at or below the custom breakpoint', () => {
+      stubViewport(900);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      initNavigationMenu();
+
+      expect(menu.root.dataset.navMode).toBe('mobile');
+    });
+
+    it('should be desktop above the custom breakpoint', () => {
+      stubViewport(1000);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      initNavigationMenu();
+
+      expect(menu.root.dataset.navMode).toBe('desktop');
+    });
+
+    it('should ignore mouse hover below the custom breakpoint', () => {
+      vi.useFakeTimers();
+      stubViewport(900);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      initNavigationMenu();
+
+      firePointer(menu.trigger('a'), 'pointerenter');
+      vi.advanceTimersByTime(hoverSettle);
+
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should open on mouse hover above the custom breakpoint', () => {
+      vi.useFakeTimers();
+      stubViewport(1000);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      initNavigationMenu();
+
+      firePointer(menu.trigger('a'), 'pointerenter');
+      vi.advanceTimersByTime(hoverSettle);
+
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    });
+
+    it('should close the open panel when crossing the custom breakpoint', () => {
+      const viewport = stubViewport(1000);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      const instance = initNavigationMenu();
+      instance?.open('a');
+
+      viewport.setWidth(900);
+
+      expect(menu.root.dataset.navMode).toBe('mobile');
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should use 767px without warning when the attribute is absent', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const viewport = stubViewport(1024);
+      initNavigationMenu();
+
+      expect(viewport.queries).toEqual(['(max-width: 767px)']);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it.each([
+      ['non-numeric', 'abc'],
+      ['zero', '0'],
+      ['zero-padded', '0991'],
+      ['negative', '-5'],
+      ['suffixed', '991px'],
+      ['padded', ' 991 '],
+      ['fractional', '991.5'],
+      ['above the maximum', '9910'],
+      ['unsafe integer', '99999999999999999999'],
+    ])(
+      'should warn and fall back to 767px when the value is %s',
+      (_label, value) => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const viewport = stubViewport(1024);
+        menu.root.setAttribute('data-nav-breakpoint', value);
+
+        expect(() => initNavigationMenu()).not.toThrow();
+        expect(viewport.queries).toEqual(['(max-width: 767px)']);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn.mock.calls[0]?.[0]).toContain(
+          `data-nav-breakpoint="${value}"`,
+        );
+        warn.mockRestore();
+      },
+    );
+
+    it('should accept the maximum breakpoint without warning', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const viewport = stubViewport(1024);
+      menu.root.setAttribute('data-nav-breakpoint', '4000');
+      initNavigationMenu();
+
+      expect(viewport.queries).toEqual(['(max-width: 4000px)']);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it('should read the breakpoint per root', () => {
+      const viewport = stubViewport(1024);
+      const second = menu.root.cloneNode(true) as HTMLElement;
+      document.body.append(second);
+      menu.root.setAttribute('data-nav-breakpoint', '991');
+      second.setAttribute('data-nav-breakpoint', '1200');
+
+      initNavigationMenu(menu.root);
+      initNavigationMenu(second);
+
+      expect(viewport.queries).toEqual([
+        '(max-width: 991px)',
+        '(max-width: 1200px)',
+      ]);
+      expect(menu.root.dataset.navMode).toBe('desktop');
+      expect(second.dataset.navMode).toBe('mobile');
+    });
   });
 });
 
