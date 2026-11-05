@@ -1,4 +1,4 @@
-import { NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, NAV_MENU_CONFIG, NAV_MODE } from './config.ts';
 import { focusFirst, getTabbableCandidates } from './keyboard.ts';
 import { isFollowedClick } from './pointer.ts';
 import type { NavMenuContext } from './types.ts';
@@ -18,11 +18,13 @@ export function attachMobile(context: NavMenuContext): void {
       : null;
 
   const applyMode = () => {
-    root.dataset.navMode = mediaQuery?.matches ? 'mobile' : 'desktop';
+    root.dataset.navMode = mediaQuery?.matches
+      ? NAV_MODE.mobile
+      : NAV_MODE.desktop;
   };
   applyMode();
 
-  const isMobile = () => root.dataset.navMode === 'mobile';
+  const isMobile = () => isMobileMode(root);
   const closeCard = attachCard(context, isMobile);
 
   // Accordion: land focus on the first link of the panel a user just opened.

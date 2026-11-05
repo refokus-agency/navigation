@@ -1,4 +1,4 @@
-import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
 
 /** Mouse only — touch falls through to the click handler. */
@@ -13,7 +13,7 @@ export function attachPointerEvents({
   // unfiltered touch pointerenter would clear the close timer with no
   // pointerleave to follow it.
   const isMouseHover = (event: PointerEvent) =>
-    event.pointerType === 'mouse' && root.dataset.navMode !== 'mobile';
+    event.pointerType === 'mouse' && !isMobileMode(root);
 
   for (const { trigger, value } of refs.entries) {
     if (!refs.contentMap.has(value)) continue;
@@ -36,7 +36,7 @@ export function attachPointerEvents({
       // not `pointerType === 'mouse'`: engines that dispatch a plain
       // MouseEvent leave it undefined. Mobile mode has no hover, so it toggles.
       if (
-        root.dataset.navMode !== 'mobile' &&
+        !isMobileMode(root) &&
         controller.getActiveValue() === value &&
         event.detail > 0 &&
         (event as PointerEvent).pointerType !== 'touch'
