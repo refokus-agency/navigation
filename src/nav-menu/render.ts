@@ -1,8 +1,8 @@
 import type {
   NavMenuCleanup,
-  NavMenuOptions,
   NavMenuRefs,
   NavMenuRenderer,
+  ResolvedNavMenuOptions,
 } from './types.ts';
 
 /** Writes DOM state only — CSS owns every transition. */
@@ -12,7 +12,7 @@ export function createRenderer({
   root,
 }: {
   refs: NavMenuRefs;
-  options: NavMenuOptions;
+  options: ResolvedNavMenuOptions;
   root: HTMLElement;
 }): NavMenuRenderer {
   // A panel that is neither entering nor leaving keeps its prior motion.
@@ -63,6 +63,15 @@ export function createRenderer({
       const motion = computeMotion(key, isActive, wasActive, currIdx, prevIdx);
       if (motion) content.dataset.motion = motion;
       else delete content.dataset.motion;
+
+      // Stable side relative to the active panel, so idle panels can be parked
+      // there. Nothing for a closed menu.
+      const idx = ordered.indexOf(key);
+      if (currIdx === -1 || idx === -1) delete content.dataset.position;
+      else {
+        content.dataset.position =
+          idx === currIdx ? 'active' : idx < currIdx ? 'before' : 'after';
+      }
 
       if (isActive) {
         show(content);

@@ -73,6 +73,62 @@ describe('Tab into an open panel', () => {
   });
 });
 
+describe('Tab skips unfocusable panel content', () => {
+  it('should skip links inside inert or aria-hidden containers', () => {
+    document.body.innerHTML = `
+      <nav data-nav-menu>
+        <div data-nav-list>
+          <div data-nav-item="a">
+            <button type="button" data-nav-trigger>a</button>
+          </div>
+        </div>
+        <div data-nav-viewport>
+          <div data-nav-content="a">
+            <div inert><a href="/1" id="inert-link">1</a></div>
+            <div aria-hidden="true"><a href="/2" id="hidden-link">2</a></div>
+            <a href="/3" id="real">3</a>
+          </div>
+        </div>
+      </nav>
+    `;
+    const instance = initNavigationMenu();
+    instance?.open('a');
+    const trigger = document.querySelector<HTMLElement>('[data-nav-trigger]');
+    trigger?.focus();
+
+    tab(trigger as HTMLElement);
+
+    expect(document.activeElement).toBe(document.querySelector('#real'));
+  });
+
+  it('should skip links that checkVisibility reports as not rendered', () => {
+    document.body.innerHTML = `
+      <nav data-nav-menu>
+        <div data-nav-list>
+          <div data-nav-item="a">
+            <button type="button" data-nav-trigger>a</button>
+          </div>
+        </div>
+        <div data-nav-viewport>
+          <div data-nav-content="a">
+            <a href="/1" id="gone">1</a>
+            <a href="/2" id="real">2</a>
+          </div>
+        </div>
+      </nav>
+    `;
+    const gone = document.querySelector<HTMLElement>('#gone');
+    (gone as HTMLElement).checkVisibility = () => false;
+    const instance = initNavigationMenu();
+    instance?.open('a');
+    const trigger = document.querySelector<HTMLElement>('[data-nav-trigger]');
+
+    tab(trigger as HTMLElement);
+
+    expect(document.activeElement).toBe(document.querySelector('#real'));
+  });
+});
+
 describe('Tab out of an open panel', () => {
   it('should close the panel and land on the next trigger', () => {
     const instance = initNavigationMenu();

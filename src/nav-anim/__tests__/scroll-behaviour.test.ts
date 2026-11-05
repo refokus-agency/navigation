@@ -69,6 +69,8 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.5,
       animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
@@ -80,6 +82,8 @@ describe('scroll behavior', () => {
       {
         animationDuration: 0.5,
         animationEasing: 'power1.out',
+        hideOnScroll: true,
+        scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
       },
     );
 
@@ -93,6 +97,8 @@ describe('scroll behavior', () => {
       {
         animationDuration: 0.5,
         animationEasing: 'power1.out',
+        hideOnScroll: true,
+        scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
       },
     );
   });
@@ -106,7 +112,12 @@ describe('scroll behavior', () => {
     navbarElement.append(link);
     document.body.append(navbarElement);
 
-    const options = { animationDuration: 0.5, animationEasing: 'power1.out' };
+    const options = {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+    };
     module.initScrollBehavior([navbarElement], options);
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
@@ -135,6 +146,8 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.5,
       animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
@@ -154,6 +167,8 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.5,
       animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
 
     navbarElement.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
@@ -169,6 +184,8 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.5,
       animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
@@ -189,6 +206,8 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.5,
       animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold - 1;
@@ -204,6 +223,8 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.2,
       animationEasing: 'linear',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
     module.cleanupNavbarAnimation();
 
@@ -219,6 +240,8 @@ describe('scroll behavior', () => {
     const options = {
       animationDuration: 0.5,
       animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     };
 
     module.initScrollBehavior([navbarElement], options);
@@ -248,10 +271,14 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.1,
       animationEasing: 'power1.in',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.9,
       animationEasing: 'power4.inOut',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 10;
@@ -263,7 +290,45 @@ describe('scroll behavior', () => {
       {
         animationDuration: 0.9,
         animationEasing: 'power4.inOut',
+        hideOnScroll: true,
+        scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
       },
     );
+  });
+
+  describe('custom scroll threshold (AC-8)', () => {
+    const options = {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: 200,
+    };
+
+    it('should ignore scrolls below scrollThreshold', async () => {
+      const module = await loadScrollModule();
+      const navbarElement = { id: 'nav' } as unknown as Element;
+      module.initScrollBehavior([navbarElement], options);
+
+      // Past the default 50 px, inside the custom 200 px.
+      globalThis.window.scrollY = 120;
+      globalThis.window.dispatchEvent(new Event('scroll'));
+
+      expect(createNavbarAnimationMock).not.toHaveBeenCalled();
+    });
+
+    it('should hide once the scroll passes scrollThreshold', async () => {
+      const module = await loadScrollModule();
+      const navbarElement = { id: 'nav' } as unknown as Element;
+      module.initScrollBehavior([navbarElement], options);
+
+      globalThis.window.scrollY = 260;
+      globalThis.window.dispatchEvent(new Event('scroll'));
+
+      expect(createNavbarAnimationMock).toHaveBeenCalledWith(
+        [navbarElement],
+        NAVBAR_CONFIG.position.hidden,
+        options,
+      );
+    });
   });
 });

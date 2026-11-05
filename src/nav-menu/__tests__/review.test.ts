@@ -250,6 +250,8 @@ describe('triggers inside a panel', () => {
 });
 
 describe('a panel outside the viewport', () => {
+  // With a viewport every panel is relocated into it, so only a menu without
+  // one leaves a panel that needs its own hover target.
   it('should keep itself open under the cursor', () => {
     vi.useFakeTimers();
     document.body.innerHTML = `
@@ -260,7 +262,6 @@ describe('a panel outside the viewport', () => {
             <div data-nav-content="a"><a href="/a">a</a></div>
           </div>
         </div>
-        <div data-nav-viewport></div>
       </nav>
     `;
     initNavigationMenu();
