@@ -31,6 +31,10 @@ export function createController({
   let openTimer: Timer;
   let closeTimer: Timer;
   let skipTimer: Timer;
+  // Whether the active panel was opened by pointer hover rather than a click,
+  // key or API call. A mouse click may only be swallowed on a hover-opened
+  // panel; on any other it must still toggle.
+  let openedByHover = false;
   // When false, opens are instant: a recent close skips delayDuration.
   let isOpenDelayed = true;
 
@@ -46,6 +50,7 @@ export function createController({
     if (activeValue === value) return;
     previousValue = activeValue;
     activeValue = value;
+    openedByHover = false;
     if (value === null) activeTrigger = null;
 
     if (value !== null) {
@@ -73,13 +78,18 @@ export function createController({
         clearTimeout(closeTimer);
       } else {
         openTimer = setTimeout(
-          () => open(value, trigger),
+          () => openFromHover(value, trigger),
           options.delayDuration,
         );
       }
     } else {
-      open(value, trigger);
+      openFromHover(value, trigger);
     }
+  }
+
+  function openFromHover(value: string, trigger: HTMLElement): void {
+    open(value, trigger);
+    openedByHover = true;
   }
 
   function triggerPointerLeave(trigger: HTMLElement): void {
@@ -123,6 +133,7 @@ export function createController({
     clearTimeout(openTimer);
     clearTimeout(closeTimer);
     activeTrigger = trigger ?? refs.triggerByValue.get(value) ?? null;
+    openedByHover = false;
     setValue(value);
   }
 
@@ -170,6 +181,7 @@ export function createController({
     contentPointerLeave,
     handleEscape,
     getActiveValue: () => activeValue,
+    isHoverOpened: (value) => activeValue === value && openedByHover,
     getActiveTrigger: () => activeTrigger,
     destroy,
   };

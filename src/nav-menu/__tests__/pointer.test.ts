@@ -174,6 +174,23 @@ describe('click behavior', () => {
       expect(menu.trigger('a').dataset.state).toBe('open');
     });
 
+    it('should still toggle a panel a mouse click opened', () => {
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should toggle once a click has taken over a hover-opened panel', () => {
+      openByHover();
+      click({ detail: 0 });
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
     it('should close on keyboard activation (detail 0)', () => {
       openByHover();
       click({ detail: 0 });

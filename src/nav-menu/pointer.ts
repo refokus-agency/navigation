@@ -43,7 +43,7 @@ export function attachPointerEvents({
       // Hover already opened this panel, so a mouse click must not close it.
       if (
         !isMobileMode(root) &&
-        controller.getActiveValue() === value &&
+        controller.isHoverOpened(value) &&
         isMouseClick(event)
       ) {
         return;
