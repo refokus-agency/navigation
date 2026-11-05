@@ -7,6 +7,7 @@ export {
   initNavigationMenu,
   type NavigationMenuInstance,
   type NavMenuDirection,
+  type NavMenuInteraction,
   type NavMenuOptions,
   type NavMenuOrientation,
 } from './nav-menu/index.ts';

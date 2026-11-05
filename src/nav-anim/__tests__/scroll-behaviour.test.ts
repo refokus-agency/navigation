@@ -1,28 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NAVBAR_CONFIG } from '../config.ts';
-import type { NavbarAnimationOptions } from '../index.ts';
 
 const createNavbarAnimationMock = vi.fn();
 
 vi.mock('../initial-animation.ts', () => ({
   createNavbarAnimation: createNavbarAnimationMock,
 }));
-
-const optionDefaults = {
-  threshold: NAVBAR_CONFIG.scroll.threshold,
-  hiddenOffset: NAVBAR_CONFIG.position.hidden,
-  visibleOffset: NAVBAR_CONFIG.position.visible,
-  pauseWhileMenuOpen: true,
-};
-
-const baseOptions: NavbarAnimationOptions = {
-  animationDuration: 0.5,
-  animationEasing: 'power1.out',
-  threshold: NAVBAR_CONFIG.scroll.threshold,
-  hiddenOffset: NAVBAR_CONFIG.position.hidden,
-  visibleOffset: NAVBAR_CONFIG.position.visible,
-  pauseWhileMenuOpen: true,
-};
 
 type EventMap = {
   [event: string]: Array<() => void>;
@@ -83,7 +66,15 @@ describe('scroll behavior', () => {
     const module = await loadScrollModule();
     const navbarElement = { id: 'nav' } as unknown as Element;
 
-    module.initScrollBehavior([navbarElement], baseOptions);
+    module.initScrollBehavior([navbarElement], {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
     globalThis.window.dispatchEvent(new Event('scroll'));
@@ -91,7 +82,15 @@ describe('scroll behavior', () => {
     expect(createNavbarAnimationMock).toHaveBeenCalledWith(
       [navbarElement],
       NAVBAR_CONFIG.position.hidden,
-      baseOptions,
+      {
+        animationDuration: 0.5,
+        animationEasing: 'power1.out',
+        hideOnScroll: true,
+        scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+        hiddenOffset: NAVBAR_CONFIG.position.hidden,
+        visibleOffset: NAVBAR_CONFIG.position.visible,
+        pauseWhileMenuOpen: true,
+      },
     );
 
     globalThis.window.scrollY = 0;
@@ -101,7 +100,15 @@ describe('scroll behavior', () => {
       2,
       [navbarElement],
       NAVBAR_CONFIG.position.visible,
-      baseOptions,
+      {
+        animationDuration: 0.5,
+        animationEasing: 'power1.out',
+        hideOnScroll: true,
+        scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+        hiddenOffset: NAVBAR_CONFIG.position.hidden,
+        visibleOffset: NAVBAR_CONFIG.position.visible,
+        pauseWhileMenuOpen: true,
+      },
     );
   });
 
@@ -114,7 +121,15 @@ describe('scroll behavior', () => {
     navbarElement.append(link);
     document.body.append(navbarElement);
 
-    const options = baseOptions;
+    const options = {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    };
     module.initScrollBehavior([navbarElement], options);
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
@@ -140,7 +155,15 @@ describe('scroll behavior', () => {
     const outside = document.createElement('button');
     document.body.append(navbarElement, outside);
 
-    module.initScrollBehavior([navbarElement], baseOptions);
+    module.initScrollBehavior([navbarElement], {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
     globalThis.window.dispatchEvent(new Event('scroll'));
@@ -156,7 +179,15 @@ describe('scroll behavior', () => {
     const navbarElement = document.createElement('nav');
     document.body.append(navbarElement);
 
-    module.initScrollBehavior([navbarElement], baseOptions);
+    module.initScrollBehavior([navbarElement], {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    });
 
     navbarElement.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 
@@ -168,7 +199,15 @@ describe('scroll behavior', () => {
     const navbarElement = document.createElement('nav');
     document.body.append(navbarElement);
 
-    module.initScrollBehavior([navbarElement], baseOptions);
+    module.initScrollBehavior([navbarElement], {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
     globalThis.window.dispatchEvent(new Event('scroll'));
@@ -185,7 +224,15 @@ describe('scroll behavior', () => {
     const module = await loadScrollModule();
     const navbarElement = { id: 'nav' } as unknown as Element;
 
-    module.initScrollBehavior([navbarElement], baseOptions);
+    module.initScrollBehavior([navbarElement], {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold - 1;
     globalThis.window.dispatchEvent(new Event('scroll'));
@@ -200,7 +247,11 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.2,
       animationEasing: 'linear',
-      ...optionDefaults,
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
     });
     module.cleanupNavbarAnimation();
 
@@ -213,7 +264,15 @@ describe('scroll behavior', () => {
   it('should hide on scroll-down after re-initialization even if previously hidden', async () => {
     const module = await loadScrollModule();
     const navbarElement = { id: 'nav' } as unknown as Element;
-    const options = baseOptions;
+    const options = {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    };
 
     module.initScrollBehavior([navbarElement], options);
 
@@ -242,12 +301,20 @@ describe('scroll behavior', () => {
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.1,
       animationEasing: 'power1.in',
-      ...optionDefaults,
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
     });
     module.initScrollBehavior([navbarElement], {
       animationDuration: 0.9,
       animationEasing: 'power4.inOut',
-      ...optionDefaults,
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
     });
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 10;
@@ -259,39 +326,74 @@ describe('scroll behavior', () => {
       {
         animationDuration: 0.9,
         animationEasing: 'power4.inOut',
-        ...optionDefaults,
+        hideOnScroll: true,
+        scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+        hiddenOffset: NAVBAR_CONFIG.position.hidden,
+        visibleOffset: NAVBAR_CONFIG.position.visible,
+        pauseWhileMenuOpen: true,
       },
     );
   });
 
-  describe('configurable options and open-panel pause', () => {
+  describe('custom scroll threshold (AC-8)', () => {
+    const options = {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: 200,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    };
+
+    it('should ignore scrolls below scrollThreshold', async () => {
+      const module = await loadScrollModule();
+      const navbarElement = { id: 'nav' } as unknown as Element;
+      module.initScrollBehavior([navbarElement], options);
+
+      // Past the default 50 px, inside the custom 200 px.
+      globalThis.window.scrollY = 120;
+      globalThis.window.dispatchEvent(new Event('scroll'));
+
+      expect(createNavbarAnimationMock).not.toHaveBeenCalled();
+    });
+
+    it('should hide once the scroll passes scrollThreshold', async () => {
+      const module = await loadScrollModule();
+      const navbarElement = { id: 'nav' } as unknown as Element;
+      module.initScrollBehavior([navbarElement], options);
+
+      globalThis.window.scrollY = 260;
+      globalThis.window.dispatchEvent(new Event('scroll'));
+
+      expect(createNavbarAnimationMock).toHaveBeenCalledWith(
+        [navbarElement],
+        NAVBAR_CONFIG.position.hidden,
+        options,
+      );
+    });
+  });
+
+  describe('offsets and open-panel pause', () => {
+    const base = {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
+      hideOnScroll: true,
+      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+      hiddenOffset: NAVBAR_CONFIG.position.hidden,
+      visibleOffset: NAVBAR_CONFIG.position.visible,
+      pauseWhileMenuOpen: true,
+    };
+
     function scrollDown(): void {
       globalThis.window.scrollY = 500;
       globalThis.window.dispatchEvent(new Event('scroll'));
     }
 
-    it('honours a custom threshold', async () => {
-      const module = await loadScrollModule();
-      const nav = document.createElement('nav');
-      module.initScrollBehavior([nav], { ...baseOptions, threshold: 200 });
-
-      globalThis.window.scrollY = 150;
-      globalThis.window.dispatchEvent(new Event('scroll'));
-      expect(createNavbarAnimationMock).not.toHaveBeenCalled();
-
-      globalThis.window.scrollY = 250;
-      globalThis.window.dispatchEvent(new Event('scroll'));
-      expect(createNavbarAnimationMock).toHaveBeenCalledTimes(1);
-    });
-
     it('uses custom hidden and visible offsets', async () => {
       const module = await loadScrollModule();
       const nav = document.createElement('nav');
-      const options = {
-        ...baseOptions,
-        hiddenOffset: '-50%',
-        visibleOffset: '10px',
-      };
+      const options = { ...base, hiddenOffset: '-50%', visibleOffset: '10px' };
       module.initScrollBehavior([nav], options);
 
       scrollDown();
@@ -314,7 +416,7 @@ describe('scroll behavior', () => {
       const module = await loadScrollModule();
       const nav = document.createElement('nav');
       nav.dataset.state = 'open';
-      module.initScrollBehavior([nav], baseOptions);
+      module.initScrollBehavior([nav], base);
 
       scrollDown();
       expect(createNavbarAnimationMock).not.toHaveBeenCalled();
@@ -324,10 +426,7 @@ describe('scroll behavior', () => {
       const module = await loadScrollModule();
       const nav = document.createElement('nav');
       nav.dataset.state = 'open';
-      module.initScrollBehavior([nav], {
-        ...baseOptions,
-        pauseWhileMenuOpen: false,
-      });
+      module.initScrollBehavior([nav], { ...base, pauseWhileMenuOpen: false });
 
       scrollDown();
       expect(createNavbarAnimationMock).toHaveBeenCalledTimes(1);
@@ -337,7 +436,7 @@ describe('scroll behavior', () => {
       const module = await loadScrollModule();
       const nav = document.createElement('nav');
       const shouldHide = vi.fn(() => false);
-      module.initScrollBehavior([nav], { ...baseOptions, shouldHide });
+      module.initScrollBehavior([nav], { ...base, shouldHide });
 
       scrollDown();
       expect(shouldHide).toHaveBeenCalled();

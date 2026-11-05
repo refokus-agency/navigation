@@ -272,6 +272,23 @@ function moveFocus(
   }
 }
 
+/**
+ * False for anything focus must not land on: inside an `inert` or
+ * `aria-hidden="true"` subtree, or not rendered (inherited `display: none`,
+ * `visibility: hidden`). `checkVisibility` is absent in jsdom, where we fall
+ * back to the attribute checks alone.
+ */
+function isRendered(element: HTMLElement): boolean {
+  if (element.closest('[inert], [aria-hidden="true"]')) return false;
+
+  return (
+    element.checkVisibility?.({
+      checkVisibilityCSS: true,
+      checkOpacity: false,
+    }) ?? true
+  );
+}
+
 export function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, {
     acceptNode(node) {
@@ -283,6 +300,7 @@ export function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
         return NodeFilter.FILTER_SKIP;
       }
       if (element.disabled || element.hidden) return NodeFilter.FILTER_SKIP;
+      if (!isRendered(element)) return NodeFilter.FILTER_SKIP;
 
       return element.tabIndex >= 0
         ? NodeFilter.FILTER_ACCEPT
