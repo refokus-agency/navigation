@@ -100,6 +100,7 @@ export function initNavigationMenu(
       cleanups,
       options: resolvedOptions,
       idPrefix,
+      dismissHooks: { outside: [], link: [] },
     };
 
     cleanups.push(() => controller.destroy());

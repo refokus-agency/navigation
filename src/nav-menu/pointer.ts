@@ -96,13 +96,16 @@ export function attachDismiss({
   root,
   controller,
   cleanups,
+  dismissHooks,
 }: NavMenuContext): void {
   const onOutside = (event: Event) => {
     const target = event.target;
     if (!(target instanceof Node)) return;
+    if (root.contains(target)) return;
     // Not gated on getActiveValue(): it is still null while a hover-open is
     // only pending, and setValue(null) is what cancels that timer.
-    if (!root.contains(target)) controller.close();
+    controller.close();
+    for (const hook of dismissHooks.outside) hook();
   };
 
   document.addEventListener('pointerdown', onOutside);
@@ -133,20 +136,27 @@ export function attachLinkClicks({
   root,
   controller,
   cleanups,
+  dismissHooks,
 }: NavMenuContext): void {
   const { selectors } = NAV_MENU_CONFIG;
+  // Triggers, back controls and toggles are not links, even when authored as
+  // <a href> (Webflow's default).
+  const controls = `${selectors.trigger}, ${selectors.back}, ${selectors.toggle}`;
 
   // A click that does not follow the link keeps the menu open.
   const onClick = (event: MouseEvent) => {
     const target = event.target;
-    if (!(target instanceof Element)) return;
+    if (!(target instanceof Element) || !isFollowedClick(event)) return;
 
-    const link =
+    const link = target.closest(`a[href], ${selectors.link}`);
+    if (link && !link.closest(controls)) {
+      for (const hook of dismissHooks.link) hook();
+    }
+
+    const panelLink =
       target.closest(`${selectors.content} a`) ??
       target.closest(`${selectors.content} ${selectors.link}`);
-    if (!link) return;
-
-    if (isFollowedClick(event)) controller.close();
+    if (panelLink) controller.close();
   };
 
   root.addEventListener('click', onClick);
