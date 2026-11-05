@@ -2,6 +2,7 @@ import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type {
   NavMenuContext,
   NavMenuController,
+  NavMenuDirection,
   NavMenuRefs,
 } from './types.ts';
 
@@ -14,9 +15,10 @@ export function attachKeyboardEvents({
   refs,
   controller,
   cleanups,
+  options,
 }: NavMenuContext): void {
   const onKeyDown = (event: KeyboardEvent) =>
-    handleKeyDown(event, root, refs, controller);
+    handleKeyDown(event, root, refs, controller, options.dir);
 
   root.addEventListener('keydown', onKeyDown);
   cleanups.push(() => root.removeEventListener('keydown', onKeyDown));
@@ -27,6 +29,7 @@ function handleKeyDown(
   root: HTMLElement,
   refs: NavMenuRefs,
   controller: NavMenuController,
+  dir: NavMenuDirection,
 ): void {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) return;
@@ -51,7 +54,7 @@ function handleKeyDown(
   // Trigger-scoped, so arrows in a panel's search field stay native.
   if (!trigger) return;
 
-  handleTriggerKey(event, root, refs, controller, trigger);
+  handleTriggerKey(event, root, refs, controller, trigger, dir);
 }
 
 function handleTriggerKey(
@@ -60,12 +63,21 @@ function handleTriggerKey(
   refs: NavMenuRefs,
   controller: NavMenuController,
   trigger: HTMLElement,
+  dir: NavMenuDirection,
 ): void {
   const isHorizontal =
     (root.getAttribute('data-orientation') || 'horizontal') === 'horizontal';
-  const nextKey = isHorizontal ? 'ArrowRight' : 'ArrowDown';
-  const prevKey = isHorizontal ? 'ArrowLeft' : 'ArrowUp';
-  const entryKey = isHorizontal ? 'ArrowDown' : 'ArrowRight';
+  const isRtl = dir === 'rtl';
+  // In RTL the inline axis flips: the arrow pointing "forward" is ArrowLeft.
+  const forwardKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
+  const backwardKey = isRtl ? 'ArrowRight' : 'ArrowLeft';
+  const nextKey = isHorizontal ? forwardKey : 'ArrowDown';
+  const prevKey = isHorizontal ? backwardKey : 'ArrowUp';
+  const entryKey = isHorizontal ? 'ArrowDown' : forwardKey;
+  // Home/End follow the visual start/end; dir only affects the horizontal axis.
+  const reverseEnds = isRtl && isHorizontal;
+  const firstTrigger = reverseEnds ? refs.triggers.length - 1 : 0;
+  const lastTrigger = reverseEnds ? 0 : refs.triggers.length - 1;
 
   switch (event.key) {
     case nextKey:
@@ -89,12 +101,12 @@ function handleTriggerKey(
 
     case 'Home':
       event.preventDefault();
-      refs.triggers[0]?.focus();
+      refs.triggers[firstTrigger]?.focus();
       break;
 
     case 'End':
       event.preventDefault();
-      refs.triggers[refs.triggers.length - 1]?.focus();
+      refs.triggers[lastTrigger]?.focus();
       break;
 
     case 'Enter':
