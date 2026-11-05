@@ -98,6 +98,7 @@ export function initNavigationMenu(
       refs,
       controller,
       cleanups,
+      escapeFallbacks: [],
       options: resolvedOptions,
       idPrefix,
     };
