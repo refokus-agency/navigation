@@ -10,12 +10,15 @@ import type {
  * WAI-ARIA Disclosure Navigation: Tab is the primary path and traverses
  * triggers *and* open panel links. Arrows are secondary and trigger-scoped.
  */
-export function attachKeyboardEvents(
-  { root, refs, controller, cleanups }: NavMenuContext,
-  dir: NavMenuDirection = 'ltr',
-): void {
+export function attachKeyboardEvents({
+  root,
+  refs,
+  controller,
+  cleanups,
+  options,
+}: NavMenuContext): void {
   const onKeyDown = (event: KeyboardEvent) =>
-    handleKeyDown(event, root, refs, controller, dir);
+    handleKeyDown(event, root, refs, controller, options.dir);
 
   root.addEventListener('keydown', onKeyDown);
   cleanups.push(() => root.removeEventListener('keydown', onKeyDown));
@@ -281,7 +284,24 @@ function moveFocus(
   }
 }
 
-function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
+/**
+ * False for anything focus must not land on: inside an `inert` or
+ * `aria-hidden="true"` subtree, or not rendered (inherited `display: none`,
+ * `visibility: hidden`). `checkVisibility` is absent in jsdom, where we fall
+ * back to the attribute checks alone.
+ */
+function isRendered(element: HTMLElement): boolean {
+  if (element.closest('[inert], [aria-hidden="true"]')) return false;
+
+  return (
+    element.checkVisibility?.({
+      checkVisibilityCSS: true,
+      checkOpacity: false,
+    }) ?? true
+  );
+}
+
+export function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, {
     acceptNode(node) {
       const element = node as HTMLElement & {
@@ -292,6 +312,7 @@ function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
         return NodeFilter.FILTER_SKIP;
       }
       if (element.disabled || element.hidden) return NodeFilter.FILTER_SKIP;
+      if (!isRendered(element)) return NodeFilter.FILTER_SKIP;
 
       return element.tabIndex >= 0
         ? NodeFilter.FILTER_ACCEPT
@@ -305,7 +326,7 @@ function getTabbableCandidates(container: HTMLElement): HTMLElement[] {
   return candidates;
 }
 
-function focusFirst(candidates: HTMLElement[]): boolean {
+export function focusFirst(candidates: HTMLElement[]): boolean {
   const previous = document.activeElement;
 
   for (const candidate of candidates) {

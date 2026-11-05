@@ -25,7 +25,7 @@ A TypeScript package for Webflow and custom-code navigations: GSAP-powered scrol
 
 ## Requirements
 
-- Node.js >= 22.0.0
+- Node.js ^22.22.2 || ^24.15.0 || >=26
 
 ## Installation
 
@@ -64,10 +64,17 @@ if (success) {
 }
 ```
 
+| Option              | Type      | Default          | Description                                                       |
+| ------------------- | --------- | ---------------- | ----------------------------------------------------------------- |
+| `animationDuration` | `number`  | `0.3`            | Slide duration, in seconds                                        |
+| `animationEasing`   | `string`  | `'power2.inOut'` | Any GSAP ease name                                                |
+| `hideOnScroll`      | `boolean` | `true`           | When `false`, the navbar slides in once and never hides on scroll |
+| `scrollThreshold`   | `number`  | `50`             | Scroll distance, in px, before the navbar hides or shows          |
+
 ### How It Works
 
 - **Initial Animation**: Navbar slides in smoothly on page load
-- **Scroll Down**: Navbar hides when scrolling down past threshold (50px)
+- **Scroll Down**: Navbar hides when scrolling down past `scrollThreshold` (50px by default)
 - **Scroll Up**: Navbar shows when scrolling up
 - **Focus**: A hidden navbar slides back in when focus moves into it, so
   tabbing back up to the nav never lands on an off-screen element
@@ -90,6 +97,53 @@ initNavigationMenu();
 
 They are independent: the animation reads only the root, the menu reads only
 its own `data-nav-*` descendants. Use either on its own if you prefer.
+
+### Configuring from data attributes
+
+Every behavior setting can also be written as an attribute on the
+`[data-nav-menu]` root, so a Webflow component can expose it as a prop without
+any custom code:
+
+```html
+<nav
+  data-nav-menu
+  data-nav-delay="100"
+  data-nav-close-delay="400"
+  data-nav-orientation="vertical"
+  data-nav-hide-on-scroll="false"
+>
+```
+
+| Attribute                   | Feature  | Accepted values                 | Option               | Default          |
+| --------------------------- | -------- | ------------------------------- | -------------------- | ---------------- |
+| `data-nav-delay`            | nav-menu | number, in ms                   | `delayDuration`      | `200`            |
+| `data-nav-skip-delay`       | nav-menu | number, in ms                   | `skipDelayDuration`  | `300`            |
+| `data-nav-close-delay`      | nav-menu | number, in ms                   | `closeDelay`         | `150`            |
+| `data-nav-orientation`      | nav-menu | `horizontal` \| `vertical`      | `orientation`        | `horizontal`     |
+| `data-nav-dir`              | nav-menu | `ltr` \| `rtl`                  | `dir`                | `ltr`            |
+| `data-nav-interaction`      | nav-menu | `hover` \| `click`              | `interaction`        | `hover`          |
+| `data-nav-hide-on-scroll`   | nav-anim | `true` \| `false`               | `hideOnScroll`       | `true`           |
+| `data-nav-scroll-threshold` | nav-anim | number, in px                   | `scrollThreshold`    | `50`             |
+| `data-nav-anim-duration`    | nav-anim | number, in seconds              | `animationDuration`  | `0.3`            |
+| `data-nav-anim-easing`      | nav-anim | any GSAP ease name              | `animationEasing`    | `power2.inOut`   |
+
+**Precedence:** a valid attribute wins over the JS option, and a valid JS
+option wins over the default. A missing, empty or invalid value (`"300ms"`,
+`"vertcal"`, `" 200 "`, `"Vertical"`) is skipped silently — nothing is logged
+or thrown. The one exception is `data-nav-interaction`: an invalid value falls
+back the same way but also logs a `console.warn` naming it, since a mistyped
+`"Click"` would otherwise look like click mode being broken (see
+[Click interaction](#click-interaction)). Values are matched exactly: no
+trimming, no case folding. Numbers must be non-negative, since each is a time or a distance (`"0"`, `".5"` and
+`"99999"` are valid; `"-20"`, `"5."`, `"+5"` and `"1e3"` are not). A negative
+value falls back the same way, whether it comes from an attribute or a JS
+option. An easing must resolve to a working GSAP ease, so
+malformed arguments such as `"steps(abc)"` are skipped too.
+
+Attributes are read **once, at init**; changing them afterwards has no effect
+until the feature is initialized again. nav-menu reads the root it attaches
+to, so several menus resolve independently. nav-anim animates every root but
+reads its attributes from the **first** `[data-nav-menu]` only.
 
 > **Upgrading from a 1.x release:** `initNavbarAnimation` used to select
 > `[r-navbar]`. Rename that attribute to `data-nav-menu` on your nav element —
@@ -125,20 +179,42 @@ then exposes data attributes and custom properties for your CSS to animate.
 </nav>
 ```
 
-| Attribute             | Purpose                                                                             |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| `data-nav-menu`       | Menu root. Gets `role="navigation"` unless you set a role yourself                   |
-| `data-nav-list`       | Wrapper around the items (optional, receives `[data-orientation]`)                  |
-| `data-nav-item`       | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted |
-| `data-nav-trigger`    | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel    |
-| `data-nav-content`    | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                |
-| `data-nav-viewport`   | Optional shared container for all panels — enables animated size transitions        |
-| `data-nav-link`       | A plain link. Inside a panel it also dismisses the menu on click                    |
-| `data-nav-back`       | Mobile "back" control — closes the open panel without closing the burger overlay    |
+| Attribute              | Purpose                                                                                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-nav-menu`        | Menu root. Gets `role="navigation"` unless you set a role yourself                                                                                       |
+| `data-nav-list`        | Wrapper around the items (optional, receives `[data-orientation]`)                                                                                       |
+| `data-nav-item`        | One nav entry. Its value pairs the trigger with its panel; auto-filled when omitted                                                                      |
+| `data-nav-trigger`     | Opens the panel. Gets `id`, `aria-expanded`, `aria-controls` when it owns a panel                                                                        |
+| `data-nav-content`     | The dropdown panel. Gets `id`, `role="region"` and `aria-labelledby`                                                                                     |
+| `data-nav-viewport`    | Optional shared container for all panels — enables animated size transitions                                                                             |
+| `data-nav-link`        | A plain link. Inside a panel it also dismisses the menu on click                                                                                         |
+| `data-nav-back`        | Mobile "back" control — closes the open panel without closing the burger overlay                                                                         |
+| `data-nav-interaction` | On the root: `hover` (default) or `click` — what opens a panel with the mouse. Overrides the `interaction` option                                        |
+| `data-nav-toggle`      | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
+| `data-nav-card`        | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only                                               |
 
-Panels may live inside a shared `[data-nav-viewport]` or directly inside their
-`[data-nav-item]`. The viewport form is preferred: it lets one element animate
-between panel sizes.
+Panels may be authored inside a shared `[data-nav-viewport]` or inside their
+`[data-nav-item]`. The viewport is what lets one element animate between panel
+sizes, so when one exists, every panel ends up in it:
+
+- **Slot markup.** A panel authored inside its item (what a Webflow component
+  with a dropdown slot renders) is moved into the viewport at init, paired with
+  its item's value. `destroy()` puts it back under its original parent, before
+  its original next sibling.
+- An item uses its **first** owned `[data-nav-content]` (a nested item owns its
+  own). A second panel in the same item is left where it is.
+- A viewport panel that already carries the item's value wins; the panel inside
+  the item is not moved.
+- A panel left where it is (the two cases above) is **not managed**: it gets no
+  `data-state`, no `inert` and no hiding, so it stays visible and tabbable.
+  Treat it as an authoring error and remove it.
+- Without a viewport, nothing moves and panels work in place.
+- Inside the Webflow Designer (`skipInWebflowEditor`), nothing moves, so the
+  panel stays editable inside its item.
+
+> **Breaking change.** Before this, a page with a viewport *and* panels inside
+> items left those panels in place. They now move into the viewport. Pin the
+> previous major version if a site depends on the old layout.
 
 > **Note:** `data-nav-menu` is the same attribute the scroll animation uses, so
 > a single `<nav data-nav-menu>` can run both features. The `data-nav-*` names
@@ -175,8 +251,10 @@ Designer (see `skipInWebflowEditor`).
 | --------------------- | ------------------------------ | -------------- | --------------------------------------------------------------------------- |
 | `delayDuration`       | `number`                       | `200`          | Hover dwell time before a panel opens, in ms                                |
 | `skipDelayDuration`   | `number`                       | `300`          | Window after a close during which the next hover opens instantly            |
+| `closeDelay`          | `number`                       | `150`          | Grace period after the pointer leaves before the panel closes, in ms        |
 | `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
 | `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction                                       |
+| `interaction`         | `'hover' \| 'click'`           | `'hover'`      | What opens a panel with the mouse. `data-nav-interaction` on the root wins  |
 | `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
 | `onValueChange`       | `(value: string \| null) => void` | —          | Called with the open item's value, or `null` when the menu closes           |
 
@@ -190,6 +268,10 @@ Designer (see `skipInWebflowEditor`).
 | `[data-nav-mode]`          | `mobile` \| `desktop`                                     | root                                  |
 | `--nav-viewport-width`     | e.g. `480px` (`100%` on mobile)                           | viewport                              |
 | `--nav-viewport-height`    | e.g. `320px`                                              | viewport                              |
+| `[data-nav-align]`         | `viewport` (default) \| `trigger`                         | viewport (you set it)                 |
+| `--nav-viewport-x`         | e.g. `120px` — only with `data-nav-align="trigger"`       | viewport                              |
+| `--nav-trigger-x`          | e.g. `96px`, the active trigger's left edge, from the root's left | root                        |
+| `--nav-trigger-width`      | e.g. `88px`                                               | root                                  |
 
 Panels stay mounted for the duration of their CSS **animation** (not
 transition), so `@keyframes` exit animations play out before the element is
@@ -213,6 +295,40 @@ hidden. Without an animation, hiding is immediate.
 }
 ```
 
+#### Anchoring to the trigger
+
+Set `data-nav-align="trigger"` on the viewport and `--nav-viewport-x` follows the
+active trigger's left edge, clamped so the panel never overflows the root (not
+applied on mobile), relative to the viewport's positioning ancestor (the window
+when the viewport is `position: fixed`).
+`--nav-trigger-x` / `--nav-trigger-width` are always published, measured from the
+**root's** left edge, so a pill needs no JS as long as the root is its
+positioning ancestor:
+
+```css
+[data-nav-viewport] {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  transform: translateX(var(--nav-viewport-x, 0px));
+  transition: transform 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+[data-nav-menu] { position: relative; }
+.nav-pill {
+  position: absolute;
+  left: 0;
+  width: var(--nav-trigger-width);
+  transform: translateX(var(--nav-trigger-x));
+  transition: transform 0.25s ease, width 0.25s ease;
+}
+[data-nav-menu][data-state='closed'] .nav-pill { opacity: 0; }
+```
+
+Make the root `position: relative` and place the pill in it (not inside
+`[data-nav-list]`): `--nav-trigger-x` is measured from the root, so the pill
+stays aligned however much sits before the list, such as a logo.
+
 > **Sizing rule — the one way to break this.** `--nav-viewport-*` is measured
 > from the active panel's `scrollWidth`/`scrollHeight`, so the panel must have
 > **no imposed size of its own**. Position it with `top`/`left` only. Give it
@@ -221,6 +337,13 @@ hidden. Without an animation, hiding is immediate.
 > from the panel — with two visible symptoms: the viewport settles on the
 > tallest panel and never shrinks, and the `ResizeObserver` re-measures on
 > every frame of the size transition, so the height visibly chases itself.
+
+> **Relocated panels and descendant selectors.** A panel moved out of its item
+> no longer matches CSS that reaches it *through* the item, such as
+> `.dropdown .panel`. The Designer does not move panels, so that CSS still
+> looks right there and breaks only on the published site. Style panels by
+> their own class or `[data-nav-content]`, and keep the sizing rule above in
+> mind: inside the viewport, a panel must not impose its own size.
 
 ### Interaction model
 
@@ -233,6 +356,23 @@ hidden. Without an animation, hiding is immediate.
   instead of toggling (see "Trigger mode" below)
 - **Click** a link inside a panel closes the menu; ⌘/Ctrl-click keeps it open
 - **Click or focus** outside the nav closes the menu
+
+Hover is mouse-only and disabled in mobile mode — touch devices fall through
+to the click handler.
+
+#### Click interaction
+
+Set `data-nav-interaction="click"` on the root (or pass `interaction: 'click'`)
+to drop hover entirely: a panel opens and closes only on trigger click, stays
+open when the pointer leaves, and still closes on outside click, `Escape`, a
+link click inside it, or focus leaving the nav. Clicking another trigger
+switches panels. The keyboard behaves the same in both modes.
+
+The mode is read once, at init, with this precedence: the attribute, when it is
+exactly `hover` or `click`; else the `interaction` option, when valid; else
+`hover`. Values are case-sensitive — `"Click"` is ignored, with a
+`console.warn` naming the received value.
+
 #### Trigger mode
 
 A trigger that is also a link to the section's overview page can opt out of
@@ -247,14 +387,14 @@ click-toggling:
 | `toggle` (default) | Toggles the panel, navigation prevented | Click, hover, keyboard     |
 | `navigate`         | Not prevented — the link navigates      | Hover, arrow keys, `Space` |
 
+In click interaction mode there is no hover, so a `navigate` trigger's panel
+opens from the keyboard only (arrow keys, `Space`); a click still navigates.
+
 Trade-off: touch has no hover, so a `navigate` trigger on a touch device just
 navigates and its panel is unreachable. Keep `toggle` (the default) wherever
 touch users need the panel. ⌘/Ctrl-click on a `navigate` trigger opens the link
 in a new tab and leaves the menu as it is; a ⌘/Ctrl-click on a link inside a
 panel already keeps the menu open.
-
-Hover is mouse-only and disabled in mobile mode — touch devices fall through
-to the click handler.
 
 ### Keyboard
 
@@ -307,6 +447,33 @@ inside a Webflow `.w-nav`, closing the burger overlay resets the menu so
 reopening it always starts on the main list, and crossing the breakpoint
 closes any open panel. Add `[data-nav-back]` inside the menu for a back control
 that closes the panel without dismissing the overlay.
+
+### Mobile menu (toggle, card, accordion)
+
+Opt in with markup alone — no project JS beyond `initNavigationMenu()`:
+
+```html
+<nav data-nav-menu>
+  <button data-nav-toggle>Menu</button>
+  <div data-nav-card>
+    <div data-nav-list>…items…</div>
+  </div>
+</nav>
+```
+
+In `[data-nav-mode="mobile"]`:
+
+- the toggle opens/closes the card (`data-state="open|closed"`, written only
+  in mobile mode, so `[data-nav-card][data-state='closed']` rules cannot hide
+  the desktop menu); Escape and a
+  click outside close it, and Escape returns focus to the toggle. A panel's own
+  Escape closes the panel first;
+- triggers behave as an accordion — one panel open at a time, `data-state` on
+  the item and the content, and focus moves to the first link on open;
+- closing the card, or crossing the breakpoint, closes any open panel.
+
+On desktop none of this applies and existing behavior is unchanged. CSS owns
+all visuals; hide `[data-nav-toggle]` above the breakpoint yourself.
 
 ## Development
 
@@ -403,10 +570,16 @@ any selector is a **breaking change** for every consumer.
     visible: '0%'      // Y position when visible
   },
   scroll: {
-    threshold: 50      // Minimum scroll distance to trigger animation
+    threshold: 50      // Default for the scrollThreshold option
   },
   selectors: {
     navbar: '[data-nav-menu]' // Shared NAV_ROOT_SELECTOR from src/config.ts
+  },
+  attributes: {
+    hideOnScroll: 'data-nav-hide-on-scroll',
+    scrollThreshold: 'data-nav-scroll-threshold',
+    animDuration: 'data-nav-anim-duration',
+    animEasing: 'data-nav-anim-easing'
   }
 }
 ```
@@ -427,8 +600,18 @@ any selector is a **breaking change** for every consumer.
     webflowNav: '.w-nav',
     webflowBurger: '.w-nav-button'
   },
+  attributes: {
+    item: 'data-nav-item',
+    content: 'data-nav-content',
+    delay: 'data-nav-delay',
+    skipDelay: 'data-nav-skip-delay',
+    closeDelay: 'data-nav-close-delay',
+    orientation: 'data-nav-orientation',
+    dir: 'data-nav-dir',
+    interaction: 'data-nav-interaction'
+  },
   timing: {
-    closeDelay: 150        // Grace period after the pointer leaves, in ms
+    closeDelay: 150        // Default for the closeDelay option, in ms
   },
   mobile: {
     query: '(max-width: 767px)'

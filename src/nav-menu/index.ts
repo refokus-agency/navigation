@@ -4,14 +4,22 @@
  * markup contract and the full list of CSS hooks.
  */
 
+import {
+  isNonNegativeNumber,
+  isOneOf,
+  readEnumAttr,
+  readNumberAttr,
+  resolveSetting,
+} from '../attributes.ts';
 import { NAV_MENU_CONFIG } from './config.ts';
 import { createController } from './controller.ts';
 import { attachKeyboardEvents } from './keyboard.ts';
 import { attachMobile } from './mobile.ts';
 import {
   attachDismiss,
+  attachHoverEvents,
   attachLinkClicks,
-  attachPointerEvents,
+  attachTriggerClicks,
 } from './pointer.ts';
 import { createRenderer } from './render.ts';
 import type {
@@ -19,9 +27,13 @@ import type {
   NavigationMenuInstance,
   NavMenuCleanup,
   NavMenuContext,
+  NavMenuDirection,
   NavMenuEntry,
+  NavMenuInteraction,
   NavMenuOptions,
+  NavMenuOrientation,
   NavMenuRefs,
+  ResolvedNavMenuOptions,
 } from './types.ts';
 
 // Ids must be unique per instance: the feature is built for several menus on
@@ -29,11 +41,13 @@ import type {
 // shape), and positional fallback values collide across roots.
 let instanceCount = 0;
 
-const DEFAULT_OPTIONS: NavMenuOptions = {
+const DEFAULT_OPTIONS: ResolvedNavMenuOptions = {
   delayDuration: 200,
   skipDelayDuration: 300,
+  closeDelay: NAV_MENU_CONFIG.timing.closeDelay,
   orientation: 'horizontal',
   dir: 'ltr',
+  interaction: 'hover',
   skipInWebflowEditor: true,
 };
 
@@ -48,7 +62,10 @@ export function initNavigationMenu(
 
   if (!root) return null;
 
-  const resolvedOptions: NavMenuOptions = { ...DEFAULT_OPTIONS, ...options };
+  const resolvedOptions = resolveMenuOptions(root, {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  });
 
   if (
     resolvedOptions.skipInWebflowEditor &&
@@ -57,38 +74,162 @@ export function initNavigationMenu(
     return null;
   }
 
+  warnInvalidInteraction(root);
+
   const refs = discoverRefs(root);
-  setupAria(root, refs, resolvedOptions, `nav-${++instanceCount}`);
-
-  const renderer = createRenderer({ refs, options: resolvedOptions, root });
-  const controller = createController({
-    refs,
-    options: resolvedOptions,
-    renderer,
-  });
-
   const cleanups: NavMenuCleanup[] = [];
-  const context: NavMenuContext = { root, refs, controller, cleanups };
+  // Kept out of `cleanups` until init succeeds, so it always runs last: panels
+  // go back only after every other teardown has run.
+  const restorePanels = relocatePanels(refs);
 
-  cleanups.push(() => controller.destroy());
+  try {
+    const idPrefix = `nav-${++instanceCount}`;
+    setupAria(root, refs, resolvedOptions, idPrefix);
 
-  attachPointerEvents(context);
-  attachDismiss(context);
-  attachLinkClicks(context);
-  attachKeyboardEvents(context, resolvedOptions.dir);
-  attachMobile(context);
+    const renderer = createRenderer({ refs, options: resolvedOptions, root });
+    const controller = createController({
+      refs,
+      options: resolvedOptions,
+      renderer,
+    });
 
-  cleanups.push(renderer.observeResize(controller.getActiveValue));
+    const context: NavMenuContext = {
+      root,
+      refs,
+      controller,
+      cleanups,
+      options: resolvedOptions,
+      idPrefix,
+    };
 
-  renderer.applyState(null, null);
+    cleanups.push(() => controller.destroy());
+
+    attachTriggerClicks(context);
+    if (resolvedOptions.interaction === 'hover') attachHoverEvents(context);
+    attachDismiss(context);
+    attachLinkClicks(context);
+    attachKeyboardEvents(context);
+    attachMobile(context);
+
+    cleanups.push(
+      renderer.observeResize(
+        controller.getActiveValue,
+        controller.getActiveTrigger,
+      ),
+    );
+    cleanups.push(restorePanels);
+
+    renderer.applyState(null, null);
+
+    return {
+      open: (value: string) => controller.open(value),
+      close: () => controller.close(),
+      destroy() {
+        // Drained, so a second call is a no-op instead of tearing down (or
+        // moving panels out of) a newer instance on the same root.
+        const error = drain(cleanups);
+        if (error) throw error.cause;
+      },
+    };
+  } catch (error) {
+    // Init is atomic: undo what was wired so far, panels last, and surface the
+    // original failure rather than a teardown one.
+    cleanups.push(restorePanels);
+    drain(cleanups);
+    throw error;
+  }
+}
+
+/**
+ * Runs and empties every cleanup, in order, even if an earlier one throws, so
+ * panels are never stranded. Returns the first failure, wrapped so a thrown
+ * `undefined` is still reported.
+ */
+function drain(cleanups: NavMenuCleanup[]): { cause: unknown } | null {
+  let first: { cause: unknown } | null = null;
+  for (const cleanup of cleanups.splice(0)) {
+    try {
+      cleanup();
+    } catch (error) {
+      first ??= { cause: error };
+    }
+  }
+  return first;
+}
+
+const ORIENTATIONS = ['horizontal', 'vertical'] as const;
+const DIRECTIONS = ['ltr', 'rtl'] as const;
+const INTERACTIONS = ['hover', 'click'] as const;
+const readOrientation = readEnumAttr<NavMenuOrientation>(ORIENTATIONS);
+const readDirection = readEnumAttr<NavMenuDirection>(DIRECTIONS);
+const readInteraction = readEnumAttr<NavMenuInteraction>(INTERACTIONS);
+
+/**
+ * Root attributes override the merged JS options; read once, at init. Invalid
+ * values — attribute or JS — are skipped silently, down to the default.
+ */
+function resolveMenuOptions(
+  root: HTMLElement,
+  merged: NavMenuOptions,
+): ResolvedNavMenuOptions {
+  const { attributes } = NAV_MENU_CONFIG;
 
   return {
-    open: (value: string) => controller.open(value),
-    close: () => controller.close(),
-    destroy() {
-      for (const cleanup of cleanups) cleanup();
-    },
+    ...merged,
+    delayDuration: resolveSetting({
+      attribute: readNumberAttr(root, attributes.delay),
+      js: merged.delayDuration,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.delayDuration,
+    }),
+    skipDelayDuration: resolveSetting({
+      attribute: readNumberAttr(root, attributes.skipDelay),
+      js: merged.skipDelayDuration,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.skipDelayDuration,
+    }),
+    closeDelay: resolveSetting({
+      attribute: readNumberAttr(root, attributes.closeDelay),
+      js: merged.closeDelay,
+      isValid: isNonNegativeNumber,
+      fallback: DEFAULT_OPTIONS.closeDelay,
+    }),
+    orientation: resolveSetting({
+      attribute: readOrientation(root, attributes.orientation),
+      js: merged.orientation,
+      isValid: isOneOf(ORIENTATIONS),
+      fallback: DEFAULT_OPTIONS.orientation,
+    }),
+    dir: resolveSetting({
+      attribute: readDirection(root, attributes.dir),
+      js: merged.dir,
+      isValid: isOneOf(DIRECTIONS),
+      fallback: DEFAULT_OPTIONS.dir,
+    }),
+    interaction: resolveSetting({
+      attribute: readInteraction(root, attributes.interaction),
+      js: merged.interaction,
+      isValid: isOneOf(INTERACTIONS),
+      fallback: DEFAULT_OPTIONS.interaction,
+    }),
   };
+}
+
+/**
+ * The one exception to silent attribute resolution. A mistyped interaction
+ * (`"Click"`, `"tap"`) silently becomes hover, which reads as "click mode is
+ * broken" rather than as a typo — unlike a bad delay, whose fallback is merely
+ * a slightly different timing. Resolution itself stays silent; this only says
+ * what was ignored. Called after the Webflow editor check, so the Designer
+ * never logs it.
+ */
+function warnInvalidInteraction(root: HTMLElement): void {
+  const name = NAV_MENU_CONFIG.attributes.interaction;
+  const attribute = root.getAttribute(name);
+  if (attribute === null || readInteraction(root, name) !== undefined) return;
+  console.warn(
+    `[nav-menu] Ignoring ${name}="${attribute}": expected "hover" or "click". Falling back to the interaction option, else "hover".`,
+  );
 }
 
 function discoverRefs(root: HTMLElement): NavMenuRefs {
@@ -122,9 +263,11 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
     const value = item.getAttribute(attributes.item) || `item-${index}`;
     item.setAttribute(attributes.item, value);
 
+    const found = viewportContents.get(value) ?? findOwnedContent(item);
+    // A "panel" wrapping the viewport is layout, not a panel: hiding it while
+    // inactive would hide the viewport and every other panel with it.
     const content =
-      viewportContents.get(value) ??
-      item.querySelector<HTMLElement>(selectors.content);
+      found && viewport && found.contains(viewport) ? null : found;
 
     if (content) {
       content.setAttribute(attributes.content, value);
@@ -155,6 +298,101 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
   };
 }
 
+/**
+ * The item's first panel that is its own — a panel inside a nested item
+ * belongs to that nested item, never to this one.
+ */
+function findOwnedContent(item: HTMLElement): HTMLElement | null {
+  const { selectors } = NAV_MENU_CONFIG;
+
+  for (const content of item.querySelectorAll<HTMLElement>(selectors.content)) {
+    if (content.closest(selectors.item) === item) return content;
+  }
+
+  return null;
+}
+
+/** Where a relocated panel came from, so destroy() can put it back. */
+interface PanelOrigin {
+  parent: Node;
+  nextSibling: Node | null;
+  /** The live instance allowed to restore it; a re-init adopts the panel. */
+  owner: symbol;
+}
+
+// Keyed by panel, so a second init on the same root (without destroying the
+// first) adopts the panels the first one moved, and the stale handle's
+// destroy() can no longer pull them out from under the live instance.
+const relocated = new WeakMap<HTMLElement, PanelOrigin>();
+
+/**
+ * Moves every panel authored inside its item (slot markup) into the shared
+ * viewport, so one element can animate between panel sizes. Panels already in
+ * the viewport stay put, and without a viewport nothing moves.
+ *
+ * Returns the undo: it walks the moves backwards, so a recorded next sibling
+ * that was itself moved is already back in place when it is used as anchor.
+ */
+function relocatePanels(refs: NavMenuRefs): NavMenuCleanup {
+  const { viewport, contentMap, itemValues } = refs;
+  const owner = Symbol('nav-menu');
+  const panels: HTMLElement[] = [];
+
+  if (viewport) {
+    for (const value of new Set(itemValues)) {
+      const panel = contentMap.get(value);
+      if (!panel?.parentNode) continue;
+
+      if (viewport.contains(panel)) {
+        // Moved by an instance that is still live: take over its restore.
+        const origin = relocated.get(panel);
+        if (origin) {
+          origin.owner = owner;
+          panels.push(panel);
+        }
+        continue;
+      }
+
+      relocated.set(panel, {
+        parent: panel.parentNode,
+        nextSibling: panel.nextSibling,
+        owner,
+      });
+      panels.push(panel);
+      viewport.appendChild(panel);
+    }
+  }
+
+  return () => {
+    for (const panel of [...panels].reverse()) {
+      const origin = relocated.get(panel);
+      if (origin?.owner !== owner) continue;
+      relocated.delete(panel);
+
+      const { parent, nextSibling } = origin;
+      // Moved inside the panel since init: putting it back would be a cycle.
+      if (panel.contains(parent)) continue;
+      resetRendererState(panel);
+      // The anchor may have been removed or moved since init: append instead.
+      const anchor = nextSibling?.parentNode === parent ? nextSibling : null;
+      parent.insertBefore(panel, anchor);
+    }
+  };
+}
+
+/**
+ * Clears what the renderer wrote, so a restored panel is not left hidden,
+ * inert or mid-animation in its item. Dropping `data-state` also neutralizes
+ * any pending hide callback, which only acts on a panel still marked closed.
+ */
+function resetRendererState(panel: HTMLElement): void {
+  panel.removeAttribute('data-state');
+  panel.removeAttribute('data-motion');
+  panel.removeAttribute('inert');
+  panel.style.display = '';
+  panel.style.pointerEvents = '';
+}
+
 function indexViewportContents(
   viewport: HTMLElement | null,
 ): Map<string, HTMLElement> {
@@ -176,7 +414,7 @@ function indexViewportContents(
 function setupAria(
   root: HTMLElement,
   refs: NavMenuRefs,
-  options: NavMenuOptions,
+  options: ResolvedNavMenuOptions,
   idPrefix: string,
 ): void {
   if (!root.getAttribute('role')) root.setAttribute('role', 'navigation');
@@ -226,6 +464,7 @@ export type {
   InitNavigationMenuOptions,
   NavigationMenuInstance,
   NavMenuDirection,
+  NavMenuInteraction,
   NavMenuOptions,
   NavMenuOrientation,
 } from './types.ts';

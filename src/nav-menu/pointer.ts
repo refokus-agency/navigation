@@ -1,8 +1,34 @@
 import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
 
-/** Mouse only — touch falls through to the click handler. */
-export function attachPointerEvents({
+/** Trigger clicks toggle in both modes — touch always lands here. */
+export function attachTriggerClicks({
+  refs,
+  controller,
+  cleanups,
+}: NavMenuContext): void {
+  for (const { trigger, value } of refs.entries) {
+    if (!refs.contentMap.has(value)) continue;
+
+    const onClick = (event: MouseEvent) => {
+      // Read per click so the attribute can change after init. Navigate mode
+      // leaves the link alone in both interaction modes: its panel opens from
+      // hover (hover mode) or the keyboard.
+      if (isNavigateTrigger(trigger)) return;
+      event.preventDefault();
+      controller.triggerClick(value, trigger);
+    };
+
+    trigger.addEventListener('click', onClick);
+    cleanups.push(() => trigger.removeEventListener('click', onClick));
+  }
+}
+
+/**
+ * Hover mode only — click mode never calls this, so no hover timer can ever be
+ * scheduled. Mouse only: touch falls through to the click handler.
+ */
+export function attachHoverEvents({
   root,
   refs,
   controller,
@@ -26,28 +52,19 @@ export function attachPointerEvents({
       if (!isMouseHover(event)) return;
       controller.triggerPointerLeave(trigger);
     };
-    const onClick = (event: MouseEvent) => {
-      // Read per click so the attribute can change after init. Navigate mode
-      // leaves the link alone: opening is hover/keyboard only.
-      if (isNavigateTrigger(trigger)) return;
-      event.preventDefault();
-      controller.triggerClick(value, trigger);
-    };
 
     trigger.addEventListener('pointerenter', onEnter);
     trigger.addEventListener('pointerleave', onLeave);
-    trigger.addEventListener('click', onClick);
 
     cleanups.push(() => {
       trigger.removeEventListener('pointerenter', onEnter);
       trigger.removeEventListener('pointerleave', onLeave);
-      trigger.removeEventListener('click', onClick);
     });
   }
 
-  // Panels can fall back to living inside their item even when a viewport
-  // exists, and such a panel needs its own hover target or the close timer
-  // runs on under the cursor.
+  // Without a viewport, panels live inside their item, and such a panel needs
+  // its own hover target or the close timer runs on under the cursor. (With
+  // one, init has already relocated every panel into it.)
   const outsideViewport = [...refs.contentMap.values()].filter(
     (content) => !refs.viewport?.contains(content),
   );
@@ -97,6 +114,21 @@ export function attachDismiss({
   });
 }
 
+/**
+ * Whether a click on a link actually leaves the page (or its place in it).
+ * Modifier-clicks open a new tab or window and the user stays here, and a
+ * handler that called preventDefault (a modal opener, say) navigates nowhere —
+ * dismissing on either would close the menu on a click that did nothing.
+ */
+export function isFollowedClick(event: MouseEvent): boolean {
+  return (
+    !event.defaultPrevented &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey
+  );
+}
+
 export function attachLinkClicks({
   root,
   controller,
@@ -104,7 +136,7 @@ export function attachLinkClicks({
 }: NavMenuContext): void {
   const { selectors } = NAV_MENU_CONFIG;
 
-  // meta/ctrl keeps it open so opening in a new tab does not lose context.
+  // A click that does not follow the link keeps the menu open.
   const onClick = (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -114,9 +146,7 @@ export function attachLinkClicks({
       target.closest(`${selectors.content} ${selectors.link}`);
     if (!link) return;
 
-    if (!event.metaKey && !event.ctrlKey) {
-      controller.close();
-    }
+    if (isFollowedClick(event)) controller.close();
   };
 
   root.addEventListener('click', onClick);

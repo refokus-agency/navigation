@@ -21,7 +21,7 @@ pnpm example        # build + open docs/examples/local/
 pnpm commit         # commitizen — required for commits
 ```
 
-Node >= 22.
+Node `^22.22.2 || ^24.15.0 || >=26` (jsdom 30 → undici 8 need it; older 22.x fails to start vitest workers).
 
 ## Non-obvious invariants
 
@@ -43,12 +43,18 @@ is not exported from the package root.
 `{ open, close, destroy }`. Every teardown goes onto the shared `cleanups`
 array, the controller's included, so `destroy()` is just draining that array
 and nothing can be forgotten. (`index.ts` owns a module-level instance counter,
-used only to keep generated ids unique across roots.)
+used only to keep generated ids unique across roots, and a `WeakMap` of
+relocated panels to their origin and owning instance, so a re-init on the same
+root adopts them and a stale handle's `destroy()` cannot pull them out.)
 
 **`render.ts` is the only module that writes *reactive* DOM state**, and it
-animates nothing. Two deliberate exceptions: `setupAria` in `index.ts` writes
-the ARIA wiring once at init, and `mobile.ts` writes `[data-nav-mode]`, which
-tracks the breakpoint rather than the open/closed state.
+animates nothing. Three deliberate exceptions: `setupAria` in `index.ts` writes
+the ARIA wiring once at init; `mobile.ts` writes `[data-nav-mode]` (tracks the
+breakpoint) and owns the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair
+(`aria-expanded`, card `data-state`/`inert`), whose state is separate from the
+panel state machine and undone by `destroy()`; and `relocatePanels` in
+`index.ts` moves slot panels (authored inside their item) into the viewport
+once at init — a structural move, undone by the last entry of `cleanups`.
 
 Whether a viewport mount skips the size transition comes from the renderer's
 own `isViewportOpen` flag — **never** from reading back `style.display`, which only

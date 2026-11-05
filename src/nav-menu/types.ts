@@ -2,16 +2,37 @@ export type NavMenuOrientation = 'horizontal' | 'vertical';
 
 export type NavMenuDirection = 'ltr' | 'rtl';
 
+export type NavMenuInteraction = 'hover' | 'click';
+
 export type NavMenuOptions = {
   /** Delay before a hovered trigger opens its panel, in ms. */
   delayDuration: number;
   /** Window after a close during which the next open is instant, in ms. */
   skipDelayDuration: number;
+  /** Grace period after the pointer leaves before the panel closes, in ms. */
+  closeDelay?: number;
   orientation: NavMenuOrientation;
   dir: NavMenuDirection;
+  /**
+   * What opens a panel with the mouse. Overridden by `data-nav-interaction` on
+   * the root. Optional so option objects written before it existed still
+   * typecheck; it is always resolved internally.
+   */
+  interaction?: NavMenuInteraction;
   /** No-op inside the Webflow Designer so panels stay editable in canvas. */
   skipInWebflowEditor: boolean;
   onValueChange?: (value: string | null) => void;
+};
+
+/**
+ * Internal only — not re-exported: options after defaults are applied.
+ * `closeDelay` and `interaction` stay optional on the public `NavMenuOptions`
+ * so adding them was not a breaking type change. `interaction` is always
+ * resolved, so `pointer.ts` can never read `undefined` as click mode.
+ */
+export type ResolvedNavMenuOptions = NavMenuOptions & {
+  closeDelay: number;
+  interaction: NavMenuInteraction;
 };
 
 export type InitNavigationMenuOptions = Partial<NavMenuOptions>;
@@ -35,8 +56,15 @@ export type NavMenuRefs = {
 };
 
 export type NavMenuRenderer = {
-  applyState(value: string | null, previousValue: string | null): void;
-  observeResize(getActiveValue: () => string | null): NavMenuCleanup;
+  applyState(
+    value: string | null,
+    previousValue: string | null,
+    activeTrigger?: HTMLElement | null,
+  ): void;
+  observeResize(
+    getActiveValue: () => string | null,
+    getActiveTrigger: () => HTMLElement | null,
+  ): NavMenuCleanup;
 };
 
 export type NavMenuController = {
@@ -68,6 +96,9 @@ export type NavMenuContext = {
   refs: NavMenuRefs;
   controller: NavMenuController;
   cleanups: NavMenuCleanup[];
+  options: ResolvedNavMenuOptions;
+  /** Per-instance id prefix, so generated ids never collide across roots. */
+  idPrefix: string;
 };
 
 export type NavigationMenuInstance = {
