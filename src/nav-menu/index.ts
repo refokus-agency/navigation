@@ -30,6 +30,9 @@ import type {
 // shape), and positional fallback values collide across roots.
 let instanceCount = 0;
 
+// External overlays already owned by a live instance.
+const claimedOverlays = new WeakSet<HTMLElement>();
+
 const DEFAULT_OPTIONS: NavMenuOptions = {
   delayDuration: 200,
   skipDelayDuration: 300,
@@ -80,6 +83,8 @@ export function initNavigationMenu(
   };
 
   cleanups.push(() => controller.destroy());
+  const { overlay } = refs;
+  if (overlay) cleanups.push(() => claimedOverlays.delete(overlay));
 
   attachPointerEvents(context);
   attachDismiss(context);
@@ -171,15 +176,18 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
 }
 
 /**
- * Inside the root first. Outside, only an overlay no other nav root contains,
- * so two roots on one page never fight over one backdrop.
+ * Inside the root first. Outside, the first overlay that no nav root contains
+ * and no other live instance has claimed: the first root to init owns it and
+ * releases it in `destroy()`, so two roots never write one backdrop.
  */
 function discoverOverlay(root: HTMLElement): HTMLElement | null {
   const { selectors } = NAV_MENU_CONFIG;
   const inside = root.querySelector<HTMLElement>(selectors.overlay);
   if (inside) return inside;
   for (const el of document.querySelectorAll<HTMLElement>(selectors.overlay)) {
-    if (!el.closest(selectors.root)) return el;
+    if (el.closest(selectors.root) || claimedOverlays.has(el)) continue;
+    claimedOverlays.add(el);
+    return el;
   }
   return null;
 }

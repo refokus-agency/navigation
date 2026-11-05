@@ -107,3 +107,37 @@ describe('overlay', () => {
     expect(menu.root.dataset.state).toBe('open');
   });
 });
+
+describe('overlay shared by two roots', () => {
+  function twoRoots() {
+    stubResizeObserver();
+    stubMatchMedia(false);
+    document.body.innerHTML = `
+      <div data-nav-overlay></div>
+      <nav id="a" data-nav-menu><div data-nav-item="x"><button data-nav-trigger>x</button><div data-nav-content="x">x</div></div></nav>
+      <nav id="b" data-nav-menu><div data-nav-item="y"><button data-nav-trigger>y</button><div data-nav-content="y">y</div></div></nav>`;
+    const overlay = document.querySelector<HTMLElement>('[data-nav-overlay]');
+    if (!overlay) throw new Error('missing overlay');
+    overlay.setAttribute('aria-hidden', 'false');
+    const a = initNavigationMenu('#a');
+    const b = initNavigationMenu('#b');
+    return { overlay, a, b };
+  }
+
+  it('should give the overlay to the first root only', () => {
+    const { overlay, a, b } = twoRoots();
+    a?.open('x');
+    b?.close();
+    expect(overlay.dataset.state).toBe('open');
+  });
+
+  it('should restore the original aria-hidden and release the claim', () => {
+    const { overlay, a, b } = twoRoots();
+    b?.destroy();
+    a?.destroy();
+    expect(overlay.getAttribute('aria-hidden')).toBe('false');
+    const again = initNavigationMenu('#b');
+    again?.open('y');
+    expect(overlay.dataset.state).toBe('open');
+  });
+});
