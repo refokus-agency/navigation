@@ -37,16 +37,22 @@ function setupMockWindow(initialScrollY = 0): void {
 
 type ScrollModule = typeof import('../scroll-behaviour.ts');
 
-let loaded: ScrollModule | null = null;
+let teardowns: Array<() => void> = [];
 
 /**
- * Each test gets a fresh module via resetModules, but the focus listener lives
- * on the real `document` — so without tearing the previous instance down, a
- * stale handler still receives events and trips over this file's fake elements.
+ * The focus listener lives on the real `document` — so every instance a test
+ * creates is torn down afterwards, or a stale handler still receives events
+ * and trips over this file's fake elements.
  */
 async function loadScrollModule(): Promise<ScrollModule> {
-  loaded = await import('../scroll-behaviour.ts');
-  return loaded;
+  const loaded = await import('../scroll-behaviour.ts');
+  return {
+    initScrollBehavior: (...args) => {
+      const teardown = loaded.initScrollBehavior(...args);
+      teardowns.push(teardown);
+      return teardown;
+    },
+  };
 }
 
 describe('scroll behavior', () => {
@@ -57,8 +63,8 @@ describe('scroll behavior', () => {
   });
 
   afterEach(() => {
-    loaded?.cleanupNavbarAnimation();
-    loaded = null;
+    for (const teardown of teardowns) teardown();
+    teardowns = [];
     document.body.innerHTML = '';
   });
 
@@ -181,7 +187,7 @@ describe('scroll behavior', () => {
     const navbarElement = document.createElement('nav');
     document.body.append(navbarElement);
 
-    module.initScrollBehavior([navbarElement], {
+    const teardown = module.initScrollBehavior([navbarElement], {
       animationDuration: 0.5,
       animationEasing: 'power1.out',
       hideOnScroll: true,
@@ -191,7 +197,7 @@ describe('scroll behavior', () => {
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
     globalThis.window.dispatchEvent(new Event('scroll'));
 
-    module.cleanupNavbarAnimation();
+    teardown();
     const callsAfterCleanup = createNavbarAnimationMock.mock.calls.length;
 
     navbarElement.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
@@ -220,13 +226,13 @@ describe('scroll behavior', () => {
     const module = await loadScrollModule();
     const navbarElement = { id: 'nav' } as unknown as Element;
 
-    module.initScrollBehavior([navbarElement], {
+    const teardown = module.initScrollBehavior([navbarElement], {
       animationDuration: 0.2,
       animationEasing: 'linear',
       hideOnScroll: true,
       scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     });
-    module.cleanupNavbarAnimation();
+    teardown();
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 100;
     globalThis.window.dispatchEvent(new Event('scroll'));
@@ -234,7 +240,7 @@ describe('scroll behavior', () => {
     expect(createNavbarAnimationMock).not.toHaveBeenCalled();
   });
 
-  it('should hide on scroll-down after re-initialization even if previously hidden', async () => {
+  it('should hide on scroll-down after a teardown and re-initialization', async () => {
     const module = await loadScrollModule();
     const navbarElement = { id: 'nav' } as unknown as Element;
     const options = {
@@ -244,11 +250,12 @@ describe('scroll behavior', () => {
       scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
     };
 
-    module.initScrollBehavior([navbarElement], options);
+    const teardown = module.initScrollBehavior([navbarElement], options);
 
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
     globalThis.window.dispatchEvent(new Event('scroll'));
 
+    teardown();
     globalThis.window.scrollY = 0;
     module.initScrollBehavior([navbarElement], options);
 
@@ -257,6 +264,7 @@ describe('scroll behavior', () => {
     globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
     globalThis.window.dispatchEvent(new Event('scroll'));
 
+    expect(createNavbarAnimationMock).toHaveBeenCalledTimes(1);
     expect(createNavbarAnimationMock).toHaveBeenCalledWith(
       [navbarElement],
       NAVBAR_CONFIG.position.hidden,
@@ -264,36 +272,62 @@ describe('scroll behavior', () => {
     );
   });
 
-  it('should use latest options on re-initialization', async () => {
+  it('should keep two instances independent', async () => {
     const module = await loadScrollModule();
-    const navbarElement = { id: 'nav' } as unknown as Element;
-
-    module.initScrollBehavior([navbarElement], {
-      animationDuration: 0.1,
-      animationEasing: 'power1.in',
+    const navbarA = { id: 'a' } as unknown as Element;
+    const navbarB = { id: 'b' } as unknown as Element;
+    const options = {
+      animationDuration: 0.5,
+      animationEasing: 'power1.out',
       hideOnScroll: true,
       scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
-    });
-    module.initScrollBehavior([navbarElement], {
-      animationDuration: 0.9,
-      animationEasing: 'power4.inOut',
-      hideOnScroll: true,
-      scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
-    });
+    };
 
-    globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 10;
+    const teardownA = module.initScrollBehavior([navbarA], options);
+    module.initScrollBehavior([navbarB], options);
+
+    teardownA();
+    globalThis.window.scrollY = NAVBAR_CONFIG.scroll.threshold + 20;
     globalThis.window.dispatchEvent(new Event('scroll'));
 
+    expect(createNavbarAnimationMock).toHaveBeenCalledTimes(1);
     expect(createNavbarAnimationMock).toHaveBeenCalledWith(
-      [navbarElement],
+      [navbarB],
       NAVBAR_CONFIG.position.hidden,
+      options,
+    );
+  });
+
+  it('should leave no scroll or focus listeners after teardown', async () => {
+    const module = await loadScrollModule();
+    const windowAdd = vi.spyOn(globalThis.window, 'addEventListener');
+    const windowRemove = vi.spyOn(globalThis.window, 'removeEventListener');
+    const documentAdd = vi.spyOn(document, 'addEventListener');
+    const documentRemove = vi.spyOn(document, 'removeEventListener');
+
+    const teardown = module.initScrollBehavior(
+      [document.createElement('nav')],
       {
-        animationDuration: 0.9,
-        animationEasing: 'power4.inOut',
+        animationDuration: 0.5,
+        animationEasing: 'power1.out',
         hideOnScroll: true,
         scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
       },
     );
+    teardown();
+
+    expect(windowAdd).toHaveBeenCalledTimes(1);
+    expect(windowRemove).toHaveBeenCalledTimes(1);
+    expect(windowRemove.mock.calls[0]).toEqual([
+      'scroll',
+      windowAdd.mock.calls[0]?.[1],
+    ]);
+    expect(documentAdd).toHaveBeenCalledTimes(1);
+    expect(documentRemove).toHaveBeenCalledTimes(1);
+    expect(documentRemove.mock.calls[0]).toEqual([
+      'focusin',
+      documentAdd.mock.calls[0]?.[1],
+    ]);
   });
 
   describe('custom scroll threshold (AC-8)', () => {

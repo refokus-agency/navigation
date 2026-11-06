@@ -54,15 +54,19 @@ animation and the dropdown menu attach to it, so one element serves both.
 import { initNavbarAnimation } from '@refokus-agency/navigation';
 
 // Initialize with custom options
-const success = initNavbarAnimation({
+const nav = initNavbarAnimation({
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
 });
 
-if (success) {
-  console.log('Navbar animation initialized');
-}
+// Later, e.g. before a page transition swaps the DOM:
+nav?.destroy();
 ```
+
+`initNavbarAnimation` returns `{ destroy }` (typed `NavbarAnimationInstance`), or
+`null` when no `[data-nav-menu]` is on the page. `destroy()` removes the scroll
+and focus listeners, kills the navbar's tweens and clears the inline transform
+it set. It is idempotent, and each call is an independent instance.
 
 | Option              | Type      | Default          | Description                                                       |
 | ------------------- | --------- | ---------------- | ----------------------------------------------------------------- |
@@ -144,6 +148,12 @@ Attributes are read **once, at init**; changing them afterwards has no effect
 until the feature is initialized again. nav-menu reads the root it attaches
 to, so several menus resolve independently. nav-anim animates every root but
 reads its attributes from the **first** `[data-nav-menu]` only.
+
+> **Upgrading to the teardown handle:** `initNavbarAnimation` used to return
+> `boolean` and keep module-level state, so a second call replaced the first.
+> It now returns `{ destroy } | null`. Replace `if (initNavbarAnimation())` with
+> a `null` check, and call `destroy()` before re-initializing — a second call no
+> longer tears down the first.
 
 > **Upgrading from a 1.x release:** `initNavbarAnimation` used to select
 > `[r-navbar]`. Rename that attribute to `data-nav-menu` on your nav element —
