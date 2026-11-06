@@ -35,11 +35,11 @@ Relocity implementations so those sites adopt the package without editing
 Webflow markup. Outputs consumer CSS depends on: `data-state`, `data-motion`,
 `data-orientation`, `data-nav-mode`, `--nav-viewport-{width,height}`.
 
-**`nav-anim` holds module-level singleton state** in `scroll-behaviour.ts`, so a
-second `initNavbarAnimation` call overwrites the first. `cleanupNavbarAnimation`
-is not exported from the package root.
+**`nav-anim` holds no module-level state** — `initNavbarAnimation` returns an
+independent `{ destroy } | null`; the scroll/focus state lives in the closure of
+`initScrollBehavior`, whose return value is its teardown.
 
-**`nav-menu` holds none** — each call returns an independent
+**`nav-menu` likewise** — each call returns an independent
 `{ open, close, destroy }`. Every teardown goes onto the shared `cleanups`
 array, the controller's included, so `destroy()` is just draining that array
 and nothing can be forgotten. (`index.ts` owns a module-level instance counter,

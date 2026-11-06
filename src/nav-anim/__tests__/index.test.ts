@@ -1,3 +1,4 @@
+import { gsap } from 'gsap';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../initial-animation.ts', () => ({
@@ -45,8 +46,8 @@ beforeEach(() => {
 });
 
 describe('initNavbarAnimation', () => {
-  it('should return false when navbar elements are not found', () => {
-    expect(initNavbarAnimation()).toBe(false);
+  it('should return null when navbar elements are not found', () => {
+    expect(initNavbarAnimation()).toBeNull();
     expect(mockedPerformInitialAnimation).not.toHaveBeenCalled();
     expect(mockedInitScrollBehavior).not.toHaveBeenCalled();
   });
@@ -58,7 +59,7 @@ describe('initNavbarAnimation', () => {
       animationEasing: 'power4.out',
     };
 
-    expect(initNavbarAnimation(options)).toBe(true);
+    expect(initNavbarAnimation(options)).not.toBeNull();
     expect(mockedPerformInitialAnimation).toHaveBeenCalledWith(
       [navbarA, navbarB],
       { ...DEFAULTS, ...options },
@@ -72,7 +73,7 @@ describe('initNavbarAnimation', () => {
   it('should use default options when no options are provided', () => {
     const navbars = renderNavbars(1);
 
-    expect(initNavbarAnimation()).toBe(true);
+    expect(initNavbarAnimation()).not.toBeNull();
     expect(mockedPerformInitialAnimation).toHaveBeenCalledWith(
       navbars,
       DEFAULTS,
@@ -83,7 +84,7 @@ describe('initNavbarAnimation', () => {
   it('should merge partial options with defaults', () => {
     const navbars = renderNavbars(1);
 
-    expect(initNavbarAnimation({ animationDuration: 0.8 })).toBe(true);
+    expect(initNavbarAnimation({ animationDuration: 0.8 })).not.toBeNull();
     expect(mockedPerformInitialAnimation).toHaveBeenCalledWith(navbars, {
       ...DEFAULTS,
       animationDuration: 0.8,
@@ -92,5 +93,59 @@ describe('initNavbarAnimation', () => {
       ...DEFAULTS,
       animationDuration: 0.8,
     });
+  });
+});
+
+describe('initNavbarAnimation teardown handle', () => {
+  it('should remove the scroll behavior and kill the tweens on destroy', () => {
+    const navbars = renderNavbars(1);
+    const removeScrollBehavior = vi.fn();
+    mockedInitScrollBehavior.mockReturnValueOnce(removeScrollBehavior);
+    const killTweensOf = vi.spyOn(gsap, 'killTweensOf');
+
+    const nav = initNavbarAnimation();
+    expect(removeScrollBehavior).not.toHaveBeenCalled();
+
+    nav?.destroy();
+
+    expect(removeScrollBehavior).toHaveBeenCalledTimes(1);
+    expect(killTweensOf).toHaveBeenCalledWith(navbars);
+  });
+
+  it('should be safe to destroy twice', () => {
+    renderNavbars(1);
+    const removeScrollBehavior = vi.fn();
+    mockedInitScrollBehavior.mockReturnValueOnce(removeScrollBehavior);
+
+    const nav = initNavbarAnimation();
+    nav?.destroy();
+    nav?.destroy();
+
+    expect(removeScrollBehavior).toHaveBeenCalledTimes(1);
+  });
+
+  it('should destroy cleanly when hideOnScroll is false', () => {
+    renderNavbars(1);
+
+    const nav = initNavbarAnimation({ hideOnScroll: false });
+
+    expect(mockedInitScrollBehavior).not.toHaveBeenCalled();
+    expect(() => nav?.destroy()).not.toThrow();
+  });
+
+  it('should keep two instances independent', () => {
+    renderNavbars(1);
+    const removeA = vi.fn();
+    const removeB = vi.fn();
+    mockedInitScrollBehavior
+      .mockReturnValueOnce(removeA)
+      .mockReturnValueOnce(removeB);
+
+    const a = initNavbarAnimation();
+    initNavbarAnimation();
+    a?.destroy();
+
+    expect(removeA).toHaveBeenCalledTimes(1);
+    expect(removeB).not.toHaveBeenCalled();
   });
 });

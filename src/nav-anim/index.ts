@@ -9,10 +9,7 @@ import {
 } from '../attributes.ts';
 import { NAVBAR_CONFIG } from './config.ts';
 import { performInitialAnimation } from './initial-animation.ts';
-import {
-  cleanupNavbarAnimation,
-  initScrollBehavior,
-} from './scroll-behaviour.ts';
+import { initScrollBehavior } from './scroll-behaviour.ts';
 
 export type NavbarAnimationOptions = {
   animationDuration: number;
@@ -25,6 +22,14 @@ export type NavbarAnimationOptions = {
 
 export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
 
+export type NavbarAnimationInstance = {
+  /**
+   * Removes the scroll and focus listeners, kills the navbar's tweens and
+   * clears the inline transform it set. Safe to call more than once.
+   */
+  destroy: () => void;
+};
+
 const DEFAULT_OPTIONS: NavbarAnimationOptions = {
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
@@ -33,17 +38,18 @@ const DEFAULT_OPTIONS: NavbarAnimationOptions = {
 };
 
 /**
- * Initializes navbar animation system
- * @returns Whether initialization was successful
+ * Initializes navbar animation. Each call is independent and returns its own
+ * teardown handle.
+ * @returns The handle, or `null` when no nav root is on the page
  */
 export function initNavbarAnimation(
   options: InitNavbarAnimationOptions = {},
-): boolean {
+): NavbarAnimationInstance | null {
   const navbarElements = document.querySelectorAll(
     NAVBAR_CONFIG.selectors.navbar,
   );
 
-  if (!navbarElements.length) return false;
+  if (!navbarElements.length) return null;
 
   const elements = Array.from(navbarElements);
   const resolvedOptions = resolveAnimOptions(elements[0] as Element, {
@@ -51,17 +57,22 @@ export function initNavbarAnimation(
     ...options,
   });
 
-  // A re-init must drop the previous singleton binding, even when it no
-  // longer hides on scroll and so never reaches initScrollBehavior.
-  cleanupNavbarAnimation();
-
   // The slide-in always runs, so the navbar appears even when it never hides.
   performInitialAnimation(elements, resolvedOptions);
-  if (resolvedOptions.hideOnScroll) {
-    initScrollBehavior(elements, resolvedOptions);
-  }
+  const removeScrollBehavior = resolvedOptions.hideOnScroll
+    ? initScrollBehavior(elements, resolvedOptions)
+    : undefined;
 
-  return true;
+  let destroyed = false;
+  return {
+    destroy: () => {
+      if (destroyed) return;
+      destroyed = true;
+      removeScrollBehavior?.();
+      gsap.killTweensOf(elements);
+      gsap.set(elements, { clearProps: 'transform' });
+    },
+  };
 }
 
 /**
@@ -87,7 +98,7 @@ const readEaseAttr: AttributeReader<string> = (el, name) => {
 
 /**
  * The first root's attributes override the merged JS options; read once, at
- * init. Every root is animated, but the state is a singleton, so one root
+ * init. Every root is animated by one instance, so the first root
  * decides. Invalid values — attribute or JS — are skipped silently.
  */
 function resolveAnimOptions(
