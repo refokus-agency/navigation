@@ -32,6 +32,7 @@ import type {
   NavMenuInteraction,
   NavMenuOptions,
   NavMenuOrientation,
+  NavMenuPanels,
   NavMenuRefs,
   ResolvedNavMenuOptions,
 } from './types.ts';
@@ -80,7 +81,7 @@ export function initNavigationMenu(
   const cleanups: NavMenuCleanup[] = [];
   // Kept out of `cleanups` until init succeeds, so it always runs last: panels
   // go back only after every other teardown has run.
-  const restorePanels = relocatePanels(refs);
+  const { panels, restore: restorePanels } = relocatePanels(refs);
 
   try {
     const idPrefix = `nav-${++instanceCount}`;
@@ -98,6 +99,7 @@ export function initNavigationMenu(
       refs,
       controller,
       cleanups,
+      panels,
       options: resolvedOptions,
       idPrefix,
     };
@@ -326,57 +328,95 @@ interface PanelOrigin {
 const relocated = new WeakMap<HTMLElement, PanelOrigin>();
 
 /**
- * Moves every panel authored inside its item (slot markup) into the shared
- * viewport, so one element can animate between panel sizes. Panels already in
- * the viewport stay put, and without a viewport nothing moves.
+ * Owns where each panel authored inside its item (slot markup) sits: in the
+ * shared viewport, so one element can animate between panel sizes, or back in
+ * its item. Panels already authored in the viewport are never moved, and
+ * without a viewport nothing moves.
  *
- * Returns the undo: it walks the moves backwards, so a recorded next sibling
- * that was itself moved is already back in place when it is used as anchor.
+ * Every panel starts in the viewport; `[data-nav-mobile-panels="inline"]` moves
+ * them back in mobile mode via `panels.inline()`. The origin stays recorded
+ * while the instance owns the panel, wherever it currently sits, so a re-init
+ * adopts it and a stale handle can touch neither. `restore` is the final undo:
+ * it walks the moves backwards, so a recorded next sibling that was itself
+ * moved is already back in place when it is used as anchor.
  */
-function relocatePanels(refs: NavMenuRefs): NavMenuCleanup {
+function relocatePanels(refs: NavMenuRefs): {
+  panels: NavMenuPanels;
+  restore: NavMenuCleanup;
+} {
   const { viewport, contentMap, itemValues } = refs;
   const owner = Symbol('nav-menu');
-  const panels: HTMLElement[] = [];
+  const owned: HTMLElement[] = [];
 
   if (viewport) {
     for (const value of new Set(itemValues)) {
       const panel = contentMap.get(value);
       if (!panel?.parentNode) continue;
 
-      if (viewport.contains(panel)) {
+      const origin = relocated.get(panel);
+      if (origin) {
         // Moved by an instance that is still live: take over its restore.
-        const origin = relocated.get(panel);
-        if (origin) {
-          origin.owner = owner;
-          panels.push(panel);
-        }
-        continue;
+        origin.owner = owner;
+        owned.push(panel);
+      } else if (!viewport.contains(panel)) {
+        relocated.set(panel, {
+          parent: panel.parentNode,
+          nextSibling: panel.nextSibling,
+          owner,
+        });
+        owned.push(panel);
       }
-
-      relocated.set(panel, {
-        parent: panel.parentNode,
-        nextSibling: panel.nextSibling,
-        owner,
-      });
-      panels.push(panel);
-      viewport.appendChild(panel);
     }
   }
 
-  return () => {
-    for (const panel of [...panels].reverse()) {
-      const origin = relocated.get(panel);
-      if (origin?.owner !== owner) continue;
-      relocated.delete(panel);
-
-      const { parent, nextSibling } = origin;
-      // Moved inside the panel since init: putting it back would be a cycle.
-      if (panel.contains(parent)) continue;
+  /** Back in its item. `reset` also drops what the renderer wrote. */
+  const putBack = (panel: HTMLElement, reset: boolean): void => {
+    const { parent, nextSibling } = relocated.get(panel) as PanelOrigin;
+    // Moved inside the panel since init: putting it back would be a cycle.
+    if (panel.contains(parent)) return;
+    if (reset) {
       resetRendererState(panel);
-      // The anchor may have been removed or moved since init: append instead.
-      const anchor = nextSibling?.parentNode === parent ? nextSibling : null;
-      parent.insertBefore(panel, anchor);
+    } else {
+      // Mid-session: the panel is closed, but its exit may still be pending.
+      panel.style.display = 'none';
+      delete panel.dataset.motion;
     }
+    // The anchor may have been removed or moved since init: append instead.
+    const anchor = nextSibling?.parentNode === parent ? nextSibling : null;
+    parent.insertBefore(panel, anchor);
+  };
+
+  const isMine = (panel: HTMLElement) => relocated.get(panel)?.owner === owner;
+
+  const toViewport = () => {
+    if (!viewport) return;
+    for (const panel of owned) {
+      if (isMine(panel) && !viewport.contains(panel)) {
+        viewport.appendChild(panel);
+      }
+    }
+  };
+
+  const inline = () => {
+    if (!viewport) return;
+    for (const panel of [...owned].reverse()) {
+      if (isMine(panel) && viewport.contains(panel)) putBack(panel, false);
+    }
+  };
+
+  toViewport();
+
+  return {
+    panels: { toViewport, inline },
+    restore: () => {
+      for (const panel of [...owned].reverse()) {
+        if (!isMine(panel)) continue;
+        const wasInViewport = viewport?.contains(panel) === true;
+        if (wasInViewport) putBack(panel, true);
+        else resetRendererState(panel);
+        relocated.delete(panel);
+      }
+    },
   };
 }
 

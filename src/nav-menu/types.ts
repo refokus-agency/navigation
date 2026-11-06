@@ -90,12 +90,21 @@ export type NavMenuController = {
 
 export type NavMenuCleanup = () => void;
 
+/** Where slot panels currently sit; moves are structural, never animated. */
+export type NavMenuPanels = {
+  /** Moves slot panels into the shared viewport (desktop placement). */
+  toViewport(): void;
+  /** Moves slot panels back into their item, hidden until the next open. */
+  inline(): void;
+};
+
 /** Shared argument bag for the event-attaching modules. */
 export type NavMenuContext = {
   root: HTMLElement;
   refs: NavMenuRefs;
   controller: NavMenuController;
   cleanups: NavMenuCleanup[];
+  panels: NavMenuPanels;
   options: ResolvedNavMenuOptions;
   /** Per-instance id prefix, so generated ids never collide across roots. */
   idPrefix: string;

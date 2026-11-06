@@ -362,3 +362,134 @@ function expectPristine(panel: HTMLElement): void {
   expect(panel.style.display).toBe('');
   expect(panel.style.pointerEvents).toBe('');
 }
+
+describe('inline panels on mobile (data-nav-mobile-panels="inline")', () => {
+  let setMobile: (matches: boolean) => void;
+
+  function stubMatchMedia(initial: boolean): void {
+    const listeners = new Set<() => void>();
+    let matches = initial;
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return matches;
+      },
+      addEventListener: (_type: string, listener: () => void) =>
+        listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) =>
+        listeners.delete(listener),
+    }));
+    setMobile = (next) => {
+      matches = next;
+      for (const listener of [...listeners]) listener();
+    };
+  }
+
+  const optIn = () =>
+    document
+      .querySelector('[data-nav-menu]')
+      ?.setAttribute('data-nav-mobile-panels', 'inline');
+  const itemOf = (value: string) =>
+    document.querySelector(`[data-nav-item="${value}"]`);
+
+  it('should keep panels in the viewport on mobile without the opt-in', () => {
+    stubMatchMedia(true);
+    initNavigationMenu();
+
+    expect(menu.content('a').parentElement).toBe(menu.viewport);
+  });
+
+  it('should place panels inline when initialised in mobile mode', () => {
+    stubMatchMedia(true);
+    optIn();
+    initNavigationMenu();
+
+    for (const value of ['a', 'b', 'c']) {
+      expect(menu.content(value).parentElement).toBe(itemOf(value));
+    }
+    expect(menu.viewport.children).toHaveLength(0);
+    expect(menu.viewport.style.display).toBe('none');
+  });
+
+  it('should follow the breakpoint in both directions, closed and hidden', () => {
+    stubMatchMedia(false);
+    optIn();
+    const instance = initNavigationMenu();
+    expect(menu.content('a').parentElement).toBe(menu.viewport);
+
+    instance?.open('a');
+    setMobile(true);
+
+    expect(menu.content('a').parentElement).toBe(itemOf('a'));
+    expect(menu.content('a').style.display).toBe('none');
+    expect(menu.viewport.children).toHaveLength(0);
+
+    setMobile(false);
+    expect(
+      [...menu.viewport.children].map((child) =>
+        child.getAttribute('data-nav-content'),
+      ),
+    ).toEqual(['a', 'b', 'c']);
+  });
+
+  it('should open as an accordion in place on mobile', () => {
+    stubMatchMedia(true);
+    optIn();
+    const instance = initNavigationMenu();
+
+    instance?.open('b');
+
+    expect(menu.content('b').parentElement).toBe(itemOf('b'));
+    expect(menu.content('b').dataset.state).toBe('open');
+    expect(menu.content('b').style.display).toBe('');
+    expect(itemOf('b')?.getAttribute('data-state')).toBe('open');
+    // The idle viewport takes no part: not shown, not sized.
+    expect(menu.viewport.style.display).toBe('none');
+    expect(menu.viewport.style.getPropertyValue('--nav-viewport-height')).toBe(
+      '',
+    );
+  });
+
+  it('should use the viewport again after returning to desktop', () => {
+    stubMatchMedia(true);
+    optIn();
+    const instance = initNavigationMenu();
+    setMobile(false);
+
+    instance?.open('c');
+
+    expect(menu.content('c').parentElement).toBe(menu.viewport);
+    expect(menu.viewport.dataset.state).toBe('open');
+    expect(menu.viewport.style.display).toBe('');
+  });
+
+  it('should restore panels from either placement on destroy', () => {
+    stubMatchMedia(false);
+    optIn();
+    const instance = initNavigationMenu();
+    setMobile(true);
+    instance?.destroy();
+
+    for (const value of ['a', 'b', 'c']) {
+      const panel = menu.content(value);
+      expect(panel.parentElement).toBe(itemOf(value));
+      expect(panel.hasAttribute('data-state')).toBe(false);
+      expect(panel.hasAttribute('inert')).toBe(false);
+      expect(panel.style.display).toBe('');
+    }
+  });
+
+  it('should not let a stale handle touch panels a newer instance owns', () => {
+    stubMatchMedia(true);
+    optIn();
+    const first = initNavigationMenu();
+    const second = initNavigationMenu();
+    setMobile(false);
+    expect(menu.content('a').parentElement).toBe(menu.viewport);
+
+    first?.destroy();
+
+    expect(menu.content('a').parentElement).toBe(menu.viewport);
+    second?.destroy();
+    expect(menu.content('a').parentElement).toBe(itemOf('a'));
+  });
+});

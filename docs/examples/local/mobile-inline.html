@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Viewport on desktop, accordion on mobile — local example</title>
+
+<script type="importmap">
+{ "imports": { "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.15.0/+esm" } }
+</script>
+
+<style>
+  * { box-sizing: border-box; }
+  :root { --bg:#0e1116; --panel:#171c24; --line:#2a323d; --text:#e6edf3; --dim:#8b949e; --accent:#58a6ff; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  main { padding:110px 20px 40px; max-width:720px; margin:0 auto; color:var(--dim); }
+  #status { position:fixed; right:12px; bottom:12px; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; padding:8px 12px; font:12px/1.5 ui-monospace,monospace; z-index:99; }
+
+  [data-nav-menu] { position:fixed; inset:0 0 auto 0; z-index:50; display:flex; align-items:center; gap:8px;
+    padding:14px 20px; background:rgba(23,28,36,.95); border-bottom:1px solid var(--line); }
+  .brand { font-weight:650; margin-right:18px; }
+  [data-nav-list] { display:flex; align-items:center; gap:4px; }
+  [data-nav-item] { position:relative; }
+  [data-nav-trigger],[data-nav-link],[data-nav-toggle] { appearance:none; background:none; border:0; cursor:pointer;
+    color:var(--text); font:inherit; text-decoration:none; padding:8px 12px; border-radius:8px; }
+  [data-nav-trigger]:hover,[data-nav-link]:hover { background:#212936; }
+  [data-nav-trigger][data-state='open'] { background:#263041; color:var(--accent); }
+  [data-nav-content] a { display:block; padding:6px 10px; color:var(--text); text-decoration:none; white-space:nowrap; }
+
+  /* Desktop: one shared viewport, sized by the library. Panels carry no size. */
+  [data-nav-viewport] { position:absolute; top:100%; left:0; overflow:hidden; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; margin-top:6px;
+    width:var(--nav-viewport-width); height:var(--nav-viewport-height);
+    transition:width .25s ease,height .25s ease; }
+  [data-nav-viewport][data-state='closed'] { opacity:0; }
+  [data-nav-content] { padding:10px; }
+  [data-nav-content][data-state='closed'] { opacity:0; }
+  [data-nav-content] { transition:opacity .2s; }
+  [data-nav-toggle] { display:none; margin-left:auto; }
+
+  /* Mobile: panels are back inline, so the item is an accordion. */
+  @media (max-width: 767px) {
+    [data-nav-toggle] { display:block; }
+    [data-nav-card] { position:absolute; top:100%; left:0; right:0; background:var(--panel);
+      border-bottom:1px solid var(--line); padding:8px 12px; }
+    [data-nav-card][data-state='closed'] { display:none; }
+    [data-nav-list] { flex-direction:column; align-items:stretch; }
+    [data-nav-trigger] { width:100%; text-align:left; }
+    [data-nav-content] { padding:0 0 0 14px; }
+    [data-nav-item][data-state='open'] > [data-nav-trigger] { color:var(--accent); }
+  }
+  [data-nav-card] { display:flex; flex:1; align-items:center; }
+  @media (max-width: 767px) { [data-nav-card] { display:block; } }
+</style>
+</head>
+<body>
+
+<nav data-nav-menu data-nav-mobile-panels="inline" data-nav-interaction="click">
+  <span class="brand">Acme</span>
+  <button type="button" data-nav-toggle>Menu</button>
+  <div data-nav-card>
+    <div data-nav-list>
+      <div data-nav-item="products">
+        <button type="button" data-nav-trigger>Products</button>
+        <div data-nav-content>
+          <a href="#p1">Analytics</a><a href="#p2">Automation</a><a href="#p3">Reporting</a>
+          <a href="#p4">Integrations</a><a href="#p5">Security</a>
+        </div>
+      </div>
+      <div data-nav-item="company">
+        <button type="button" data-nav-trigger>Company</button>
+        <div data-nav-content>
+          <a href="#c1">About</a><a href="#c2">Careers</a>
+        </div>
+      </div>
+      <div data-nav-item="docs">
+        <a data-nav-link href="#docs">Docs</a>
+      </div>
+    </div>
+    <div data-nav-viewport></div>
+  </div>
+</nav>
+
+<main>
+  <h1>Viewport on desktop, accordion on mobile</h1>
+  <p>Root carries <code>data-nav-mobile-panels="inline"</code>. Resize across 767px (or use device
+  emulation) and watch where the panels live in the Elements panel.</p>
+</main>
+
+<div id="status"></div>
+
+<script type="module">
+  import { initNavigationMenu } from '../../../dist/navigation.browser.js';
+  const nav = document.querySelector('[data-nav-menu]');
+  initNavigationMenu(nav);
+  const status = document.getElementById('status');
+  const update = () => {
+    const parents = [...document.querySelectorAll('[data-nav-content]')]
+      .map((c) => `${c.dataset.navContent}: ${c.parentElement.hasAttribute('data-nav-viewport') ? 'viewport' : 'item'}`);
+    status.textContent = `mode=${nav.dataset.navMode} · ${parents.join(' · ')}`;
+  };
+  // Observe the nav only: #status sits outside it, so updating it cannot retrigger this.
+  new MutationObserver(update).observe(nav, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-nav-mode'] });
+  update();
+</script>
+</body>
+</html>
