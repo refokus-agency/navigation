@@ -27,7 +27,7 @@ function readBreakpoint(root: HTMLElement): number {
  * Publishes [data-nav-mode] for CSS, wires [data-nav-back], and resets state on
  * breakpoint crossings and when the Webflow burger overlay closes.
  */
-export function attachMobile(context: NavMenuContext): void {
+export function attachMobile(context: NavMenuContext): () => void {
   const { root, refs, controller, cleanups } = context;
   const { selectors } = NAV_MENU_CONFIG;
 
@@ -43,7 +43,7 @@ export function attachMobile(context: NavMenuContext): void {
   applyMode();
 
   const isMobile = () => root.dataset.navMode === 'mobile';
-  const closeCard = attachCard(context, isMobile);
+  const { openCard, closeCard } = attachCard(context, isMobile);
 
   // Accordion: land focus on the first link of the panel a user just opened.
   // Tied to activation, not to state: arrow-key traversal and programmatic
@@ -117,6 +117,12 @@ export function attachMobile(context: NavMenuContext): void {
 
     cleanups.push(() => observer.disconnect());
   }
+
+  // For programmatic open(): in mobile mode a panel inside a closed (inert)
+  // card is invisible, so the card opens with it.
+  return () => {
+    if (isMobile()) openCard();
+  };
 }
 
 /**
@@ -128,11 +134,13 @@ export function attachMobile(context: NavMenuContext): void {
 function attachCard(
   { root, controller, cleanups, idPrefix }: NavMenuContext,
   isMobile: () => boolean,
-): () => void {
+): { openCard: () => void; closeCard: () => void } {
   const { selectors } = NAV_MENU_CONFIG;
   const toggles = [...root.querySelectorAll<HTMLElement>(selectors.toggle)];
   const card = root.querySelector<HTMLElement>(selectors.card);
-  if (toggles.length === 0 || !card) return () => {};
+  if (toggles.length === 0 || !card) {
+    return { openCard: () => {}, closeCard: () => {} };
+  }
 
   card.id ||= `${idPrefix}-card`;
   for (const toggle of toggles) toggle.setAttribute('aria-controls', card.id);
@@ -246,5 +254,5 @@ function attachCard(
   });
 
   render();
-  return () => setOpen(false);
+  return { openCard: () => setOpen(true), closeCard: () => setOpen(false) };
 }

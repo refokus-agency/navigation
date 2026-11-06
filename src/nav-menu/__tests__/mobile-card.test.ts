@@ -55,6 +55,26 @@ describe('mobile card', () => {
     expect(card.dataset.state).toBe('closed');
   });
 
+  it('should open the card when instance.open() runs while it is closed', () => {
+    const { instance } = setup();
+    expect(card.hasAttribute('inert')).toBe(true);
+    instance?.open('a');
+    expect(card.dataset.state).toBe('open');
+    expect(card.hasAttribute('inert')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('should leave the card closed for an unknown value or on desktop', () => {
+    const { instance } = setup();
+    instance?.open('nope');
+    expect(card.dataset.state).toBe('closed');
+    instance?.destroy();
+    document.body.innerHTML = '';
+    const desktop = setup(false);
+    desktop.instance?.open('a');
+    expect(card.dataset.state).toBeUndefined();
+  });
+
   it('should wire every toggle, such as a close button inside the card', () => {
     setup(
       true,
