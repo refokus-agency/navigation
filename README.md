@@ -193,6 +193,7 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-toggle`      | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
 | `data-nav-card`        | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only                                               |
 | `data-nav-breakpoint`  | Mobile breakpoint in px, an integer from 1 to 4000 (`991`); invalid values warn and use the 767 default. Read once at init, later changes are ignored. Match your CSS |
+| `data-nav-overlay`     | Optional backdrop, inside or outside the root. Gets `[data-state]` and `aria-hidden`; a press closes the menu                                           |
 
 Panels may be authored inside a shared `[data-nav-viewport]` or inside their
 `[data-nav-item]`. The viewport is what lets one element animate between panel
@@ -477,6 +478,31 @@ In `[data-nav-mode="mobile"]`:
 
 On desktop none of this applies and existing behavior is unchanged. CSS owns
 all visuals; hide `[data-nav-toggle]` above the breakpoint yourself.
+
+### Overlay (backdrop)
+
+Add `[data-nav-overlay]` for a backdrop or a solid overlay. It gets
+`data-state="open|closed"` — open while a panel or the mobile card is open — and
+`aria-hidden="true"`. A press on it closes the open panel and the card. It may
+sit inside or outside the root; outside, it must not be inside another
+`[data-nav-menu]`. The library writes state only; CSS decides how it looks:
+
+```css
+[data-nav-overlay] {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.4);
+  transition: opacity 0.2s, visibility 0.2s;
+}
+[data-nav-overlay][data-state='closed'] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+```
+
+There is no scroll lock. `destroy()` removes the listener, `data-state` and the
+`aria-hidden` it added.
 
 ## Development
 

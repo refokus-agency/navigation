@@ -12,6 +12,7 @@ export const NAV_MENU_CONFIG = {
     back: '[data-nav-back]',
     toggle: '[data-nav-toggle]',
     card: '[data-nav-card]',
+    overlay: '[data-nav-overlay]',
     webflowNav: '.w-nav',
     webflowBurger: '.w-nav-button',
   },

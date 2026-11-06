@@ -27,7 +27,7 @@ function readBreakpoint(root: HTMLElement): number {
  * Publishes [data-nav-mode] for CSS, wires [data-nav-back], and resets state on
  * breakpoint crossings and when the Webflow burger overlay closes.
  */
-export function attachMobile(context: NavMenuContext): void {
+export function attachMobile(context: NavMenuContext): () => void {
   const { root, refs, controller, cleanups } = context;
   const { selectors } = NAV_MENU_CONFIG;
 
@@ -117,6 +117,8 @@ export function attachMobile(context: NavMenuContext): void {
 
     cleanups.push(() => observer.disconnect());
   }
+
+  return closeCard;
 }
 
 /**
@@ -126,7 +128,7 @@ export function attachMobile(context: NavMenuContext): void {
  * when there is no toggle or no card.
  */
 function attachCard(
-  { root, controller, cleanups, idPrefix }: NavMenuContext,
+  { root, controller, renderer, cleanups, idPrefix }: NavMenuContext,
   isMobile: () => boolean,
 ): () => void {
   const { selectors } = NAV_MENU_CONFIG;
@@ -146,6 +148,7 @@ function attachCard(
     for (const toggle of toggles) {
       toggle.setAttribute('aria-expanded', String(isOpen));
     }
+    renderer.setCardOpen(isOpen && isMobile());
     // Desktop never sees the card state: a consumer's natural
     // `[data-nav-card][data-state='closed'] { display: none }` would otherwise
     // hide the whole desktop menu. Crossing the breakpoint re-renders.
@@ -243,6 +246,7 @@ function attachCard(
     // the menu dead and unreachable after a re-init.
     card.removeAttribute('inert');
     delete card.dataset.state;
+    renderer.setCardOpen(false);
   });
 
   render();
