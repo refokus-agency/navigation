@@ -1,8 +1,10 @@
 import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { focusOpenedPanelOnMobile } from './keyboard.ts';
 import type { NavMenuContext } from './types.ts';
 
 /** Trigger clicks toggle in both modes — touch always lands here. */
 export function attachTriggerClicks({
+  root,
   refs,
   controller,
   cleanups,
@@ -17,6 +19,7 @@ export function attachTriggerClicks({
       if (isNavigateTrigger(trigger)) return;
       event.preventDefault();
       controller.triggerClick(value, trigger);
+      focusOpenedPanelOnMobile(root, refs, controller, trigger);
     };
 
     trigger.addEventListener('click', onClick);

@@ -1,5 +1,4 @@
 import { NAV_MENU_CONFIG } from './config.ts';
-import { focusFirst, getTabbableCandidates } from './keyboard.ts';
 import { isFollowedClick } from './pointer.ts';
 import type { NavMenuContext } from './types.ts';
 
@@ -28,7 +27,7 @@ function readBreakpoint(root: HTMLElement): number {
  * breakpoint crossings and when the Webflow burger overlay closes.
  */
 export function attachMobile(context: NavMenuContext): void {
-  const { root, refs, controller, cleanups } = context;
+  const { root, controller, cleanups } = context;
   const { selectors } = NAV_MENU_CONFIG;
 
   // Absent in SSR/jsdom — assume desktop rather than failing init.
@@ -44,32 +43,6 @@ export function attachMobile(context: NavMenuContext): void {
 
   const isMobile = () => root.dataset.navMode === 'mobile';
   const closeCard = attachCard(context, isMobile);
-
-  // Accordion: land focus on the first link of the panel a user just opened.
-  // Tied to activation, not to state: arrow-key traversal and programmatic
-  // open() also change state and must not pull focus off the trigger.
-  const focusOpenedPanel = (trigger: HTMLElement) => {
-    if (!isMobile()) return;
-    const value = refs.valueByTrigger.get(trigger);
-    if (!value || controller.getActiveValue() !== value) return;
-    const content = refs.contentMap.get(value);
-    if (content) focusFirst(getTabbableCandidates(content));
-  };
-  // Registered after the pointer/keyboard modules, so state is already updated.
-  for (const trigger of refs.triggers) {
-    const onClick = () => focusOpenedPanel(trigger);
-    trigger.addEventListener('click', onClick);
-    cleanups.push(() => trigger.removeEventListener('click', onClick));
-  }
-  const onTriggerKey = (event: KeyboardEvent) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    const trigger = (event.target as Element | null)?.closest<HTMLElement>(
-      selectors.trigger,
-    );
-    if (trigger) focusOpenedPanel(trigger);
-  };
-  root.addEventListener('keydown', onTriggerKey);
-  cleanups.push(() => root.removeEventListener('keydown', onTriggerKey));
 
   if (mediaQuery) {
     const onMediaQueryChange = () => {
@@ -126,7 +99,7 @@ export function attachMobile(context: NavMenuContext): void {
  * when there is no toggle or no card.
  */
 function attachCard(
-  { root, controller, cleanups, idPrefix }: NavMenuContext,
+  { root, controller, cleanups, escapeFallbacks, idPrefix }: NavMenuContext,
   isMobile: () => boolean,
 ): () => void {
   const { selectors } = NAV_MENU_CONFIG;
@@ -185,10 +158,18 @@ function attachCard(
     }
   };
 
+  // Escape inside the root is routed here by the keyboard module, after a
+  // panel has had its chance — no reliance on listener order.
+  escapeFallbacks.push(() => {
+    if (!isOpen || !isMobile()) return null;
+    setOpen(false);
+    return opener;
+  });
+
+  // Escape with focus outside the root never reaches the keyboard module.
   const onKeyDown = (event: KeyboardEvent) => {
-    // A panel's own Escape handling already prevented default.
-    if (event.key !== 'Escape' || event.defaultPrevented) return;
-    if (!isOpen || !isMobile()) return;
+    if (event.key !== 'Escape' || !isOpen || !isMobile()) return;
+    if (event.target instanceof Node && root.contains(event.target)) return;
     setOpen(false);
     opener?.focus();
   };
