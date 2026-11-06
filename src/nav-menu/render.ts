@@ -1,3 +1,4 @@
+import { isInlineMobilePanels } from './config.ts';
 import type {
   NavMenuCleanup,
   NavMenuRefs,
@@ -23,6 +24,23 @@ export function createRenderer({
   // animate from the stale size (constant via Enter, invisible via hover).
   let isViewportOpen = false;
 
+  /**
+   * The viewport, unless it is idle: opted into inline panels, in mobile mode,
+   * with no panel left in it. Then panels animate in place like a viewport-less
+   * menu, and the viewport stays out of the way.
+   */
+  function activeViewport(): HTMLElement | null {
+    const { viewport } = refs;
+    if (!viewport) return null;
+    const isIdle =
+      isInlineMobilePanels(root) &&
+      root.dataset.navMode === 'mobile' &&
+      ![...refs.contentMap.values()].some((content) =>
+        viewport.contains(content),
+      );
+    return isIdle ? null : viewport;
+  }
+
   // `dir` is fixed for the instance, so order it once rather than per render.
   const ordered =
     options.dir === 'rtl' ? [...refs.itemValues].reverse() : refs.itemValues;
@@ -32,7 +50,7 @@ export function createRenderer({
     previousValue: string | null,
     activeTrigger: HTMLElement | null = null,
   ): void {
-    const { viewport } = refs;
+    const viewport = activeViewport();
     const prevIdx = previousValue ? ordered.indexOf(previousValue) : -1;
     const currIdx = value ? ordered.indexOf(value) : -1;
 
@@ -113,6 +131,14 @@ export function createRenderer({
       }
     }
 
+    // An idle viewport (panels inline) stays hidden and empty.
+    if (refs.viewport && !viewport) {
+      refs.viewport.dataset.state = 'closed';
+      refs.viewport.style.pointerEvents = 'none';
+      hide(refs.viewport);
+      isViewportOpen = false;
+    }
+
     // Without a viewport nothing sizes the panel, but a pill still needs the
     // trigger's geometry.
     if (!viewport && value) positionViewport(value, activeTrigger, null);
@@ -150,7 +176,7 @@ export function createRenderer({
     activeTrigger: HTMLElement | null,
   ): void {
     const content = refs.contentMap.get(value);
-    const { viewport } = refs;
+    const viewport = activeViewport();
     if (!content || !viewport) return;
 
     // The panel must carry no imposed size: `inset: 0` or `height: 100%` makes
@@ -184,7 +210,7 @@ export function createRenderer({
     activeTrigger: HTMLElement | null,
     panelWidth: number | null,
   ): void {
-    const { viewport } = refs;
+    const viewport = activeViewport();
     // The trigger that opened the panel, not the item's first: items may own several.
     const trigger = activeTrigger ?? refs.triggerByValue.get(value);
     if (!trigger) return;
@@ -232,7 +258,7 @@ export function createRenderer({
     const remeasure = () => {
       const value = getActiveValue();
       if (!value) return;
-      if (refs.viewport) sizeViewport(value, getActiveTrigger());
+      if (activeViewport()) sizeViewport(value, getActiveTrigger());
       else positionViewport(value, getActiveTrigger(), null);
     };
     // Trigger geometry moves with the window even when no panel resizes.

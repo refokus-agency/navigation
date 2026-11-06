@@ -1,4 +1,4 @@
-import { NAV_MENU_CONFIG } from './config.ts';
+import { isInlineMobilePanels, NAV_MENU_CONFIG } from './config.ts';
 import { focusFirst, getTabbableCandidates } from './keyboard.ts';
 import { isFollowedClick } from './pointer.ts';
 import type { NavMenuContext } from './types.ts';
@@ -28,7 +28,7 @@ function readBreakpoint(root: HTMLElement): number {
  * breakpoint crossings and when the Webflow burger overlay closes.
  */
 export function attachMobile(context: NavMenuContext): void {
-  const { root, refs, controller, cleanups } = context;
+  const { root, refs, controller, cleanups, panels } = context;
   const { selectors } = NAV_MENU_CONFIG;
 
   // Absent in SSR/jsdom — assume desktop rather than failing init.
@@ -44,6 +44,15 @@ export function attachMobile(context: NavMenuContext): void {
 
   const isMobile = () => root.dataset.navMode === 'mobile';
   const closeCard = attachCard(context, isMobile);
+
+  // Opt-in: slot panels follow the mode, so mobile can be an inline accordion
+  // while desktop keeps the shared viewport.
+  const syncPanels = () => {
+    if (!isInlineMobilePanels(root)) return;
+    if (isMobile()) panels.inline();
+    else panels.toViewport();
+  };
+  syncPanels();
 
   // Accordion: land focus on the first link of the panel a user just opened.
   // Tied to activation, not to state: arrow-key traversal and programmatic
@@ -73,9 +82,12 @@ export function attachMobile(context: NavMenuContext): void {
 
   if (mediaQuery) {
     const onMediaQueryChange = () => {
-      applyMode();
-      closeCard();
+      // Close before the mode flips, so the exit runs where the panel still
+      // is; then move panels; the card last, since it reads the new mode.
       controller.close();
+      applyMode();
+      syncPanels();
+      closeCard();
     };
     mediaQuery.addEventListener('change', onMediaQueryChange);
     cleanups.push(() =>
