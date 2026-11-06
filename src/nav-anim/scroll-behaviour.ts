@@ -1,4 +1,3 @@
-import { NAVBAR_CONFIG } from './config.ts';
 import type { NavbarAnimationOptions } from './index.ts';
 import { createNavbarAnimation } from './initial-animation.ts';
 
@@ -17,7 +16,7 @@ function showNavbar(): void {
 
   createNavbarAnimation(
     navbarElements,
-    NAVBAR_CONFIG.position.visible,
+    currentOptions.visibleOffset,
     currentOptions,
   );
   isNavbarVisible = true;
@@ -32,7 +31,7 @@ function hideNavbar(): void {
 
   createNavbarAnimation(
     navbarElements,
-    NAVBAR_CONFIG.position.hidden,
+    currentOptions.hiddenOffset,
     currentOptions,
   );
   isNavbarVisible = false;
@@ -80,6 +79,25 @@ function handleFocusIn(event: FocusEvent): void {
 }
 
 /**
+ * Whether hiding is vetoed: a panel is open (when `pauseWhileMenuOpen`) or
+ * the consumer's `shouldHide()` returns false.
+ */
+function isHidingPaused(): boolean {
+  if (!currentOptions) return false;
+
+  if (
+    currentOptions.pauseWhileMenuOpen &&
+    navbarElements.some(
+      (element) => (element as HTMLElement).dataset?.state === 'open',
+    )
+  ) {
+    return true;
+  }
+
+  return currentOptions.shouldHide?.() === false;
+}
+
+/**
  * Handles scroll events to show/hide navbar based on direction
  */
 function handleScroll(): void {
@@ -91,7 +109,7 @@ function handleScroll(): void {
   if (!isSignificantScroll(currentScrollY, threshold)) return;
 
   if (isScrollingDownPastThreshold(currentScrollY, threshold)) {
-    hideNavbar();
+    if (!isHidingPaused()) hideNavbar();
   } else {
     showNavbar();
   }

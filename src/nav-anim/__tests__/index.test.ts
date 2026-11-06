@@ -26,6 +26,9 @@ const DEFAULTS = {
   animationEasing: 'power2.inOut',
   hideOnScroll: true,
   scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+  hiddenOffset: NAVBAR_CONFIG.position.hidden,
+  visibleOffset: NAVBAR_CONFIG.position.visible,
+  pauseWhileMenuOpen: true,
 };
 
 /** Renders `count` real `<nav data-nav-menu>` roots. */
