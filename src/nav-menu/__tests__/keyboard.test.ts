@@ -35,14 +35,32 @@ describe('keyboard navigation (rtl)', () => {
     expect(document.activeElement).toBe(menu.trigger('b'));
   });
 
-  it('should invert Home/End to the visual first/last trigger', () => {
+  it('should keep Home/End logical: first and last in reading order', () => {
     menu.trigger('b').focus();
 
     fireKey(menu.trigger('b'), 'Home');
-    expect(document.activeElement).toBe(menu.trigger('c'));
-
-    fireKey(menu.trigger('c'), 'End');
     expect(document.activeElement).toBe(menu.trigger('a'));
+
+    fireKey(menu.trigger('a'), 'End');
+    expect(document.activeElement).toBe(menu.trigger('c'));
+  });
+
+  it('should enter the panel with ArrowLeft in a vertical menu', () => {
+    document.body.innerHTML = '';
+    menu = renderNavMenu();
+    initNavigationMenu(NAV_MENU_CONFIG.selectors.root, {
+      dir: 'rtl',
+      orientation: 'vertical',
+    });
+
+    menu.trigger('a').focus();
+    fireKey(menu.trigger('a'), 'Enter');
+
+    fireKey(menu.trigger('a'), 'ArrowRight');
+    expect(document.activeElement).toBe(menu.trigger('a'));
+
+    fireKey(menu.trigger('a'), 'ArrowLeft');
+    expect(document.activeElement).toBe(menu.content('a').querySelector('a'));
   });
 });
 
