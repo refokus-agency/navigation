@@ -104,8 +104,12 @@ export function attachDismiss({
     if (root.contains(target)) return;
     // Not gated on getActiveValue(): it is still null while a hover-open is
     // only pending, and setValue(null) is what cancels that timer.
-    controller.close();
-    for (const hook of dismissHooks.outside) hook();
+    // finally: the hooks (the mobile card) must close even if close() throws.
+    try {
+      controller.close();
+    } finally {
+      for (const hook of dismissHooks.outside) hook();
+    }
   };
 
   document.addEventListener('pointerdown', onOutside);
@@ -148,15 +152,17 @@ export function attachLinkClicks({
     const target = event.target;
     if (!(target instanceof Element) || !isFollowedClick(event)) return;
 
-    const link = target.closest(`a[href], ${selectors.link}`);
-    if (link && !link.closest(controls)) {
-      for (const hook of dismissHooks.link) hook();
-    }
-
     const panelLink =
       target.closest(`${selectors.content} a`) ??
       target.closest(`${selectors.content} ${selectors.link}`);
-    if (panelLink) controller.close();
+    const link = target.closest(`a[href], ${selectors.link}`);
+    try {
+      if (panelLink) controller.close();
+    } finally {
+      if (link && !link.closest(controls)) {
+        for (const hook of dismissHooks.link) hook();
+      }
+    }
   };
 
   root.addEventListener('click', onClick);
