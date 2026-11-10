@@ -6,8 +6,13 @@ import type { NavMenuContext } from './types.ts';
 /**
  * Publishes [data-nav-mode] for CSS, wires [data-nav-back], and resets state on
  * breakpoint crossings and when the Webflow burger overlay closes.
+ *
+ * Returns the programmatic `open(value)` for the instance: in mobile mode it
+ * opens the card first when it is closed, taking focus into the panel.
  */
-export function attachMobile(context: NavMenuContext): () => void {
+export function attachMobile(
+  context: NavMenuContext,
+): (value: string) => void {
   const { root, refs, controller, cleanups } = context;
   const { selectors, mobile } = NAV_MENU_CONFIG;
 
@@ -25,15 +30,20 @@ export function attachMobile(context: NavMenuContext): () => void {
   const isMobile = () => root.dataset.navMode === 'mobile';
   const { openCard, closeCard } = attachCard(context, isMobile);
 
+  const focusPanel = (value: string) => {
+    const content = refs.contentMap.get(value);
+    if (content) focusFirst(getTabbableCandidates(content));
+  };
+
   // Accordion: land focus on the first link of the panel a user just opened.
   // Tied to activation, not to state: arrow-key traversal and programmatic
-  // open() also change state and must not pull focus off the trigger.
+  // open() also change state and must not pull focus off the trigger. The one
+  // exception is open() on a closed card (see the returned function below).
   const focusOpenedPanel = (trigger: HTMLElement) => {
     if (!isMobile()) return;
     const value = refs.valueByTrigger.get(trigger);
     if (!value || controller.getActiveValue() !== value) return;
-    const content = refs.contentMap.get(value);
-    if (content) focusFirst(getTabbableCandidates(content));
+    focusPanel(value);
   };
   // Registered after the pointer/keyboard modules, so state is already updated.
   for (const trigger of refs.triggers) {
@@ -98,28 +108,36 @@ export function attachMobile(context: NavMenuContext): () => void {
     cleanups.push(() => observer.disconnect());
   }
 
-  // For programmatic open(): in mobile mode a panel inside a closed (inert)
-  // card is invisible, so the card opens with it.
-  return () => {
-    if (isMobile()) openCard();
+  // Programmatic open(): in mobile mode a panel inside a closed (inert) card
+  // is invisible, so the card opens with it. Deliberate exception to "open()
+  // never moves focus": the caller is typically a CTA outside the nav, and the
+  // opened card covers the page, so focus has to go in. openCard remembers the
+  // CTA as the opener, so Escape hands focus back to it. When the card is
+  // already open, focus stays where it is, like any other in-place open.
+  return (value) => {
+    const cardOpened = isMobile() && openCard();
+    controller.open(value);
+    if (cardOpened) focusPanel(value);
   };
 }
 
 /**
  * Opt-in `[data-nav-toggle]` / `[data-nav-card]` pair. Every toggle is wired,
  * so a close button inside the card works like the header's open button.
- * Returns a function that closes the card, for breakpoint crossings. No-ops
- * when there is no toggle or no card.
+ * Returns `closeCard`, for breakpoint crossings, and `openCard`, for the
+ * programmatic `open()`: it records the focused element as the opener (a CTA
+ * outside the nav) and reports whether it actually opened a closed card. Both
+ * no-op when there is no toggle or no card.
  */
 function attachCard(
   { root, controller, cleanups, idPrefix }: NavMenuContext,
   isMobile: () => boolean,
-): { openCard: () => void; closeCard: () => void } {
+): { openCard: () => boolean; closeCard: () => void } {
   const { selectors } = NAV_MENU_CONFIG;
   const toggles = [...root.querySelectorAll<HTMLElement>(selectors.toggle)];
   const card = root.querySelector<HTMLElement>(selectors.card);
   if (toggles.length === 0 || !card) {
-    return { openCard: () => {}, closeCard: () => {} };
+    return { openCard: () => false, closeCard: () => {} };
   }
 
   card.id ||= `${idPrefix}-card`;
@@ -234,5 +252,14 @@ function attachCard(
   });
 
   render();
-  return { openCard: () => setOpen(true), closeCard: () => setOpen(false) };
+  const openCard = () => {
+    if (isOpen) return false;
+    const active = document.activeElement;
+    opener =
+      active instanceof HTMLElement && active !== document.body ? active : null;
+    setOpen(true);
+    return true;
+  };
+
+  return { openCard, closeCard: () => setOpen(false) };
 }

@@ -109,7 +109,7 @@ export function initNavigationMenu(
     attachDismiss(context);
     attachLinkClicks(context);
     attachKeyboardEvents(context);
-    const openCard = attachMobile(context);
+    const openPanel = attachMobile(context);
 
     cleanups.push(
       renderer.observeResize(
@@ -123,9 +123,12 @@ export function initNavigationMenu(
 
     return {
       open: (value: string) => {
-        // Only a value with a panel opens the card: don't reveal it for nothing.
-        if (refs.contentMap.has(value)) openCard();
-        controller.open(value);
+        // An unknown value is a full no-op: it must not close the open panel
+        // or reveal the mobile card for nothing.
+        if (!refs.triggerByValue.has(value) && !refs.contentMap.has(value)) {
+          return;
+        }
+        openPanel(value);
       },
       close: () => controller.close(),
       destroy() {
