@@ -268,10 +268,11 @@ stays aligned however much sits before the list, such as a logo.
   `skipDelayDuration` of a close switches instantly
 - **Pointer** over the viewport keeps the menu open; leaving closes it after 150ms
 - **Click** a trigger to toggle it — after a click-to-close the cursor must
-  leave and re-enter before hover reopens it. A **mouse** click on a panel that
-  hover already opened leaves it open (the user just opened it); keyboard
-  activation (`Enter`/`Space`, `event.detail === 0`) and touch taps still close
-  it, and mobile mode always toggles
+  leave and re-enter before hover reopens it. Exception: the first **mouse**
+  click on a panel that hover just opened is ignored (the user already opened
+  it), and the next click toggles as usual. Keyboard activation
+  (`Enter`/`Space`, `event.detail === 0`) and touch taps always toggle, and
+  mobile mode has no hover, so it always toggles
 - **Click** a trigger with `data-nav-trigger-mode="navigate"` follows its link
   instead of toggling (see "Trigger mode" below)
 - **Click** a link inside a panel closes the menu; ⌘/Ctrl-click keeps it open

@@ -174,6 +174,31 @@ describe('click behavior', () => {
       expect(menu.trigger('a').dataset.state).toBe('open');
     });
 
+    it('should ignore only the first mouse click after a hover-open', () => {
+      openByHover();
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should stay open on a click after leaving and re-entering a hover-opened trigger', () => {
+      openByHover();
+      firePointer(menu.trigger('a'), 'pointerleave');
+      firePointer(menu.trigger('a'), 'pointerenter');
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    });
+
+    it('should still close a click-opened panel after re-entering within the skip window', () => {
+      click({ detail: 1 });
+      firePointer(menu.trigger('a'), 'pointerleave');
+      firePointer(menu.trigger('a'), 'pointerenter');
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
     it('should still toggle a panel a mouse click opened', () => {
       click({ detail: 1 });
       expect(menu.trigger('a').dataset.state).toBe('open');

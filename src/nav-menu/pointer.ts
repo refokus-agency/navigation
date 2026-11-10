@@ -40,14 +40,9 @@ export function attachPointerEvents({
       // leaves the link alone: opening is hover/keyboard only.
       if (isNavigateTrigger(trigger)) return;
       event.preventDefault();
-      // Hover already opened this panel, so a mouse click must not close it.
-      if (
-        !isMobileMode(root) &&
-        controller.isHoverOpened(value) &&
-        isMouseClick(event)
-      ) {
-        return;
-      }
+      // Hover already opened this panel, so the first mouse click must not
+      // close it. Hover never opens panels in mobile mode, so no check needed.
+      if (isMouseClick(event) && controller.consumeHoverOpen(value)) return;
       controller.triggerClick(value, trigger);
     };
 

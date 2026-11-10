@@ -88,8 +88,13 @@ export function createController({
   }
 
   function openFromHover(value: string, trigger: HTMLElement): void {
+    // Only a hover that opens a new panel counts: re-entering a panel a click
+    // opened is a no-op in open() and must not relabel it as hover-opened.
+    // open() clears the mark, so a re-entry keeps whatever it already was.
+    const wasHoverOpened = activeValue === value && openedByHover;
+    const isNewPanel = activeValue !== value;
     open(value, trigger);
-    openedByHover = true;
+    openedByHover = isNewPanel || wasHoverOpened;
   }
 
   function triggerPointerLeave(trigger: HTMLElement): void {
@@ -181,7 +186,11 @@ export function createController({
     contentPointerLeave,
     handleEscape,
     getActiveValue: () => activeValue,
-    isHoverOpened: (value) => activeValue === value && openedByHover,
+    consumeHoverOpen: (value) => {
+      const hoverOpened = activeValue === value && openedByHover;
+      openedByHover = false;
+      return hoverOpened;
+    },
     getActiveTrigger: () => activeTrigger,
     destroy,
   };
