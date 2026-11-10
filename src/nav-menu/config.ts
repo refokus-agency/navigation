@@ -25,12 +25,16 @@ export const NAV_MENU_CONFIG = {
     dir: 'data-nav-dir',
     interaction: 'data-nav-interaction',
     triggerMode: 'data-nav-trigger-mode',
+    breakpoint: 'data-nav-breakpoint',
   },
   timing: {
     closeDelay: 150,
   },
   mobile: {
-    query: '(max-width: 767px)',
+    /** Max viewport width in px for mobile mode, used when data-nav-breakpoint is absent or invalid. */
+    breakpoint: 767,
+    /** Largest data-nav-breakpoint accepted, in px; larger values warn and fall back to the default. */
+    maxBreakpoint: 4000,
   },
   editorClass: 'w-editor',
 };
