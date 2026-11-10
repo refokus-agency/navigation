@@ -128,7 +128,7 @@ export function attachMobile(context: NavMenuContext): () => void {
  * when there is no toggle or no card.
  */
 function attachCard(
-  { root, controller, renderer, cleanups, idPrefix }: NavMenuContext,
+  { root, refs, controller, renderer, cleanups, idPrefix }: NavMenuContext,
   isMobile: () => boolean,
 ): () => void {
   const { selectors } = NAV_MENU_CONFIG;
@@ -202,6 +202,8 @@ function attachCard(
     // The root, not just the card: panels may live in a viewport outside it,
     // and closing on a tap inside one swallows the click on its link.
     if (root.contains(target)) return;
+    // Closed by the overlay's own click, so the click does not fall through.
+    if (refs.overlay?.contains(target)) return;
     setOpen(false);
   };
 

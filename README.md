@@ -483,9 +483,15 @@ all visuals; hide `[data-nav-toggle]` above the breakpoint yourself.
 
 Add `[data-nav-overlay]` for a backdrop or a solid overlay. It gets
 `data-state="open|closed"` — open while a panel or the mobile card is open — and
-`aria-hidden="true"`. A press on it closes the open panel and the card. It may
-sit inside or outside the root; outside, it must not be inside another
-`[data-nav-menu]`. The library writes state only; CSS decides how it looks:
+`aria-hidden="true"`. A click on it closes the open panel and the card. It may
+sit inside or outside the root. Outside, the first root to init owns it, and it
+must not sit inside another root: init that root first if it is not a
+`[data-nav-menu]`. The library writes state only; CSS decides how it looks.
+
+Hide it **unless** it is open, not only when closed. It has no `data-state` in
+the Webflow Designer (`skipInWebflowEditor`), before the script loads and after
+`destroy()`, and a backdrop that only hides on `closed` would cover the page
+then:
 
 ```css
 [data-nav-overlay] {
@@ -494,7 +500,7 @@ sit inside or outside the root; outside, it must not be inside another
   background: rgb(0 0 0 / 0.4);
   transition: opacity 0.2s, visibility 0.2s;
 }
-[data-nav-overlay][data-state='closed'] {
+[data-nav-overlay]:not([data-state='open']) {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;

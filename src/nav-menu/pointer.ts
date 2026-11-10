@@ -94,6 +94,7 @@ export function attachHoverEvents({
 
 export function attachDismiss({
   root,
+  refs,
   controller,
   cleanups,
 }: NavMenuContext): void {
@@ -102,6 +103,9 @@ export function attachDismiss({
     if (!(target instanceof Node)) return;
     // Not gated on getActiveValue(): it is still null while a hover-open is
     // only pending, and setValue(null) is what cancels that timer.
+    // An overlay press closes on its own click, so the click lands on the
+    // overlay and not on whatever sits beneath it once it stops taking events.
+    if (refs.overlay?.contains(target) && event.type === 'pointerdown') return;
     if (!root.contains(target)) controller.close();
   };
 

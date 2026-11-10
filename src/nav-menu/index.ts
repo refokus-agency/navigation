@@ -87,7 +87,13 @@ export function initNavigationMenu(
   if (overlay) cleanups.push(() => claimedOverlays.delete(overlay));
   // Kept out of `cleanups` until init succeeds, so it always runs last: panels
   // go back only after every other teardown has run.
-  const restorePanels = relocatePanels(refs);
+  let restorePanels: NavMenuCleanup;
+  try {
+    restorePanels = relocatePanels(refs);
+  } catch (error) {
+    drain(cleanups);
+    throw error;
+  }
 
   try {
     const idPrefix = `nav-${++instanceCount}`;
@@ -315,7 +321,11 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
 function discoverOverlay(root: HTMLElement): HTMLElement | null {
   const { selectors } = NAV_MENU_CONFIG;
   const inside = root.querySelector<HTMLElement>(selectors.overlay);
-  if (inside) return inside;
+  if (inside) {
+    // Claimed too, so another root's outside lookup skips it.
+    claimedOverlays.add(inside);
+    return inside;
+  }
   for (const el of document.querySelectorAll<HTMLElement>(selectors.overlay)) {
     if (el.closest(selectors.root) || claimedOverlays.has(el)) continue;
     claimedOverlays.add(el);

@@ -62,7 +62,7 @@ describe('overlay', () => {
   ])('should close the open panel on press, %s the root', (_, inside) => {
     const { menu, overlay, instance } = setup({ inside });
     instance.open('a');
-    firePointer(overlay, 'pointerdown');
+    overlay.click();
     expect(menu.root.dataset.state).toBe('closed');
     expect(overlay.dataset.state).toBe('closed');
   });
@@ -71,7 +71,7 @@ describe('overlay', () => {
     const { overlay, toggle } = setup({ mobile: true, card: true });
     toggle?.click();
     expect(overlay.dataset.state).toBe('open');
-    firePointer(overlay, 'pointerdown');
+    overlay.click();
     expect(overlay.dataset.state).toBe('closed');
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
   });
@@ -103,7 +103,7 @@ describe('overlay', () => {
     expect(overlay.getAttribute('aria-hidden')).toBe('false');
 
     // The menu is still open; a press must no longer reach it.
-    firePointer(overlay, 'pointerdown');
+    overlay.click();
     expect(menu.root.dataset.state).toBe('open');
   });
 });
@@ -139,5 +139,47 @@ describe('overlay shared by two roots', () => {
     const again = initNavigationMenu('#b');
     again?.open('y');
     expect(overlay.dataset.state).toBe('open');
+  });
+});
+
+describe('overlay press handling', () => {
+  it('should close on click, not on pointerdown, so no click falls through', () => {
+    const { menu, overlay, instance } = setup();
+    instance.open('a');
+    firePointer(overlay, 'pointerdown');
+    expect(menu.root.dataset.state).toBe('open');
+    overlay.click();
+    expect(menu.root.dataset.state).toBe('closed');
+  });
+
+  it('should not close the mobile card on pointerdown over the overlay', () => {
+    const { overlay, toggle } = setup({ mobile: true, card: true });
+    toggle?.click();
+    firePointer(overlay, 'pointerdown');
+    expect(overlay.dataset.state).toBe('open');
+  });
+
+  it('should still close on a pointerdown elsewhere outside', () => {
+    const { menu, instance } = setup();
+    document.body.insertAdjacentHTML('beforeend', '<p id="o">x</p>');
+    instance.open('a');
+    firePointer(document.getElementById('o') as HTMLElement, 'pointerdown');
+    expect(menu.root.dataset.state).toBe('closed');
+  });
+});
+
+describe('overlay claim edges', () => {
+  it('should not let a second root take an overlay inside the first', () => {
+    stubResizeObserver();
+    stubMatchMedia(false);
+    document.body.innerHTML = `
+      <div id="a"><div data-nav-item="x"><button data-nav-trigger>x</button><div data-nav-content="x">x</div></div><div data-nav-overlay></div></div>
+      <div id="b"><div data-nav-item="y"><button data-nav-trigger>y</button><div data-nav-content="y">y</div></div></div>`;
+    const overlay = document.querySelector<HTMLElement>('[data-nav-overlay]');
+    const a = initNavigationMenu('#a');
+    const b = initNavigationMenu('#b');
+    a?.open('x');
+    b?.close();
+    expect(overlay?.dataset.state).toBe('open');
   });
 });
