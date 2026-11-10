@@ -243,6 +243,31 @@ describe('click behavior', () => {
     });
   });
 
+  it('should keep toggling on a mouse click in click interaction mode', () => {
+    document.body.innerHTML = '';
+    menu = renderNavMenu();
+    document
+      .querySelector('[data-nav-menu]')
+      ?.setAttribute('data-nav-interaction', 'click');
+    initNavigationMenu();
+
+    const mouseClick = () =>
+      menu
+        .trigger('a')
+        .dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            detail: 1,
+          }),
+        );
+
+    mouseClick();
+    expect(menu.trigger('a').dataset.state).toBe('open');
+    mouseClick();
+    expect(menu.trigger('a').dataset.state).toBe('closed');
+  });
+
   it('should require leaving the trigger before hover can reopen it', () => {
     menu.trigger('a').click();
     menu.trigger('a').click();

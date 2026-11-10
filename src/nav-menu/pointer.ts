@@ -10,8 +10,37 @@ function isMouseClick(event: MouseEvent): boolean {
   return event.detail > 0 && (event as PointerEvent).pointerType !== 'touch';
 }
 
-/** Mouse only — touch falls through to the click handler. */
-export function attachPointerEvents({
+/** Trigger clicks toggle in both modes — touch always lands here. */
+export function attachTriggerClicks({
+  refs,
+  controller,
+  cleanups,
+}: NavMenuContext): void {
+  for (const { trigger, value } of refs.entries) {
+    if (!refs.contentMap.has(value)) continue;
+
+    const onClick = (event: MouseEvent) => {
+      // Read per click so the attribute can change after init. Navigate mode
+      // leaves the link alone in both interaction modes: its panel opens from
+      // hover (hover mode) or the keyboard.
+      if (isNavigateTrigger(trigger)) return;
+      event.preventDefault();
+      // Hover already opened this panel, so the first mouse click must not
+      // close it. Never true in click mode (no hover opens) or mobile mode.
+      if (isMouseClick(event) && controller.consumeHoverOpen(value)) return;
+      controller.triggerClick(value, trigger);
+    };
+
+    trigger.addEventListener('click', onClick);
+    cleanups.push(() => trigger.removeEventListener('click', onClick));
+  }
+}
+
+/**
+ * Hover mode only — click mode never calls this, so no hover timer can ever be
+ * scheduled. Mouse only: touch falls through to the click handler.
+ */
+export function attachHoverEvents({
   root,
   refs,
   controller,
@@ -35,31 +64,19 @@ export function attachPointerEvents({
       if (!isMouseHover(event)) return;
       controller.triggerPointerLeave(trigger);
     };
-    const onClick = (event: MouseEvent) => {
-      // Read per click so the attribute can change after init. Navigate mode
-      // leaves the link alone: opening is hover/keyboard only.
-      if (isNavigateTrigger(trigger)) return;
-      event.preventDefault();
-      // Hover already opened this panel, so the first mouse click must not
-      // close it. Hover never opens panels in mobile mode, so no check needed.
-      if (isMouseClick(event) && controller.consumeHoverOpen(value)) return;
-      controller.triggerClick(value, trigger);
-    };
 
     trigger.addEventListener('pointerenter', onEnter);
     trigger.addEventListener('pointerleave', onLeave);
-    trigger.addEventListener('click', onClick);
 
     cleanups.push(() => {
       trigger.removeEventListener('pointerenter', onEnter);
       trigger.removeEventListener('pointerleave', onLeave);
-      trigger.removeEventListener('click', onClick);
     });
   }
 
-  // Panels can fall back to living inside their item even when a viewport
-  // exists, and such a panel needs its own hover target or the close timer
-  // runs on under the cursor.
+  // Without a viewport, panels live inside their item, and such a panel needs
+  // its own hover target or the close timer runs on under the cursor. (With
+  // one, init has already relocated every panel into it.)
   const outsideViewport = [...refs.contentMap.values()].filter(
     (content) => !refs.viewport?.contains(content),
   );
