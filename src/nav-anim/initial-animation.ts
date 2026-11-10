@@ -1,4 +1,5 @@
 import { gsap } from 'gsap';
+import { NAVBAR_CONFIG } from './config.ts';
 import type { NavbarAnimationOptions } from './index.ts';
 
 /**
@@ -29,6 +30,10 @@ export function performInitialAnimation(
   navbarElements: Element[],
   options: NavbarAnimationOptions,
 ): void {
-  gsap.set(navbarElements, { y: options.hiddenOffset });
-  createNavbarAnimation(navbarElements, options.visibleOffset, options);
+  gsap.set(navbarElements, { y: NAVBAR_CONFIG.position.hidden });
+  createNavbarAnimation(
+    navbarElements,
+    NAVBAR_CONFIG.position.visible,
+    options,
+  );
 }

@@ -57,11 +57,6 @@ import { initNavbarAnimation } from '@refokus-agency/navigation';
 const success = initNavbarAnimation({
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
-  scrollThreshold: 50,        // scroll distance (px) before show/hide
-  hiddenOffset: '-100%',      // GSAP y while hidden
-  visibleOffset: '0%',        // GSAP y while visible
-  pauseWhileMenuOpen: true,   // never hide while a panel is open
-  shouldHide: () => true,     // optional: return false to veto hiding
 });
 
 if (success) {
@@ -80,9 +75,10 @@ if (success) {
 
 - **Initial Animation**: Navbar slides in smoothly on page load
 - **Scroll Down**: Navbar hides when scrolling down past `scrollThreshold` (50px by default)
-- **Open panel**: While the nav root has `[data-state="open"]`, the navbar does
-  not hide (`pauseWhileMenuOpen`, default `true`). Set it to `false` to hide
-  regardless, or pass `shouldHide()` returning `false` to veto hiding yourself
+- **Open panel / mobile menu**: The navbar never hides while a dropdown panel
+  is open (root `[data-state="open"]`) or the mobile card is open
+  (`[data-nav-card][data-state="open"]`). Closing it changes nothing by itself;
+  the next scroll resumes the normal show/hide
 - **Scroll Up**: Navbar shows when scrolling up
 - **Focus**: A hidden navbar slides back in when focus moves into it, so
   tabbing back up to the nav never lands on an off-screen element
@@ -481,7 +477,13 @@ In `[data-nav-mode="mobile"]`:
   Escape closes the panel first;
 - triggers behave as an accordion — one panel open at a time, `data-state` on
   the item and the content, and focus moves to the first link on open;
-- closing the card, or crossing the breakpoint, closes any open panel.
+- closing the card, or crossing the breakpoint, closes any open panel;
+- while the card is open the page does not scroll (`overflow: hidden` on
+  `<html>` and `<body>`, restored on close, so the scroll position is
+  unchanged); panels stay scrollable. If the site uses Lenis and exposes it as
+  `window.lenis`, it is stopped while the card is open and restarted after,
+  and the card and panels get `data-lenis-prevent` so they keep native scroll.
+  nav-anim also never hides the navbar while the card is open.
 
 On desktop none of this applies and existing behavior is unchanged. CSS owns
 all visuals; hide `[data-nav-toggle]` above the breakpoint yourself.

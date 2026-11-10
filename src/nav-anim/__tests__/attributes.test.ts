@@ -65,7 +65,7 @@ describe('nav-anim root attributes (AC-2)', () => {
       'data-nav-anim-easing': 'power4.out',
     });
 
-    expect(resolvedOptions()).toMatchObject({
+    expect(resolvedOptions()).toEqual({
       animationDuration: 0.8,
       animationEasing: 'power4.out',
       hideOnScroll: false,
@@ -124,7 +124,7 @@ describe('nav-anim invalid attributes (AC-4)', () => {
         hideOnScroll: false,
         scrollThreshold: 80,
       }),
-    ).toMatchObject({
+    ).toEqual({
       animationDuration: 0.6,
       animationEasing: 'power4.out',
       hideOnScroll: false,
@@ -140,7 +140,7 @@ describe('nav-anim invalid attributes (AC-4)', () => {
       'data-nav-scroll-threshold': '',
     });
 
-    expect(resolvedOptions()).toMatchObject({
+    expect(resolvedOptions()).toEqual({
       animationDuration: 0.3,
       animationEasing: 'power2.inOut',
       hideOnScroll: true,
@@ -158,7 +158,7 @@ describe('nav-anim invalid attributes (AC-4)', () => {
         hideOnScroll: 'false',
         scrollThreshold: null,
       } as unknown as InitNavbarAnimationOptions),
-    ).toMatchObject({
+    ).toEqual({
       animationDuration: 0.3,
       animationEasing: 'power2.inOut',
       hideOnScroll: true,

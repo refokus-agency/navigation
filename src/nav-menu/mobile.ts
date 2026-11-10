@@ -1,6 +1,7 @@
 import { NAV_MENU_CONFIG } from './config.ts';
 import { focusFirst, getTabbableCandidates } from './keyboard.ts';
 import { isFollowedClick } from './pointer.ts';
+import { lockPageScroll } from './scroll-lock.ts';
 import type { NavMenuContext } from './types.ts';
 
 /**
@@ -138,6 +139,8 @@ function attachCard(
   for (const toggle of toggles) toggle.setAttribute('aria-controls', card.id);
 
   let isOpen = false;
+  // Page scroll is frozen exactly while the card is open.
+  let unlockScroll: (() => void) | null = null;
   // The toggle that opened the card, so focus returns there on close — a close
   // button inside the card goes inert with it and cannot keep focus.
   let opener: HTMLElement | null = null;
@@ -166,7 +169,13 @@ function attachCard(
       return;
     }
     isOpen = next;
-    if (!next) controller.close();
+    if (next) {
+      unlockScroll ??= lockPageScroll(root, card);
+    } else {
+      unlockScroll?.();
+      unlockScroll = null;
+      controller.close();
+    }
     render();
   };
 
@@ -230,6 +239,8 @@ function attachCard(
   document.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('focusin', onFocusIn);
   cleanups.push(() => {
+    unlockScroll?.();
+    unlockScroll = null;
     for (const toggle of toggles) {
       toggle.removeEventListener('click', onToggleClick);
       toggle.removeAttribute('aria-expanded');

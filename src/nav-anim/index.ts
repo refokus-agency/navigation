@@ -21,14 +21,6 @@ export type NavbarAnimationOptions = {
   hideOnScroll: boolean;
   /** Scroll distance, in px, before the navbar hides or shows. */
   scrollThreshold: number;
-  /** GSAP `y` value while hidden. */
-  hiddenOffset: string;
-  /** GSAP `y` value while visible. */
-  visibleOffset: string;
-  /** Never hide while the nav root has `[data-state="open"]`. */
-  pauseWhileMenuOpen: boolean;
-  /** Return `false` to veto hiding on a given scroll. */
-  shouldHide?: () => boolean;
 };
 
 export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
@@ -38,9 +30,6 @@ const DEFAULT_OPTIONS: NavbarAnimationOptions = {
   animationEasing: 'power2.inOut',
   hideOnScroll: true,
   scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
-  hiddenOffset: NAVBAR_CONFIG.position.hidden,
-  visibleOffset: NAVBAR_CONFIG.position.visible,
-  pauseWhileMenuOpen: true,
 };
 
 /**
@@ -91,9 +80,6 @@ const isEase = (value: unknown): value is string => {
   return typeof ease === 'function' && Number.isFinite(ease(0.5));
 };
 
-const isString = (value: unknown): value is string =>
-  typeof value === 'string' && value !== '';
-
 const readEaseAttr: AttributeReader<string> = (el, name) => {
   const value = el.getAttribute(name);
   return isEase(value) ? value : undefined;
@@ -123,17 +109,6 @@ function resolveAnimOptions(
       isValid: isNonNegativeNumber,
       fallback: DEFAULT_OPTIONS.scrollThreshold,
     }),
-    hiddenOffset: isString(merged.hiddenOffset)
-      ? merged.hiddenOffset
-      : DEFAULT_OPTIONS.hiddenOffset,
-    visibleOffset: isString(merged.visibleOffset)
-      ? merged.visibleOffset
-      : DEFAULT_OPTIONS.visibleOffset,
-    pauseWhileMenuOpen: isBoolean(merged.pauseWhileMenuOpen)
-      ? merged.pauseWhileMenuOpen
-      : DEFAULT_OPTIONS.pauseWhileMenuOpen,
-    shouldHide:
-      typeof merged.shouldHide === 'function' ? merged.shouldHide : undefined,
     animationDuration: resolveSetting({
       attribute: readNumberAttr(firstRoot, attributes.animDuration),
       js: merged.animationDuration,

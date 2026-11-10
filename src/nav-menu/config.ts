@@ -1,4 +1,4 @@
-import { NAV_ROOT_SELECTOR } from '../config.ts';
+import { NAV_CARD_SELECTOR, NAV_ROOT_SELECTOR } from '../config.ts';
 
 export const NAV_MENU_CONFIG = {
   selectors: {
@@ -11,7 +11,7 @@ export const NAV_MENU_CONFIG = {
     viewport: '[data-nav-viewport]',
     back: '[data-nav-back]',
     toggle: '[data-nav-toggle]',
-    card: '[data-nav-card]',
+    card: NAV_CARD_SELECTOR,
     webflowNav: '.w-nav',
     webflowBurger: '.w-nav-button',
   },

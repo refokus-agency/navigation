@@ -1,3 +1,4 @@
+import { NAVBAR_CONFIG } from './config.ts';
 import type { NavbarAnimationOptions } from './index.ts';
 import { createNavbarAnimation } from './initial-animation.ts';
 
@@ -16,7 +17,7 @@ function showNavbar(): void {
 
   createNavbarAnimation(
     navbarElements,
-    currentOptions.visibleOffset,
+    NAVBAR_CONFIG.position.visible,
     currentOptions,
   );
   isNavbarVisible = true;
@@ -31,7 +32,7 @@ function hideNavbar(): void {
 
   createNavbarAnimation(
     navbarElements,
-    currentOptions.hiddenOffset,
+    NAVBAR_CONFIG.position.hidden,
     currentOptions,
   );
   isNavbarVisible = false;
@@ -79,22 +80,18 @@ function handleFocusIn(event: FocusEvent): void {
 }
 
 /**
- * Whether hiding is vetoed: a panel is open (when `pauseWhileMenuOpen`) or
- * the consumer's `shouldHide()` returns false.
+ * Whether a dropdown panel (root `[data-state="open"]`) or the mobile card is
+ * open. Hiding the bar then would strand the panel or the burger toggle.
  */
-function isHidingPaused(): boolean {
-  if (!currentOptions) return false;
+function isMenuOpen(): boolean {
+  const { card } = NAVBAR_CONFIG.selectors;
 
-  if (
-    currentOptions.pauseWhileMenuOpen &&
-    navbarElements.some(
-      (element) => (element as HTMLElement).dataset?.state === 'open',
-    )
-  ) {
-    return true;
-  }
-
-  return currentOptions.shouldHide?.() === false;
+  return navbarElements.some(
+    (element) =>
+      element instanceof HTMLElement &&
+      (element.dataset.state === 'open' ||
+        element.querySelector(`${card}[data-state="open"]`) !== null),
+  );
 }
 
 /**
@@ -109,7 +106,7 @@ function handleScroll(): void {
   if (!isSignificantScroll(currentScrollY, threshold)) return;
 
   if (isScrollingDownPastThreshold(currentScrollY, threshold)) {
-    if (!isHidingPaused()) hideNavbar();
+    if (!isMenuOpen()) hideNavbar();
   } else {
     showNavbar();
   }
