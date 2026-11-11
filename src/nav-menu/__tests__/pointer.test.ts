@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NAV_MENU_CONFIG } from '../config.ts';
 import { initNavigationMenu } from '../index.ts';
+import { attachDismiss } from '../pointer.ts';
+import type { NavMenuContext } from '../types.ts';
 import {
   firePointer,
   type NavMenuMarkup,
@@ -208,5 +210,32 @@ describe('dismissal', () => {
 
     document.querySelector<HTMLElement>('[data-nav-link]')?.click();
     expect(menu.trigger('a').dataset.state).toBe('open');
+  });
+});
+
+describe('dismiss hooks', () => {
+  it('should run the outside hooks even when controller.close throws', () => {
+    const root = document.createElement('div');
+    const cleanups: Array<() => void> = [];
+    const hook = vi.fn();
+    attachDismiss({
+      root,
+      controller: {
+        close: () => {
+          throw new Error('boom');
+        },
+      },
+      cleanups,
+      dismissHooks: { outside: [hook], link: [] },
+    } as unknown as NavMenuContext);
+
+    // The listener's error is reported by jsdom, not thrown at the dispatcher.
+    const onError = vi.fn((event: ErrorEvent) => event.preventDefault());
+    window.addEventListener('error', onError);
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    window.removeEventListener('error', onError);
+    for (const cleanup of cleanups) cleanup();
+
+    expect(hook).toHaveBeenCalledTimes(1);
   });
 });

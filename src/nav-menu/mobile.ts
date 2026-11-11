@@ -1,6 +1,5 @@
 import { NAV_MENU_CONFIG } from './config.ts';
 import { focusFirst, getTabbableCandidates } from './keyboard.ts';
-import { isFollowedClick } from './pointer.ts';
 import type { NavMenuContext } from './types.ts';
 
 /**
@@ -150,7 +149,7 @@ export function attachMobile(
  * no-op when there is no toggle or no card.
  */
 function attachCard(
-  { root, controller, cleanups, idPrefix }: NavMenuContext,
+  { controller, cleanups, root, idPrefix, dismissHooks }: NavMenuContext,
   isMobile: () => boolean,
 ): { openCard: () => boolean; closeCard: () => void } {
   const { selectors } = NAV_MENU_CONFIG;
@@ -219,52 +218,30 @@ function attachCard(
     opener?.focus();
   };
 
-  const onPointerDown = (event: Event) => {
-    const target = event.target;
-    if (!isOpen || !isMobile() || !(target instanceof Node)) return;
-    // The root, not just the card: panels may live in a viewport outside it,
-    // and closing on a tap inside one swallows the click on its link.
-    if (root.contains(target)) return;
-    setOpen(false);
+  // Outside pointerdown/focusin (tapping or tabbing away strands the card over
+  // the page) and followed links (which leave it covering where the user just
+  // went) come from the shared paths in pointer.ts; the card only closes itself.
+  const dismiss = () => {
+    if (isOpen && isMobile()) setOpen(false);
   };
-
-  // Leaving the nav by Tab strands an open card over the page.
-  const onFocusIn = (event: Event) => {
-    const target = event.target;
-    if (!isOpen || !isMobile() || !(target instanceof Node)) return;
-    if (!root.contains(target)) setOpen(false);
-  };
-
-  // A followed link leaves the card covering where the user just went. Clicks
-  // that do not follow it keep the card open, like panel links. Triggers, back
-  // controls and toggles are not links, even when authored as <a href>
-  // (Webflow's default).
-  const onLinkClick = (event: MouseEvent) => {
-    if (!isOpen || !isMobile() || !isFollowedClick(event)) return;
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const link = target.closest(`a[href], ${selectors.link}`);
-    const controls = `${selectors.trigger}, ${selectors.back}, ${selectors.toggle}`;
-    if (link && !link.closest(controls)) setOpen(false);
-  };
+  dismissHooks.outside.push(dismiss);
+  dismissHooks.link.push(dismiss);
 
   for (const toggle of toggles) {
     toggle.addEventListener('click', onToggleClick);
   }
-  root.addEventListener('click', onLinkClick);
   document.addEventListener('keydown', onKeyDown);
-  document.addEventListener('pointerdown', onPointerDown);
-  document.addEventListener('focusin', onFocusIn);
   cleanups.push(() => {
+    for (const list of [dismissHooks.outside, dismissHooks.link]) {
+      const index = list.indexOf(dismiss);
+      if (index !== -1) list.splice(index, 1);
+    }
     for (const toggle of toggles) {
       toggle.removeEventListener('click', onToggleClick);
       toggle.removeAttribute('aria-expanded');
       toggle.removeAttribute('aria-controls');
     }
-    root.removeEventListener('click', onLinkClick);
     document.removeEventListener('keydown', onKeyDown);
-    document.removeEventListener('pointerdown', onPointerDown);
-    document.removeEventListener('focusin', onFocusIn);
     // Hand the card back: a leftover inert or data-state="closed" would leave
     // the menu dead and unreachable after a re-init.
     card.removeAttribute('inert');
