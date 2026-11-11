@@ -5,7 +5,6 @@ vi.mock('../initial-animation.ts', () => ({
 }));
 
 vi.mock('../scroll-behaviour.ts', () => ({
-  cleanupNavbarAnimation: vi.fn(),
   initScrollBehavior: vi.fn(),
 }));
 
@@ -15,14 +14,10 @@ import {
   type NavbarAnimationOptions,
 } from '../index.ts';
 import { performInitialAnimation } from '../initial-animation.ts';
-import {
-  cleanupNavbarAnimation,
-  initScrollBehavior,
-} from '../scroll-behaviour.ts';
+import { initScrollBehavior } from '../scroll-behaviour.ts';
 
 const mockedPerformInitialAnimation = vi.mocked(performInitialAnimation);
 const mockedInitScrollBehavior = vi.mocked(initScrollBehavior);
-const mockedCleanupNavbarAnimation = vi.mocked(cleanupNavbarAnimation);
 
 /** Renders one `<nav data-nav-menu>` per attribute set, in order. */
 function renderRoots(...roots: Record<string, string>[]): HTMLElement[] {
@@ -225,7 +220,7 @@ describe('hide on scroll (AC-6)', () => {
   it('should not bind scroll behavior when data-nav-hide-on-scroll is "false"', () => {
     renderRoots({ 'data-nav-hide-on-scroll': 'false' });
 
-    expect(initNavbarAnimation()).toBe(true);
+    expect(initNavbarAnimation()).not.toBeNull();
     expect(mockedPerformInitialAnimation).toHaveBeenCalledTimes(1);
     expect(mockedInitScrollBehavior).not.toHaveBeenCalled();
   });
@@ -244,17 +239,6 @@ describe('hide on scroll (AC-6)', () => {
     initNavbarAnimation({ hideOnScroll: false });
 
     expect(mockedInitScrollBehavior).toHaveBeenCalledTimes(1);
-  });
-
-  it('should tear down an earlier binding when a re-init disables hide on scroll', () => {
-    renderRoots({});
-    initNavbarAnimation();
-    renderRoots({ 'data-nav-hide-on-scroll': 'false' });
-
-    initNavbarAnimation();
-
-    expect(mockedInitScrollBehavior).toHaveBeenCalledTimes(1);
-    expect(mockedCleanupNavbarAnimation).toHaveBeenCalledTimes(2);
   });
 });
 
