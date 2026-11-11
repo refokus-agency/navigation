@@ -234,6 +234,20 @@ menu?.close();          // close whatever is open
 menu?.destroy();        // remove every listener, timer and observer
 ```
 
+In mobile mode with the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair,
+`open()` also opens the card, since a panel inside a closed (inert) card would
+be invisible. That makes it the hook for a CTA outside the nav that opens the
+mobile menu:
+
+- Focus moves into the opened panel, and `Escape` hands it back to the element
+  that was focused when you called `open()` (the CTA). This is the one case
+  where a programmatic `open()` moves focus; with the card already open, or on
+  desktop, focus stays where it is.
+- Call it from a `click` handler, not `pointerdown`: the same `pointerdown`
+  bubbles to the document and dismisses the card straight away.
+- An unknown value is a full no-op: the card stays as it was and the panel that
+  is open stays open.
+
 Pass a root element or selector as the first argument to run several menus on
 one page:
 
