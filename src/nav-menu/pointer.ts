@@ -97,16 +97,23 @@ export function attachDismiss({
   refs,
   controller,
   cleanups,
+  dismissHooks,
 }: NavMenuContext): void {
   const onOutside = (event: Event) => {
     const target = event.target;
     if (!(target instanceof Node)) return;
-    // Not gated on getActiveValue(): it is still null while a hover-open is
-    // only pending, and setValue(null) is what cancels that timer.
+    if (root.contains(target)) return;
     // An overlay press closes on its own click, so the click lands on the
     // overlay and not on whatever sits beneath it once it stops taking events.
     if (refs.overlay?.contains(target) && event.type === 'pointerdown') return;
-    if (!root.contains(target)) controller.close();
+    // Not gated on getActiveValue(): it is still null while a hover-open is
+    // only pending, and setValue(null) is what cancels that timer.
+    // finally: the hooks (the mobile card) must close even if close() throws.
+    try {
+      controller.close();
+    } finally {
+      for (const hook of dismissHooks.outside) hook();
+    }
   };
 
   document.addEventListener('pointerdown', onOutside);
@@ -137,20 +144,29 @@ export function attachLinkClicks({
   root,
   controller,
   cleanups,
+  dismissHooks,
 }: NavMenuContext): void {
   const { selectors } = NAV_MENU_CONFIG;
+  // Triggers, back controls and toggles are not links, even when authored as
+  // <a href> (Webflow's default).
+  const controls = `${selectors.trigger}, ${selectors.back}, ${selectors.toggle}`;
 
   // A click that does not follow the link keeps the menu open.
   const onClick = (event: MouseEvent) => {
     const target = event.target;
-    if (!(target instanceof Element)) return;
+    if (!(target instanceof Element) || !isFollowedClick(event)) return;
 
-    const link =
+    const panelLink =
       target.closest(`${selectors.content} a`) ??
       target.closest(`${selectors.content} ${selectors.link}`);
-    if (!link) return;
-
-    if (isFollowedClick(event)) controller.close();
+    const link = target.closest(`a[href], ${selectors.link}`);
+    try {
+      if (panelLink) controller.close();
+    } finally {
+      if (link && !link.closest(controls)) {
+        for (const hook of dismissHooks.link) hook();
+      }
+    }
   };
 
   root.addEventListener('click', onClick);

@@ -4,12 +4,14 @@ import type { NavMenuContext } from './types.ts';
  * Opt-in `[data-nav-overlay]`. The renderer writes its `data-state`; this wires
  * the click-to-close and the init-time ARIA. It has its own listener because an
  * overlay inside the root is never "outside" for the dismiss handlers.
- * `closeCard` is the mobile card's close, a no-op without one.
+ * The mobile card closes through the shared `dismissHooks.outside`.
  */
-export function attachOverlay(
-  { refs, controller, cleanups }: NavMenuContext,
-  closeCard: () => void,
-): void {
+export function attachOverlay({
+  refs,
+  controller,
+  cleanups,
+  dismissHooks,
+}: NavMenuContext): void {
   const { overlay } = refs;
   if (!overlay) return;
 
@@ -19,8 +21,12 @@ export function attachOverlay(
   // On click, not pointerdown: closing on pointerdown lets a hidden overlay
   // stop taking events before the click, which then lands on the page below.
   const onClick = () => {
-    controller.close();
-    closeCard();
+    // finally: the hooks (the mobile card) must close even if close() throws.
+    try {
+      controller.close();
+    } finally {
+      for (const hook of dismissHooks.outside) hook();
+    }
   };
   overlay.addEventListener('click', onClick);
 
