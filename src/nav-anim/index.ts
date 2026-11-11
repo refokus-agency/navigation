@@ -24,8 +24,8 @@ export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
 
 export type NavbarAnimationInstance = {
   /**
-   * Removes the scroll and focus listeners, kills the navbar's tweens and
-   * clears the inline transform it set. Safe to call more than once.
+   * Removes the scroll and focus listeners, kills the navbar's `y` tweens and
+   * resets its `y` to 0. Safe to call more than once.
    */
   destroy: () => void;
 };
@@ -38,8 +38,17 @@ const DEFAULT_OPTIONS: NavbarAnimationOptions = {
 };
 
 /**
- * Initializes navbar animation. Each call is independent and returns its own
- * teardown handle.
+ * The live instance. Every instance animates the same `[data-nav-menu]`
+ * roots, so only one may be live: a second init takes over from the first
+ * rather than stacking listeners or leaving two instances fighting over the
+ * nav's position.
+ */
+let current: NavbarAnimationInstance | null = null;
+
+/**
+ * Initializes navbar animation. A second call destroys the previous instance
+ * first, so re-initializing (e.g. after a page transition) never leaks
+ * listeners.
  * @returns The handle, or `null` when no nav root is on the page
  */
 export function initNavbarAnimation(
@@ -57,6 +66,8 @@ export function initNavbarAnimation(
     ...options,
   });
 
+  current?.destroy();
+
   // The slide-in always runs, so the navbar appears even when it never hides.
   performInitialAnimation(elements, resolvedOptions);
   const removeScrollBehavior = resolvedOptions.hideOnScroll
@@ -64,15 +75,22 @@ export function initNavbarAnimation(
     : undefined;
 
   let destroyed = false;
-  return {
+  const instance: NavbarAnimationInstance = {
     destroy: () => {
       if (destroyed) return;
       destroyed = true;
+      if (current === instance) current = null;
       removeScrollBehavior?.();
-      gsap.killTweensOf(elements);
-      gsap.set(elements, { clearProps: 'transform' });
+      // Only the `y` this module drives: a consumer's own tweens and an
+      // authored transform (e.g. a centering `translateX`) are left alone.
+      // `clearProps` is not an option here: GSAP clears the whole transform
+      // for any transform prop, and `-100%` is stored as `yPercent`.
+      gsap.killTweensOf(elements, 'y');
+      gsap.set(elements, { y: 0, yPercent: 0 });
     },
   };
+  current = instance;
+  return instance;
 }
 
 /**

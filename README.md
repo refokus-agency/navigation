@@ -65,8 +65,10 @@ nav?.destroy();
 
 `initNavbarAnimation` returns `{ destroy }` (typed `NavbarAnimationInstance`), or
 `null` when no `[data-nav-menu]` is on the page. `destroy()` removes the scroll
-and focus listeners, kills the navbar's tweens and clears the inline transform
-it set. It is idempotent, and each call is an independent instance.
+and focus listeners, kills the navbar's `y` tweens and resets its `y` to 0,
+leaving any other tween or authored transform alone. It is idempotent. Only one
+instance is live at a time: calling `initNavbarAnimation` again destroys the
+previous instance first, so re-initializing never stacks listeners.
 
 | Option              | Type      | Default          | Description                                                       |
 | ------------------- | --------- | ---------------- | ----------------------------------------------------------------- |
@@ -150,10 +152,9 @@ to, so several menus resolve independently. nav-anim animates every root but
 reads its attributes from the **first** `[data-nav-menu]` only.
 
 > **Upgrading to the teardown handle:** `initNavbarAnimation` used to return
-> `boolean` and keep module-level state, so a second call replaced the first.
-> It now returns `{ destroy } | null`. Replace `if (initNavbarAnimation())` with
-> a `null` check, and call `destroy()` before re-initializing — a second call no
-> longer tears down the first.
+> `boolean`. It now returns `{ destroy } | null`, so replace
+> `if (initNavbarAnimation())` with a `null` check. Call `destroy()` when you
+> remove the navbar from the page (for example in a page transition).
 
 > **Upgrading from a 1.x release:** `initNavbarAnimation` used to select
 > `[r-navbar]`. Rename that attribute to `data-nav-menu` on your nav element —

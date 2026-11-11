@@ -15,13 +15,13 @@ export function initScrollBehavior(
   let isNavbarVisible = true;
 
   const showNavbar = (): void => {
-    if (isNavbarVisible || elements.length === 0) return;
+    if (isNavbarVisible) return;
     createNavbarAnimation(elements, NAVBAR_CONFIG.position.visible, options);
     isNavbarVisible = true;
   };
 
   const hideNavbar = (): void => {
-    if (!isNavbarVisible || elements.length === 0) return;
+    if (!isNavbarVisible) return;
     createNavbarAnimation(elements, NAVBAR_CONFIG.position.hidden, options);
     isNavbarVisible = false;
   };

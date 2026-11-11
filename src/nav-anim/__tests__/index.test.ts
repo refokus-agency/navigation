@@ -6,7 +6,6 @@ vi.mock('../initial-animation.ts', () => ({
 }));
 
 vi.mock('../scroll-behaviour.ts', () => ({
-  cleanupNavbarAnimation: vi.fn(),
   initScrollBehavior: vi.fn(),
 }));
 
@@ -109,7 +108,26 @@ describe('initNavbarAnimation teardown handle', () => {
     nav?.destroy();
 
     expect(removeScrollBehavior).toHaveBeenCalledTimes(1);
-    expect(killTweensOf).toHaveBeenCalledWith(navbars);
+    expect(killTweensOf).toHaveBeenCalledWith(navbars, 'y');
+    killTweensOf.mockRestore();
+  });
+
+  it('should leave a consumer tween and an authored transform alone', () => {
+    const [navbar] = renderNavbars(1) as HTMLElement[];
+    if (!navbar) throw new Error('navbar missing');
+    gsap.set(navbar, { xPercent: -50 });
+    const consumerTween = gsap.to(navbar, { opacity: 0.5, duration: 10 });
+
+    // The module's own hide, as the real animation would leave it.
+    gsap.set(navbar, { yPercent: -100 });
+    const nav = initNavbarAnimation();
+    nav?.destroy();
+
+    expect(gsap.getTweensOf(navbar)).toContain(consumerTween);
+    expect(gsap.getProperty(navbar, 'xPercent')).toBe(-50);
+    expect(gsap.getProperty(navbar, 'yPercent')).toBe(0);
+    expect(navbar.style.transform).toContain('-50%');
+    consumerTween.kill();
   });
 
   it('should be safe to destroy twice', () => {
@@ -133,7 +151,38 @@ describe('initNavbarAnimation teardown handle', () => {
     expect(() => nav?.destroy()).not.toThrow();
   });
 
-  it('should keep two instances independent', () => {
+  it('should replace the first instance when init runs a second time', () => {
+    renderNavbars(1);
+    const removeA = vi.fn();
+    const removeB = vi.fn();
+    mockedInitScrollBehavior
+      .mockReturnValueOnce(removeA)
+      .mockReturnValueOnce(removeB);
+
+    initNavbarAnimation();
+    expect(removeA).not.toHaveBeenCalled();
+
+    initNavbarAnimation();
+
+    expect(removeA).toHaveBeenCalledTimes(1);
+    expect(removeB).not.toHaveBeenCalled();
+  });
+
+  it('should leave only one scroll behavior live after repeated inits', () => {
+    renderNavbars(1);
+    const removers = [vi.fn(), vi.fn(), vi.fn()];
+    for (const remove of removers) {
+      mockedInitScrollBehavior.mockReturnValueOnce(remove);
+    }
+
+    for (let i = 0; i < removers.length; i++) initNavbarAnimation();
+
+    expect(removers[0]).toHaveBeenCalledTimes(1);
+    expect(removers[1]).toHaveBeenCalledTimes(1);
+    expect(removers[2]).not.toHaveBeenCalled();
+  });
+
+  it('should not let a stale handle destroy its replacement', () => {
     renderNavbars(1);
     const removeA = vi.fn();
     const removeB = vi.fn();
@@ -147,5 +196,19 @@ describe('initNavbarAnimation teardown handle', () => {
 
     expect(removeA).toHaveBeenCalledTimes(1);
     expect(removeB).not.toHaveBeenCalled();
+  });
+
+  it('should still replace when the previous instance did not hide on scroll', () => {
+    renderNavbars(1);
+    const removeB = vi.fn();
+    mockedInitScrollBehavior.mockReturnValueOnce(removeB);
+
+    initNavbarAnimation({ hideOnScroll: false });
+    const killTweensOf = vi.spyOn(gsap, 'killTweensOf');
+    initNavbarAnimation();
+
+    expect(killTweensOf).toHaveBeenCalledWith(expect.anything(), 'y');
+    expect(removeB).not.toHaveBeenCalled();
+    killTweensOf.mockRestore();
   });
 });
