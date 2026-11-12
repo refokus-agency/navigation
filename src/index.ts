@@ -1,6 +1,7 @@
 export {
   type InitNavbarAnimationOptions,
   initNavbarAnimation,
+  type NavbarAnimationInstance,
 } from './nav-anim/index.ts';
 export {
   type InitNavigationMenuOptions,

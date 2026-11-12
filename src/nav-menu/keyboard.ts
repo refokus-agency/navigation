@@ -5,6 +5,9 @@ import type {
   NavMenuRefs,
 } from './types.ts';
 
+/** Arrow keys for the inline axis; RTL swaps them. Home/End stay logical. */
+type InlineKeys = { forward: string; backward: string };
+
 /**
  * WAI-ARIA Disclosure Navigation: Tab is the primary path and traverses
  * triggers *and* open panel links. Arrows are secondary and trigger-scoped.
@@ -15,9 +18,15 @@ export function attachKeyboardEvents({
   controller,
   cleanups,
   escapeFallbacks,
+  options,
 }: NavMenuContext): void {
+  // `dir` is fixed for the instance, so resolve the inline-axis keys once.
+  const inlineKeys: InlineKeys =
+    options.dir === 'rtl'
+      ? { forward: 'ArrowLeft', backward: 'ArrowRight' }
+      : { forward: 'ArrowRight', backward: 'ArrowLeft' };
   const onKeyDown = (event: KeyboardEvent) =>
-    handleKeyDown(event, root, refs, controller, escapeFallbacks);
+    handleKeyDown(event, root, refs, controller, escapeFallbacks, inlineKeys);
 
   root.addEventListener('keydown', onKeyDown);
   cleanups.push(() => root.removeEventListener('keydown', onKeyDown));
@@ -29,6 +38,7 @@ function handleKeyDown(
   refs: NavMenuRefs,
   controller: NavMenuController,
   escapeFallbacks: Array<() => HTMLElement | null>,
+  inlineKeys: InlineKeys,
 ): void {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) return;
@@ -59,7 +69,7 @@ function handleKeyDown(
   // Trigger-scoped, so arrows in a panel's search field stay native.
   if (!trigger) return;
 
-  handleTriggerKey(event, root, refs, controller, trigger);
+  handleTriggerKey(event, root, refs, controller, trigger, inlineKeys);
 }
 
 function handleTriggerKey(
@@ -68,12 +78,13 @@ function handleTriggerKey(
   refs: NavMenuRefs,
   controller: NavMenuController,
   trigger: HTMLElement,
+  inlineKeys: InlineKeys,
 ): void {
   const isHorizontal =
     (root.getAttribute('data-orientation') || 'horizontal') === 'horizontal';
-  const nextKey = isHorizontal ? 'ArrowRight' : 'ArrowDown';
-  const prevKey = isHorizontal ? 'ArrowLeft' : 'ArrowUp';
-  const entryKey = isHorizontal ? 'ArrowDown' : 'ArrowRight';
+  const nextKey = isHorizontal ? inlineKeys.forward : 'ArrowDown';
+  const prevKey = isHorizontal ? inlineKeys.backward : 'ArrowUp';
+  const entryKey = isHorizontal ? 'ArrowDown' : inlineKeys.forward;
 
   switch (event.key) {
     case nextKey:
@@ -136,7 +147,8 @@ function handleTriggerKey(
  * Accordion: land focus on the first link of the panel a user just opened.
  * Called from the activation paths (trigger click, Enter/Space) rather than
  * from a state listener, so arrow-key traversal and programmatic open() never
- * pull focus off the trigger.
+ * pull focus off the trigger. The one exception is open() on a closed mobile
+ * card, which moves focus into the panel itself (see mobile.ts).
  */
 export function focusOpenedPanelOnMobile(
   root: HTMLElement,
@@ -147,6 +159,11 @@ export function focusOpenedPanelOnMobile(
   if (!isMobileMode(root)) return;
   const value = refs.valueByTrigger.get(trigger);
   if (!value || controller.getActiveValue() !== value) return;
+  focusPanelContent(refs, value);
+}
+
+/** Moves focus to the first tabbable element of a panel, if it has one. */
+export function focusPanelContent(refs: NavMenuRefs, value: string): void {
   const content = refs.contentMap.get(value);
   if (content) focusFirst(getTabbableCandidates(content));
 }

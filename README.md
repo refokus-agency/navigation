@@ -54,15 +54,21 @@ animation and the dropdown menu attach to it, so one element serves both.
 import { initNavbarAnimation } from '@refokus-agency/navigation';
 
 // Initialize with custom options
-const success = initNavbarAnimation({
+const nav = initNavbarAnimation({
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
 });
 
-if (success) {
-  console.log('Navbar animation initialized');
-}
+// Later, e.g. before a page transition swaps the DOM:
+nav?.destroy();
 ```
+
+`initNavbarAnimation` returns `{ destroy }` (typed `NavbarAnimationInstance`), or
+`null` when no `[data-nav-menu]` is on the page. `destroy()` removes the scroll
+and focus listeners, kills the navbar's `y` tweens and resets its `y` to 0,
+leaving any other tween or authored transform alone. It is idempotent. Only one
+instance is live at a time: calling `initNavbarAnimation` again destroys the
+previous instance first, so re-initializing never stacks listeners.
 
 | Option              | Type      | Default          | Description                                                       |
 | ------------------- | --------- | ---------------- | ----------------------------------------------------------------- |
@@ -144,6 +150,11 @@ Attributes are read **once, at init**; changing them afterwards has no effect
 until the feature is initialized again. nav-menu reads the root it attaches
 to, so several menus resolve independently. nav-anim animates every root but
 reads its attributes from the **first** `[data-nav-menu]` only.
+
+> **Upgrading to the teardown handle:** `initNavbarAnimation` used to return
+> `boolean`. It now returns `{ destroy } | null`, so replace
+> `if (initNavbarAnimation())` with a `null` check. Call `destroy()` when you
+> remove the navbar from the page (for example in a page transition).
 
 > **Upgrading from a 1.x release:** `initNavbarAnimation` used to select
 > `[r-navbar]`. Rename that attribute to `data-nav-menu` on your nav element —
@@ -234,6 +245,20 @@ menu?.close();          // close whatever is open
 menu?.destroy();        // remove every listener, timer and observer
 ```
 
+In mobile mode with the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair,
+`open()` also opens the card, since a panel inside a closed (inert) card would
+be invisible. That makes it the hook for a CTA outside the nav that opens the
+mobile menu:
+
+- Focus moves into the opened panel, and `Escape` hands it back to the element
+  that was focused when you called `open()` (the CTA). This is the one case
+  where a programmatic `open()` moves focus; with the card already open, or on
+  desktop, focus stays where it is.
+- Call it from a `click` handler, not `pointerdown`: the same `pointerdown`
+  bubbles to the document and dismisses the card straight away.
+- An unknown value is a full no-op: the card stays as it was and the panel that
+  is open stays open.
+
 Pass a root element or selector as the first argument to run several menus on
 one page:
 
@@ -254,7 +279,7 @@ Designer (see `skipInWebflowEditor`).
 | `skipDelayDuration`   | `number`                       | `300`          | Window after a close during which the next hover opens instantly            |
 | `closeDelay`          | `number`                       | `150`          | Grace period after the pointer leaves before the panel closes, in ms        |
 | `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
-| `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction                                       |
+| `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction and swaps the `←` `→` keys            |
 | `interaction`         | `'hover' \| 'click'`           | `'hover'`      | What opens a panel with the mouse. `data-nav-interaction` on the root wins  |
 | `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
 | `onValueChange`       | `(value: string \| null) => void` | —          | Called with the open item's value, or `null` when the menu closes           |
@@ -438,9 +463,9 @@ behave natively:
 
 | Key | Behavior (on a trigger only) |
 | --- | --- |
-| `←` `→` | move between triggers, wrapping (`↑` `↓` when vertical) |
-| `↓` | move into the open panel (`→` when vertical) |
-| `Home` / `End` | first / last trigger |
+| `←` `→` | move between triggers, wrapping (`↑` `↓` when vertical); swapped when `dir: 'rtl'` |
+| `↓` | move into the open panel (`→` when vertical, `←` when vertical and `dir: 'rtl'`) |
+| `Home` / `End` | first / last trigger (reading order, not mirrored in RTL) |
 
 ### Webflow mobile integration
 

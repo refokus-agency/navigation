@@ -55,6 +55,79 @@ describe('mobile card', () => {
     expect(card.dataset.state).toBe('closed');
   });
 
+  it('should open the card when instance.open() runs while it is closed', () => {
+    const { instance } = setup();
+    expect(card.hasAttribute('inert')).toBe(true);
+    instance?.open('a');
+    expect(card.dataset.state).toBe('open');
+    expect(card.hasAttribute('inert')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('should ignore an unknown value: card stays closed, open panel stays open', () => {
+    const { menu, instance } = setup();
+    instance?.open('nope');
+    expect(card.dataset.state).toBe('closed');
+
+    instance?.open('a');
+    instance?.open('nope');
+    expect(card.dataset.state).toBe('open');
+    expect(menu.content('a').dataset.state).toBe('open');
+  });
+
+  it('should not touch the card on desktop', () => {
+    const { instance } = setup(false);
+    instance?.open('a');
+    expect(card.dataset.state).toBeUndefined();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  describe('instance.open() from a CTA outside the nav', () => {
+    let cta: HTMLElement;
+
+    const setupCta = () => {
+      const result = setup();
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<button type="button" id="cta">open</button>',
+      );
+      cta = document.getElementById('cta') as HTMLElement;
+      cta.focus();
+      return result;
+    };
+
+    it('should move focus into the opened panel', () => {
+      const { menu, instance } = setupCta();
+      instance?.open('a');
+      expect(menu.content('a').contains(document.activeElement)).toBe(true);
+    });
+
+    it('should keep the card open when focus moves on inside the nav', () => {
+      const { menu, instance } = setupCta();
+      instance?.open('a');
+      (menu.content('a').querySelector('a') as HTMLElement).focus();
+      expect(card.dataset.state).toBe('open');
+    });
+
+    it('should hand focus back to the CTA on Escape', () => {
+      const { instance } = setupCta();
+      instance?.open('a');
+      // First Escape closes the panel, the second the card.
+      fireKey(document.activeElement as Element, 'Escape');
+      fireKey(document.activeElement as Element, 'Escape');
+      expect(card.dataset.state).toBe('closed');
+      expect(document.activeElement).toBe(cta);
+    });
+
+    it('should not move focus when the card is already open', () => {
+      const { instance } = setupCta();
+      toggle.click();
+      toggle.focus();
+      instance?.open('a');
+      expect(document.activeElement).toBe(toggle);
+    });
+  });
+
   it('should wire every toggle, such as a close button inside the card', () => {
     setup(
       true,
@@ -340,6 +413,8 @@ describe('mobile accordion', () => {
 
   it('should not move focus on a programmatic open', () => {
     const { menu, instance } = setup();
+    // Card already open: only a closed card is the focus-taking exception.
+    toggle.click();
     menu.trigger('b').focus();
     instance?.open('c');
     expect(menu.content('c').dataset.state).toBe('open');
