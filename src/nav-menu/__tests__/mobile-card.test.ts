@@ -12,7 +12,7 @@ let toggle: HTMLElement;
 let card: HTMLElement;
 // The page scroll lock is shared module state, so every instance a test opens
 // a card on is destroyed afterwards; a leaked lock would bleed into the next.
-let instances: Array<ReturnType<typeof initNavigationMenu>> = [];
+let instances: ReturnType<typeof initNavigationMenu>[] = [];
 
 function setup(
   mobile = true,
