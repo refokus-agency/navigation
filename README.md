@@ -483,6 +483,9 @@ In `[data-nav-mode="mobile"]`:
   unchanged); panels stay scrollable. If the site uses Lenis and exposes it as
   `window.lenis`, it is stopped while the card is open and restarted after,
   and the card and panels get `data-lenis-prevent` so they keep native scroll.
+  Call `lenis.stop()` yourself only after the card has closed, not while it is
+  open: the library cannot tell your stop from its own, so closing the card
+  would start Lenis again.
   nav-anim also never hides the navbar while the card is open.
 
 On desktop none of this applies and existing behavior is unchanged. CSS owns

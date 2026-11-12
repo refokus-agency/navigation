@@ -10,9 +10,45 @@ type LenisLike = {
 const LENIS_PREVENT = 'data-lenis-prevent';
 
 /**
+ * Page-level state is shared by every lock: with two roots that each have a
+ * card, the first `unlock` must not hand scroll back while the second card is
+ * still open. The first lock saves and applies it, the last unlock restores it.
+ */
+let activeLocks = 0;
+let savedOverflow: Array<{ element: HTMLElement; overflow: string }> = [];
+let savedScrollY = 0;
+let stoppedLenis: LenisLike | null = null;
+
+function applyPageLock(): void {
+  const { documentElement: html, body } = document;
+  savedScrollY = window.scrollY;
+  savedOverflow = [html, body].map((element) => ({
+    element,
+    overflow: element.style.overflow,
+  }));
+  for (const element of [html, body]) element.style.overflow = 'hidden';
+
+  const lenis = (window as unknown as { lenis?: LenisLike }).lenis;
+  if (lenis && typeof lenis.stop === 'function' && lenis.isStopped !== true) {
+    lenis.stop();
+    stoppedLenis = lenis;
+  }
+}
+
+function releasePageLock(): void {
+  for (const { element, overflow } of savedOverflow) {
+    element.style.overflow = overflow;
+  }
+  savedOverflow = [];
+  stoppedLenis?.start?.();
+  stoppedLenis = null;
+  if (window.scrollY !== savedScrollY) window.scrollTo(0, savedScrollY);
+}
+
+/**
  * Freezes page scroll while the mobile card is open, leaving the card's own
  * panels scrollable. Returns an idempotent `unlock` that undoes exactly what
- * this call changed.
+ * this call changed; the page itself is only restored by the last open lock.
  *
  * - Native scroll: `overflow: hidden` on `<html>` and `<body>`. The scroll
  *   offset is untouched, so unlocking lands on the same position and fires no
@@ -25,18 +61,8 @@ export function lockPageScroll(
   root: HTMLElement,
   card: HTMLElement,
 ): () => void {
-  const { documentElement: html, body } = document;
-  const scrollY = window.scrollY;
-  const previous = [html, body].map((element) => ({
-    element,
-    overflow: element.style.overflow,
-  }));
-  for (const element of [html, body]) element.style.overflow = 'hidden';
-
-  const lenis = (window as unknown as { lenis?: LenisLike }).lenis;
-  const stoppedLenis =
-    !!lenis && typeof lenis.stop === 'function' && lenis.isStopped !== true;
-  if (stoppedLenis) lenis.stop?.();
+  if (activeLocks === 0) applyPageLock();
+  activeLocks += 1;
 
   const marked = [
     card,
@@ -49,11 +75,8 @@ export function lockPageScroll(
     if (!locked) return;
     locked = false;
 
-    for (const { element, overflow } of previous) {
-      element.style.overflow = overflow;
-    }
     for (const element of marked) element.removeAttribute(LENIS_PREVENT);
-    if (stoppedLenis) lenis?.start?.();
-    if (window.scrollY !== scrollY) window.scrollTo(0, scrollY);
+    activeLocks -= 1;
+    if (activeLocks === 0) releasePageLock();
   };
 }
