@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { NAV_MENU_CONFIG } from '../config.ts';
 import { initNavigationMenu } from '../index.ts';
 import {
+  firePointer,
   type NavMenuMarkup,
   renderSlotNavMenu,
   stubResizeObserver,
@@ -586,5 +588,42 @@ describe('inline panels on mobile (data-nav-mobile-panels="inline")', () => {
 
     expect(panel.parentElement).toBe(menu.viewport);
     expect(panel.style.display).toBe('none');
+  });
+});
+
+describe('hover over slot panels in the viewport', () => {
+  const closeDelay = NAV_MENU_CONFIG.timing.closeDelay;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should stay open when the pointer moves from a panel onto the viewport', () => {
+    initNavigationMenu();
+    const panel = menu.content('a');
+    const trigger = menu.trigger('a');
+    expect(panel.parentElement).toBe(menu.viewport);
+
+    firePointer(trigger, 'pointerenter');
+    vi.advanceTimersByTime(250);
+    expect(panel.dataset.state).toBe('open');
+
+    // Trigger -> viewport -> panel, then panel -> the viewport's padding. The
+    // panel's own pointerleave must not start the close timer.
+    firePointer(trigger, 'pointerleave');
+    firePointer(menu.viewport, 'pointerenter');
+    firePointer(panel, 'pointerenter');
+    firePointer(panel, 'pointerleave');
+    vi.advanceTimersByTime(closeDelay * 4);
+
+    expect(panel.dataset.state).toBe('open');
+
+    firePointer(menu.viewport, 'pointerleave');
+    vi.advanceTimersByTime(closeDelay);
+    expect(panel.dataset.state).toBe('closed');
   });
 });
