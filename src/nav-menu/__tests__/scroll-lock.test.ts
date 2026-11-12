@@ -58,10 +58,11 @@ describe('lockPageScroll with overlapping locks', () => {
     const a = makeRoot();
     const b = makeRoot();
     const unlockA = lockPageScroll(a.root, a.card);
-    lockPageScroll(b.root, b.card);
+    const unlockB = lockPageScroll(b.root, b.card);
 
     unlockA();
     expect(a.card.hasAttribute('data-lenis-prevent')).toBe(false);
     expect(b.card.hasAttribute('data-lenis-prevent')).toBe(true);
+    unlockB();
   });
 });

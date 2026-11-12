@@ -2,159 +2,71 @@ import { NAVBAR_CONFIG } from './config.ts';
 import type { NavbarAnimationOptions } from './index.ts';
 import { createNavbarAnimation } from './initial-animation.ts';
 
-let lastScrollY = 0;
-let isNavbarVisible = true;
-let scrollHandlerBound: (() => void) | null = null;
-let focusHandlerBound: ((event: FocusEvent) => void) | null = null;
-let currentOptions: NavbarAnimationOptions | null = null;
-let navbarElements: Element[] = [];
-
 /**
- * Shows the navbar by sliding it down
- */
-function showNavbar(): void {
-  if (isNavbarVisible || navbarElements.length === 0 || !currentOptions) return;
-
-  createNavbarAnimation(
-    navbarElements,
-    NAVBAR_CONFIG.position.visible,
-    currentOptions,
-  );
-  isNavbarVisible = true;
-}
-
-/**
- * Hides the navbar by sliding it up
- */
-function hideNavbar(): void {
-  if (!isNavbarVisible || navbarElements.length === 0 || !currentOptions)
-    return;
-
-  createNavbarAnimation(
-    navbarElements,
-    NAVBAR_CONFIG.position.hidden,
-    currentOptions,
-  );
-  isNavbarVisible = false;
-}
-
-/**
- * Determines if scroll distance is significant enough to trigger animation
- * @param currentScrollY - Current scroll position
- * @param threshold - Minimum distance, from `scrollThreshold`
- * @returns Whether scroll is significant
- */
-function isSignificantScroll(
-  currentScrollY: number,
-  threshold: number,
-): boolean {
-  return Math.abs(currentScrollY - lastScrollY) >= threshold;
-}
-
-/**
- * Determines if user is scrolling down past threshold
- * @param currentScrollY - Current scroll position
- * @param threshold - Minimum position, from `scrollThreshold`
- * @returns Whether user is scrolling down past threshold
- */
-function isScrollingDownPastThreshold(
-  currentScrollY: number,
-  threshold: number,
-): boolean {
-  return currentScrollY > lastScrollY && currentScrollY > threshold;
-}
-
-/**
- * Reveals a hidden navbar when focus moves into it, so tabbing back up never
- * lands on an off-screen element.
- */
-function handleFocusIn(event: FocusEvent): void {
-  const target = event.target;
-  if (!(target instanceof Node)) return;
-
-  const isInsideNavbar = navbarElements.some((element) =>
-    element.contains(target),
-  );
-
-  if (isInsideNavbar) showNavbar();
-}
-
-/**
- * Whether a dropdown panel (root `[data-state="open"]`) or the mobile card is
- * open. Hiding the bar then would strand the panel or the burger toggle.
- */
-function isMenuOpen(): boolean {
-  const { card } = NAVBAR_CONFIG.selectors;
-
-  return navbarElements.some(
-    (element) =>
-      element instanceof HTMLElement &&
-      (element.dataset.state === 'open' ||
-        element.querySelector(`${card}[data-state="open"]`) !== null),
-  );
-}
-
-/**
- * Handles scroll events to show/hide navbar based on direction
- */
-function handleScroll(): void {
-  if (!currentOptions) return;
-
-  const currentScrollY = window.scrollY;
-  const threshold = currentOptions.scrollThreshold;
-
-  if (!isSignificantScroll(currentScrollY, threshold)) return;
-
-  if (isScrollingDownPastThreshold(currentScrollY, threshold)) {
-    if (!isMenuOpen()) hideNavbar();
-  } else {
-    showNavbar();
-  }
-
-  lastScrollY = currentScrollY;
-}
-
-/**
- * Removes scroll and focus event listeners for cleanup
- */
-export function cleanupNavbarAnimation(): void {
-  if (scrollHandlerBound) {
-    window.removeEventListener('scroll', scrollHandlerBound);
-    scrollHandlerBound = null;
-  }
-
-  if (focusHandlerBound) {
-    document.removeEventListener('focusin', focusHandlerBound);
-    focusHandlerBound = null;
-  }
-
-  navbarElements = [];
-  currentOptions = null;
-}
-
-/**
- * Initializes navbar scroll behavior
+ * Binds scroll and focus handlers that show/hide the navbar elements. All
+ * state lives in this closure, so instances are independent.
+ * @returns A teardown that removes both listeners
  */
 export function initScrollBehavior(
   elements: Element[],
   options: NavbarAnimationOptions,
-): void {
-  if (scrollHandlerBound) {
-    window.removeEventListener('scroll', scrollHandlerBound);
-  }
+): () => void {
+  let lastScrollY = window.scrollY;
+  let isNavbarVisible = true;
 
-  if (focusHandlerBound) {
-    document.removeEventListener('focusin', focusHandlerBound);
-  }
+  const showNavbar = (): void => {
+    if (isNavbarVisible) return;
+    createNavbarAnimation(elements, NAVBAR_CONFIG.position.visible, options);
+    isNavbarVisible = true;
+  };
 
-  currentOptions = options;
-  navbarElements = elements;
-  isNavbarVisible = true;
-  lastScrollY = window.scrollY;
+  const hideNavbar = (): void => {
+    if (!isNavbarVisible) return;
+    createNavbarAnimation(elements, NAVBAR_CONFIG.position.hidden, options);
+    isNavbarVisible = false;
+  };
 
-  scrollHandlerBound = handleScroll;
-  window.addEventListener('scroll', scrollHandlerBound, { passive: true });
+  /**
+   * Whether a dropdown panel (root `[data-state="open"]`) or the mobile card
+   * is open. Hiding the bar then would strand the panel or the burger toggle.
+   */
+  const isMenuOpen = (): boolean =>
+    elements.some(
+      (element) =>
+        element instanceof HTMLElement &&
+        (element.dataset.state === 'open' ||
+          element.querySelector(
+            `${NAVBAR_CONFIG.selectors.card}[data-state="open"]`,
+          ) !== null),
+    );
 
-  focusHandlerBound = handleFocusIn;
-  document.addEventListener('focusin', focusHandlerBound);
+  /** Reveals a hidden navbar when focus moves into it. */
+  const handleFocusIn = (event: FocusEvent): void => {
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    if (elements.some((element) => element.contains(target))) showNavbar();
+  };
+
+  const handleScroll = (): void => {
+    const currentScrollY = window.scrollY;
+    const threshold = options.scrollThreshold;
+
+    if (Math.abs(currentScrollY - lastScrollY) < threshold) return;
+
+    if (currentScrollY > lastScrollY && currentScrollY > threshold) {
+      if (!isMenuOpen()) hideNavbar();
+    } else {
+      showNavbar();
+    }
+
+    lastScrollY = currentScrollY;
+  };
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  document.addEventListener('focusin', handleFocusIn);
+
+  return () => {
+    window.removeEventListener('scroll', handleScroll);
+    document.removeEventListener('focusin', handleFocusIn);
+  };
 }
