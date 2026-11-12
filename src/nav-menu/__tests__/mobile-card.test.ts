@@ -10,6 +10,9 @@ import {
 
 let toggle: HTMLElement;
 let card: HTMLElement;
+// The page scroll lock is shared module state, so every instance a test opens
+// a card on is destroyed afterwards; a leaked lock would bleed into the next.
+let instances: ReturnType<typeof initNavigationMenu>[] = [];
 
 function setup(
   mobile = true,
@@ -25,7 +28,9 @@ function setup(
   toggle = menu.root.querySelector('[data-nav-toggle]') as HTMLElement;
   card.insertAdjacentHTML('beforeend', extraMarkup);
   document.body.insertAdjacentHTML('beforeend', '<p id="outside">x</p>');
-  return { menu, instance: initNavigationMenu() };
+  const instance = initNavigationMenu();
+  instances.push(instance);
+  return { menu, instance };
 }
 
 beforeEach(() => {
@@ -33,6 +38,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  for (const instance of instances) instance?.destroy();
+  instances = [];
+  document.documentElement.style.overflow = '';
+  document.body.style.overflow = '';
   vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
@@ -226,6 +235,46 @@ describe('mobile card', () => {
     expect(card.dataset.state).toBe('open');
   });
 
+  it('should close the card on Escape in the root with no panel open and focus the opener', () => {
+    const { menu } = setup();
+    toggle.click();
+    const event = fireKey(menu.trigger('a'), 'Escape');
+    expect(card.dataset.state).toBe('closed');
+    expect(document.activeElement).toBe(toggle);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('should leave the card alone on Escape at desktop width', () => {
+    const { menu } = setup(false);
+    toggle.click();
+    const event = fireKey(menu.trigger('a'), 'Escape');
+    expect(card.dataset.state).toBeUndefined();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('should not close the card on an Escape a field inside it handled', () => {
+    setup(true, '<input id="search" />');
+    const search = document.getElementById('search') as HTMLElement;
+    search.addEventListener('keydown', (event) => event.preventDefault());
+    toggle.click();
+    fireKey(search, 'Escape');
+    expect(card.dataset.state).toBe('open');
+  });
+
+  it('should not close the card on an Escape another document handler handled', () => {
+    const handle = (event: KeyboardEvent) => event.preventDefault();
+    document.addEventListener('keydown', handle);
+    try {
+      setup();
+      toggle.click();
+      fireKey(document.body, 'Escape');
+      expect(card.dataset.state).toBe('open');
+    } finally {
+      document.removeEventListener('keydown', handle);
+    }
+  });
+
   it('should do nothing on desktop and leave the card unmarked', () => {
     setup(false);
     toggle.click();
@@ -389,5 +438,104 @@ describe('mobile accordion', () => {
     expect(item.dataset.state).toBe('open');
     menu.trigger('b').click();
     expect(item.dataset.state).toBe('closed');
+  });
+});
+
+describe('mobile card page scroll lock', () => {
+  const html = () => document.documentElement;
+
+  afterEach(() => {
+    delete (window as unknown as { lenis?: unknown }).lenis;
+    html().style.overflow = '';
+    document.body.style.overflow = '';
+  });
+
+  it('should freeze page scroll while open and restore it on close', () => {
+    html().style.overflow = 'auto';
+    setup();
+    toggle.click();
+    expect(html().style.overflow).toBe('hidden');
+    expect(document.body.style.overflow).toBe('hidden');
+
+    toggle.click();
+    expect(html().style.overflow).toBe('auto');
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('should keep the scroll position untouched across open and close', () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    setup();
+    toggle.click();
+    toggle.click();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('should not lock on desktop', () => {
+    setup(false);
+    toggle.click();
+    expect(html().style.overflow).toBe('');
+  });
+
+  it('should unlock when the viewport grows to desktop', () => {
+    let matches = true;
+    let notify: (() => void) | undefined;
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      get matches() {
+        return matches;
+      },
+      media: query,
+      addEventListener: (_: string, listener: () => void) => {
+        notify = listener;
+      },
+      removeEventListener: () => {},
+    }));
+    stubResizeObserver();
+    const menu = renderNavMenu();
+    menu.root.insertAdjacentHTML(
+      'afterbegin',
+      '<button type="button" data-nav-toggle>menu</button>',
+    );
+    menu.root
+      .querySelector('[data-nav-list]')
+      ?.setAttribute('data-nav-card', '');
+    initNavigationMenu();
+    menu.root.querySelector<HTMLElement>('[data-nav-toggle]')?.click();
+    expect(html().style.overflow).toBe('hidden');
+
+    matches = false;
+    notify?.();
+    expect(html().style.overflow).toBe('');
+  });
+
+  it('should unlock on destroy', () => {
+    const { instance } = setup();
+    toggle.click();
+    instance?.destroy();
+    expect(html().style.overflow).toBe('');
+  });
+
+  it('should stop and restart Lenis and let the card scroll natively', () => {
+    const lenis = { stop: vi.fn(), start: vi.fn(), isStopped: false };
+    (window as unknown as { lenis: unknown }).lenis = lenis;
+    setup();
+
+    toggle.click();
+    expect(lenis.stop).toHaveBeenCalledTimes(1);
+    expect(card.hasAttribute('data-lenis-prevent')).toBe(true);
+
+    toggle.click();
+    expect(lenis.start).toHaveBeenCalledTimes(1);
+    expect(card.hasAttribute('data-lenis-prevent')).toBe(false);
+  });
+
+  it('should leave an already-stopped Lenis alone', () => {
+    const lenis = { stop: vi.fn(), start: vi.fn(), isStopped: true };
+    (window as unknown as { lenis: unknown }).lenis = lenis;
+    setup();
+
+    toggle.click();
+    toggle.click();
+    expect(lenis.stop).not.toHaveBeenCalled();
+    expect(lenis.start).not.toHaveBeenCalled();
   });
 });

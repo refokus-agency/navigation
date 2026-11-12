@@ -1,4 +1,4 @@
-import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type {
   NavMenuContext,
   NavMenuController,
@@ -17,6 +17,7 @@ export function attachKeyboardEvents({
   refs,
   controller,
   cleanups,
+  escapeFallbacks,
   options,
 }: NavMenuContext): void {
   // `dir` is fixed for the instance, so resolve the inline-axis keys once.
@@ -25,7 +26,7 @@ export function attachKeyboardEvents({
       ? { forward: 'ArrowLeft', backward: 'ArrowRight' }
       : { forward: 'ArrowRight', backward: 'ArrowLeft' };
   const onKeyDown = (event: KeyboardEvent) =>
-    handleKeyDown(event, root, refs, controller, inlineKeys);
+    handleKeyDown(event, root, refs, controller, escapeFallbacks, inlineKeys);
 
   root.addEventListener('keydown', onKeyDown);
   cleanups.push(() => root.removeEventListener('keydown', onKeyDown));
@@ -36,16 +37,23 @@ function handleKeyDown(
   root: HTMLElement,
   refs: NavMenuRefs,
   controller: NavMenuController,
+  escapeFallbacks: Array<() => HTMLElement | null>,
   inlineKeys: InlineKeys,
 ): void {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) return;
 
   if (event.key === 'Escape') {
-    const trigger = controller.handleEscape();
-    if (trigger) {
+    // A panel consumes Escape first; only then does anything else get it, and
+    // never an Escape something else (a field, a widget) already handled.
+    let focusTarget = controller.handleEscape();
+    for (const fallback of escapeFallbacks) {
+      if (focusTarget || event.defaultPrevented) break;
+      focusTarget = fallback();
+    }
+    if (focusTarget) {
       event.preventDefault();
-      trigger.focus();
+      focusTarget.focus();
     }
     return;
   }
@@ -125,11 +133,39 @@ function handleTriggerKey(
         event.preventDefault();
         // Bypasses the wasClickClose guard on purpose: Enter may reopen.
         if (controller.getActiveValue() === value) controller.close();
-        else controller.open(value, trigger);
+        else {
+          controller.open(value, trigger);
+          focusOpenedPanelOnMobile(root, refs, controller, trigger);
+        }
       }
       break;
     }
   }
+}
+
+/**
+ * Accordion: land focus on the first link of the panel a user just opened.
+ * Called from the activation paths (trigger click, Enter/Space) rather than
+ * from a state listener, so arrow-key traversal and programmatic open() never
+ * pull focus off the trigger. The one exception is open() on a closed mobile
+ * card, which moves focus into the panel itself (see mobile.ts).
+ */
+export function focusOpenedPanelOnMobile(
+  root: HTMLElement,
+  refs: NavMenuRefs,
+  controller: NavMenuController,
+  trigger: HTMLElement,
+): void {
+  if (!isMobileMode(root)) return;
+  const value = refs.valueByTrigger.get(trigger);
+  if (!value || controller.getActiveValue() !== value) return;
+  focusPanelContent(refs, value);
+}
+
+/** Moves focus to the first tabbable element of a panel, if it has one. */
+export function focusPanelContent(refs: NavMenuRefs, value: string): void {
+  const content = refs.contentMap.get(value);
+  if (content) focusFirst(getTabbableCandidates(content));
 }
 
 /**

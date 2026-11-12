@@ -366,3 +366,86 @@ describe('scroll behavior', () => {
     });
   });
 });
+
+describe('open menu pauses hiding', () => {
+  const options = {
+    animationDuration: 0.5,
+    animationEasing: 'power1.out',
+    hideOnScroll: true,
+    scrollThreshold: NAVBAR_CONFIG.scroll.threshold,
+  };
+
+  function scrollTo(y: number): void {
+    globalThis.window.scrollY = y;
+    globalThis.window.dispatchEvent(new Event('scroll'));
+  }
+
+  function renderNav(): { nav: HTMLElement; card: HTMLElement } {
+    const nav = document.createElement('nav');
+    const card = document.createElement('div');
+    card.setAttribute('data-nav-card', '');
+    nav.append(card);
+    document.body.append(nav);
+    return { nav, card };
+  }
+
+  beforeEach(() => {
+    vi.resetModules();
+    createNavbarAnimationMock.mockReset();
+    setupMockWindow(0);
+  });
+
+  afterEach(() => {
+    for (const teardown of teardowns) teardown();
+    teardowns = [];
+    document.body.innerHTML = '';
+  });
+
+  it('should not hide while a dropdown panel is open', async () => {
+    const module = await loadScrollModule();
+    const { nav } = renderNav();
+    nav.dataset.state = 'open';
+    module.initScrollBehavior([nav], options);
+
+    scrollTo(500);
+    expect(createNavbarAnimationMock).not.toHaveBeenCalled();
+  });
+
+  it('should not hide while the mobile card is open', async () => {
+    const module = await loadScrollModule();
+    const { nav, card } = renderNav();
+    card.dataset.state = 'open';
+    module.initScrollBehavior([nav], options);
+
+    scrollTo(500);
+    expect(createNavbarAnimationMock).not.toHaveBeenCalled();
+  });
+
+  it('should resume hiding on the next scroll after the menu closes', async () => {
+    const module = await loadScrollModule();
+    const { nav, card } = renderNav();
+    card.dataset.state = 'open';
+    module.initScrollBehavior([nav], options);
+
+    scrollTo(500);
+    card.dataset.state = 'closed';
+    expect(createNavbarAnimationMock).not.toHaveBeenCalled();
+
+    scrollTo(700);
+    expect(createNavbarAnimationMock).toHaveBeenCalledWith(
+      [nav],
+      NAVBAR_CONFIG.position.hidden,
+      options,
+    );
+  });
+
+  it('should still hide when a closed card is present', async () => {
+    const module = await loadScrollModule();
+    const { nav, card } = renderNav();
+    card.dataset.state = 'closed';
+    module.initScrollBehavior([nav], options);
+
+    scrollTo(500);
+    expect(createNavbarAnimationMock).toHaveBeenCalledTimes(1);
+  });
+});

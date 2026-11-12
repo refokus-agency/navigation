@@ -1,3 +1,4 @@
+import { isMobileMode } from './config.ts';
 import type {
   NavMenuCleanup,
   NavMenuRefs,
@@ -23,6 +24,20 @@ export function createRenderer({
   // animate from the stale size (constant via Enter, invisible via hover).
   let isViewportOpen = false;
 
+  // The overlay covers a panel or the mobile card, whichever is open.
+  let isPanelOpen = false;
+  let isCardOpen = false;
+
+  function applyOverlay(): void {
+    if (!refs.overlay) return;
+    refs.overlay.dataset.state = isPanelOpen || isCardOpen ? 'open' : 'closed';
+  }
+
+  function setCardOpen(open: boolean): void {
+    isCardOpen = open;
+    applyOverlay();
+  }
+
   /**
    * The viewport, unless it is idle: opted into inline panels, in mobile mode,
    * and the panel in question is not inside it. Then that panel animates in
@@ -34,10 +49,10 @@ export function createRenderer({
   function activeViewport(value: string | null): HTMLElement | null {
     const { viewport } = refs;
     if (!viewport) return null;
-    if (!options.inlineMobilePanels || root.dataset.navMode !== 'mobile') {
-      return viewport;
-    }
-    const panels = value ? [refs.contentMap.get(value)] : refs.contentMap.values();
+    if (!options.inlineMobilePanels || !isMobileMode(root)) return viewport;
+    const panels = value
+      ? [refs.contentMap.get(value)]
+      : refs.contentMap.values();
     for (const panel of panels) {
       if (panel && viewport.contains(panel)) return viewport;
     }
@@ -149,6 +164,8 @@ export function createRenderer({
     if (!viewport && value) positionViewport(value, activeTrigger, null);
 
     root.dataset.state = value ? 'open' : 'closed';
+    isPanelOpen = value !== null;
+    applyOverlay();
   }
 
   function computeMotion(
@@ -187,7 +204,7 @@ export function createRenderer({
     // The panel must carry no imposed size: `inset: 0` or `height: 100%` makes
     // this circular and it settles on the tallest panel. See README, Sizing rule.
     // Mobile clamps the width, where the viewport spans the overlay.
-    const isMobile = root.dataset.navMode === 'mobile';
+    const isMobile = isMobileMode(root);
     viewport.style.setProperty(
       '--nav-viewport-width',
       isMobile ? '100%' : `${content.scrollWidth}px`,
@@ -289,7 +306,7 @@ export function createRenderer({
     };
   }
 
-  return { applyState, observeResize };
+  return { applyState, setCardOpen, observeResize };
 }
 
 /**

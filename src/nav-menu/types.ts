@@ -58,6 +58,8 @@ export type NavMenuRefs = {
   triggerByValue: Map<string, HTMLElement>;
   valueByTrigger: Map<HTMLElement, string>;
   contentMap: Map<string, HTMLElement>;
+  /** Opt-in backdrop; inside or outside the root. */
+  overlay: HTMLElement | null;
 };
 
 export type NavMenuRenderer = {
@@ -66,6 +68,8 @@ export type NavMenuRenderer = {
     previousValue: string | null,
     activeTrigger?: HTMLElement | null,
   ): void;
+  /** Mobile card state, so the overlay covers it as well as the panels. */
+  setCardOpen(open: boolean): void;
   observeResize(
     getActiveValue: () => string | null,
     getActiveTrigger: () => HTMLElement | null,
@@ -88,6 +92,11 @@ export type NavMenuController = {
   /** Closes the menu and returns the trigger that should regain focus. */
   handleEscape(): HTMLElement | null;
   getActiveValue(): string | null;
+  /**
+   * Whether `value` is open because pointer hover opened it. Clears the
+   * mark, so only the first click after a hover-open is swallowed.
+   */
+  consumeHoverOpen(value: string): boolean;
   /** The trigger that opened the active panel, for focus return. */
   getActiveTrigger(): HTMLElement | null;
   destroy(): void;
@@ -108,8 +117,16 @@ export type NavMenuContext = {
   root: HTMLElement;
   refs: NavMenuRefs;
   controller: NavMenuController;
+  renderer: NavMenuRenderer;
   cleanups: NavMenuCleanup[];
   panels: NavMenuPanels;
+  /**
+   * Escape consumers tried, in order, when no panel is open. Each returns the
+   * element to refocus if it consumed the key, else null. Lets the keyboard
+   * module own Escape outright instead of others inferring from
+   * `defaultPrevented` which listener ran first.
+   */
+  escapeFallbacks: Array<() => HTMLElement | null>;
   options: ResolvedNavMenuOptions;
   /** Per-instance id prefix, so generated ids never collide across roots. */
   idPrefix: string;

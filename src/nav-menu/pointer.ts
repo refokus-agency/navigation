@@ -1,8 +1,19 @@
-import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { focusOpenedPanelOnMobile } from './keyboard.ts';
 import type { NavMenuContext } from './types.ts';
+
+/**
+ * A click from a mouse, as opposed to keyboard activation (`detail === 0`) or
+ * a touch tap. Deliberately not `pointerType === 'mouse'`: engines that
+ * dispatch a plain MouseEvent leave it undefined.
+ */
+function isMouseClick(event: MouseEvent): boolean {
+  return event.detail > 0 && (event as PointerEvent).pointerType !== 'touch';
+}
 
 /** Trigger clicks toggle in both modes — touch always lands here. */
 export function attachTriggerClicks({
+  root,
   refs,
   controller,
   cleanups,
@@ -16,7 +27,11 @@ export function attachTriggerClicks({
       // hover (hover mode) or the keyboard.
       if (isNavigateTrigger(trigger)) return;
       event.preventDefault();
+      // Hover already opened this panel, so the first mouse click must not
+      // close it. Never true in click mode (no hover opens) or mobile mode.
+      if (isMouseClick(event) && controller.consumeHoverOpen(value)) return;
       controller.triggerClick(value, trigger);
+      focusOpenedPanelOnMobile(root, refs, controller, trigger);
     };
 
     trigger.addEventListener('click', onClick);
@@ -39,7 +54,7 @@ export function attachHoverEvents({
   // unfiltered touch pointerenter would clear the close timer with no
   // pointerleave to follow it.
   const isMouseHover = (event: PointerEvent) =>
-    event.pointerType === 'mouse' && root.dataset.navMode !== 'mobile';
+    event.pointerType === 'mouse' && !isMobileMode(root);
 
   for (const { trigger, value } of refs.entries) {
     if (!refs.contentMap.has(value)) continue;
@@ -94,6 +109,7 @@ export function attachHoverEvents({
 
 export function attachDismiss({
   root,
+  refs,
   controller,
   cleanups,
   dismissHooks,
@@ -102,6 +118,9 @@ export function attachDismiss({
     const target = event.target;
     if (!(target instanceof Node)) return;
     if (root.contains(target)) return;
+    // An overlay press closes on its own click, so the click lands on the
+    // overlay and not on whatever sits beneath it once it stops taking events.
+    if (refs.overlay?.contains(target) && event.type === 'pointerdown') return;
     // Not gated on getActiveValue(): it is still null while a hover-open is
     // only pending, and setValue(null) is what cancels that timer.
     // finally: the hooks (the mobile card) must close even if close() throws.

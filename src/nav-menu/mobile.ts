@@ -1,5 +1,6 @@
-import { NAV_MENU_CONFIG } from './config.ts';
-import { focusFirst, getTabbableCandidates } from './keyboard.ts';
+import { isMobileMode, NAV_MENU_CONFIG, NAV_MODE } from './config.ts';
+import { focusPanelContent } from './keyboard.ts';
+import { lockPageScroll } from './scroll-lock.ts';
 import type { NavMenuContext } from './types.ts';
 
 /**
@@ -29,9 +30,7 @@ function readBreakpoint(root: HTMLElement): number {
  * Returns the programmatic `open(value)` for the instance: in mobile mode it
  * opens the card first when it is closed, taking focus into the panel.
  */
-export function attachMobile(
-  context: NavMenuContext,
-): (value: string) => void {
+export function attachMobile(context: NavMenuContext): (value: string) => void {
   const { root, refs, controller, cleanups, panels, options } = context;
   const { selectors } = NAV_MENU_CONFIG;
 
@@ -42,17 +41,14 @@ export function attachMobile(
       : null;
 
   const applyMode = () => {
-    root.dataset.navMode = mediaQuery?.matches ? 'mobile' : 'desktop';
+    root.dataset.navMode = mediaQuery?.matches
+      ? NAV_MODE.mobile
+      : NAV_MODE.desktop;
   };
   applyMode();
 
-  const isMobile = () => root.dataset.navMode === 'mobile';
+  const isMobile = () => isMobileMode(root);
   const { openCard, closeCard } = attachCard(context, isMobile);
-
-  const focusPanel = (value: string) => {
-    const content = refs.contentMap.get(value);
-    if (content) focusFirst(getTabbableCandidates(content));
-  };
 
   // The one placement of slot panels, at init and on every crossing, so a
   // panel that starts inline is never moved into the viewport first (moving a
@@ -63,32 +59,6 @@ export function attachMobile(
     else panels.toViewport();
   };
   syncPanels();
-
-  // Accordion: land focus on the first link of the panel a user just opened.
-  // Tied to activation, not to state: arrow-key traversal and programmatic
-  // open() also change state and must not pull focus off the trigger. The one
-  // exception is open() on a closed card (see the returned function below).
-  const focusOpenedPanel = (trigger: HTMLElement) => {
-    if (!isMobile()) return;
-    const value = refs.valueByTrigger.get(trigger);
-    if (!value || controller.getActiveValue() !== value) return;
-    focusPanel(value);
-  };
-  // Registered after the pointer/keyboard modules, so state is already updated.
-  for (const trigger of refs.triggers) {
-    const onClick = () => focusOpenedPanel(trigger);
-    trigger.addEventListener('click', onClick);
-    cleanups.push(() => trigger.removeEventListener('click', onClick));
-  }
-  const onTriggerKey = (event: KeyboardEvent) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    const trigger = (event.target as Element | null)?.closest<HTMLElement>(
-      selectors.trigger,
-    );
-    if (trigger) focusOpenedPanel(trigger);
-  };
-  root.addEventListener('keydown', onTriggerKey);
-  cleanups.push(() => root.removeEventListener('keydown', onTriggerKey));
 
   if (mediaQuery) {
     const onMediaQueryChange = () => {
@@ -149,7 +119,7 @@ export function attachMobile(
   return (value) => {
     const cardOpened = isMobile() && openCard();
     controller.open(value);
-    if (cardOpened) focusPanel(value);
+    if (cardOpened) focusPanelContent(refs, value);
   };
 }
 
@@ -162,7 +132,15 @@ export function attachMobile(
  * no-op when there is no toggle or no card.
  */
 function attachCard(
-  { controller, cleanups, root, idPrefix, dismissHooks }: NavMenuContext,
+  {
+    controller,
+    renderer,
+    cleanups,
+    root,
+    idPrefix,
+    dismissHooks,
+    escapeFallbacks,
+  }: NavMenuContext,
   isMobile: () => boolean,
 ): { openCard: () => boolean; closeCard: () => void } {
   const { selectors } = NAV_MENU_CONFIG;
@@ -176,6 +154,8 @@ function attachCard(
   for (const toggle of toggles) toggle.setAttribute('aria-controls', card.id);
 
   let isOpen = false;
+  // Page scroll is frozen exactly while the card is open.
+  let unlockScroll: (() => void) | null = null;
   // The toggle that opened the card, so focus returns there on close — a close
   // button inside the card goes inert with it and cannot keep focus.
   let opener: HTMLElement | null = null;
@@ -184,6 +164,7 @@ function attachCard(
     for (const toggle of toggles) {
       toggle.setAttribute('aria-expanded', String(isOpen));
     }
+    renderer.setCardOpen(isOpen && isMobile());
     // Desktop never sees the card state: a consumer's natural
     // `[data-nav-card][data-state='closed'] { display: none }` would otherwise
     // hide the whole desktop menu. Crossing the breakpoint re-renders.
@@ -204,7 +185,13 @@ function attachCard(
       return;
     }
     isOpen = next;
-    if (!next) controller.close();
+    if (next) {
+      unlockScroll ??= lockPageScroll(root, card);
+    } else {
+      unlockScroll?.();
+      unlockScroll = null;
+      controller.close();
+    }
     render();
   };
 
@@ -223,10 +210,19 @@ function attachCard(
     }
   };
 
+  // Escape inside the root is routed here by the keyboard module, after a
+  // panel has had its chance — no reliance on listener order.
+  escapeFallbacks.push(() => {
+    if (!isOpen || !isMobile()) return null;
+    setOpen(false);
+    return opener;
+  });
+
+  // Escape with focus outside the root never reaches the keyboard module.
   const onKeyDown = (event: KeyboardEvent) => {
-    // A panel's own Escape handling already prevented default.
     if (event.key !== 'Escape' || event.defaultPrevented) return;
     if (!isOpen || !isMobile()) return;
+    if (event.target instanceof Node && root.contains(event.target)) return;
     setOpen(false);
     opener?.focus();
   };
@@ -245,6 +241,8 @@ function attachCard(
   }
   document.addEventListener('keydown', onKeyDown);
   cleanups.push(() => {
+    unlockScroll?.();
+    unlockScroll = null;
     for (const list of [dismissHooks.outside, dismissHooks.link]) {
       const index = list.indexOf(dismiss);
       if (index !== -1) list.splice(index, 1);
@@ -259,6 +257,7 @@ function attachCard(
     // the menu dead and unreachable after a re-init.
     card.removeAttribute('inert');
     delete card.dataset.state;
+    renderer.setCardOpen(false);
   });
 
   render();

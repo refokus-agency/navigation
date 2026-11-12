@@ -105,6 +105,29 @@
     .wide { grid-template-columns: 1fr; gap: 8px; }
   }
 
+  /* ---------- ?card: mobile toggle + card (page scroll lock, #116) ---------- */
+  [data-nav-toggle] { display: none; margin-left: auto; border: 1px solid var(--line);
+    appearance: none; background: none; color: var(--text); font: inherit;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+  [data-nav-toggle][aria-expanded='true'] { background: #263041; color: var(--accent); }
+  @media (max-width: 767px) {
+    .card-demo .w-nav-button { display: none; }
+    .card-demo [data-nav-toggle] { display: inline-flex; }
+    .card-demo [data-nav-card] {
+      position: absolute; top: 100%; left: 0; right: 0;
+      max-height: calc(100dvh - 64px); overflow-y: auto;
+      padding: 10px; background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    .card-demo [data-nav-card][data-state='closed'] { display: none; }
+    .card-demo [data-nav-menu][data-nav-mode='mobile'] [data-nav-list] {
+      display: flex; flex-direction: column; align-items: stretch;
+    }
+    .card-demo [data-nav-trigger], .card-demo [data-nav-link] {
+      display: block; width: 100%; text-align: left;
+    }
+  }
+
   /* ---------- page + inspector ---------- */
   main { max-width: 620px; margin: 0 auto; padding: 120px 20px 60px; }
   h1 { font-size: 22px; letter-spacing: -.02em; }
@@ -271,6 +294,24 @@
     <li>☐ Cross the 767px line with a panel open → it closes</li>
   </ul>
 
+  <h2>Mobile card + page scroll lock (#116) — real phone only</h2>
+  <p style="color:var(--dim);margin-top:-6px">
+    Add <code>?card</code> (toggle + scrollable card) and optionally
+    <code>?lenis</code> (Lenis from a CDN, touch-synced so it stays active on
+    phones), e.g. <code>index.html?card&amp;lenis</code>. Serve with
+    <code>pnpm build &amp;&amp; npx vite --host</code> and open it on an iPhone /
+    Android on the same Wi-Fi. jsdom and Chrome DevTools device mode do not
+    reproduce iOS scrolling.
+  </p>
+  <ul class="checks">
+    <li>☐ Scroll the page a bit, tap <b>Menu</b> → the card opens and the navbar stays visible</li>
+    <li>☐ Drag outside the card, including past the edge (rubber-band) → the page does <b>not</b> move</li>
+    <li>☐ Drag inside the card → the card scrolls</li>
+    <li>☐ Close the card → same scroll position, navbar not hidden</li>
+    <li>☐ Repeat with <code>?lenis</code> (and without it)</li>
+    <li>☐ Rotate / widen past 767px with the card open → page scroll works again</li>
+  </ul>
+
   <h2>Navbar scroll animation</h2>
   <ul class="checks">
     <li>☐ Nav slides down on load</li>
@@ -308,6 +349,31 @@
   <div id="log"></div>
 </aside>
 
+<script>
+  // ?card — wrap the list in a [data-nav-card] with a toggle, before init, so
+  // the same page covers the mobile card and the page scroll lock.
+  if (new URLSearchParams(location.search).has('card')) {
+    document.documentElement.classList.add('card-demo');
+    const list = document.querySelector('[data-nav-list]');
+    const card = document.createElement('div');
+    card.setAttribute('data-nav-card', '');
+    list.before(card);
+    card.append(list);
+    for (let i = 1; i <= 14; i++) {
+      const link = document.createElement('a');
+      link.href = '#filler-' + i;
+      link.setAttribute('data-nav-link', '');
+      link.textContent = 'Extra link ' + i;
+      list.append(link);
+    }
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.setAttribute('data-nav-toggle', '');
+    toggle.textContent = 'Menu';
+    card.before(toggle);
+  }
+</script>
+
 <script type="module">
   import {
     initNavbarAnimation,
@@ -324,6 +390,16 @@
 
   const root = document.querySelector('[data-nav-menu]');
   const viewport = document.querySelector('[data-nav-viewport]');
+
+  // ?lenis — smooth scroll kept on for touch too, the case the lock must handle.
+  const params = new URLSearchParams(location.search);
+  if (params.has('lenis')) {
+    const { default: Lenis } = await import(
+      'https://cdn.jsdelivr.net/npm/lenis@1.3.11/+esm'
+    );
+    window.lenis = new Lenis({ autoRaf: true, syncTouch: true });
+    line('lenis on (window.lenis)');
+  }
 
   const menu = initNavigationMenu(undefined, {
     onValueChange: (value) => {

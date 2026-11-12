@@ -1,4 +1,10 @@
-import { NAV_ROOT_SELECTOR } from '../config.ts';
+import { NAV_CARD_SELECTOR, NAV_ROOT_SELECTOR } from '../config.ts';
+
+/** Values published on [data-nav-mode]; consumer CSS depends on them. */
+export const NAV_MODE = {
+  mobile: 'mobile',
+  desktop: 'desktop',
+} as const;
 
 export const NAV_MENU_CONFIG = {
   selectors: {
@@ -11,7 +17,8 @@ export const NAV_MENU_CONFIG = {
     viewport: '[data-nav-viewport]',
     back: '[data-nav-back]',
     toggle: '[data-nav-toggle]',
-    card: '[data-nav-card]',
+    card: NAV_CARD_SELECTOR,
+    overlay: '[data-nav-overlay]',
     webflowNav: '.w-nav',
     webflowBurger: '.w-nav-button',
   },
@@ -55,4 +62,9 @@ export function isNavigateTrigger(trigger: HTMLElement): boolean {
   return (
     trigger.getAttribute(NAV_MENU_CONFIG.attributes.triggerMode) === 'navigate'
   );
+}
+
+/** True while the nav root is in the mobile breakpoint mode. */
+export function isMobileMode(root: HTMLElement): boolean {
+  return root.dataset.navMode === NAV_MODE.mobile;
 }
