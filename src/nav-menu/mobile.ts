@@ -1,4 +1,4 @@
-import { isInlineMobilePanels, NAV_MENU_CONFIG } from './config.ts';
+import { NAV_MENU_CONFIG } from './config.ts';
 import { focusFirst, getTabbableCandidates } from './keyboard.ts';
 import { isFollowedClick } from './pointer.ts';
 import type { NavMenuContext } from './types.ts';
@@ -28,7 +28,7 @@ function readBreakpoint(root: HTMLElement): number {
  * breakpoint crossings and when the Webflow burger overlay closes.
  */
 export function attachMobile(context: NavMenuContext): void {
-  const { root, refs, controller, cleanups, panels } = context;
+  const { root, refs, controller, cleanups, panels, options } = context;
   const { selectors } = NAV_MENU_CONFIG;
 
   // Absent in SSR/jsdom — assume desktop rather than failing init.
@@ -45,11 +45,12 @@ export function attachMobile(context: NavMenuContext): void {
   const isMobile = () => root.dataset.navMode === 'mobile';
   const closeCard = attachCard(context, isMobile);
 
-  // Opt-in: slot panels follow the mode, so mobile can be an inline accordion
+  // The one placement of slot panels, at init and on every crossing, so a
+  // panel that starts inline is never moved into the viewport first (moving a
+  // node reloads any iframe inside it). Opt-in: mobile is an inline accordion
   // while desktop keeps the shared viewport.
   const syncPanels = () => {
-    if (!isInlineMobilePanels(root)) return;
-    if (isMobile()) panels.inline();
+    if (options.inlineMobilePanels && isMobile()) panels.inline();
     else panels.toViewport();
   };
   syncPanels();

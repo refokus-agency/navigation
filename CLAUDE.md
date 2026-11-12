@@ -53,8 +53,14 @@ the ARIA wiring once at init; `mobile.ts` writes `[data-nav-mode]` (tracks the
 breakpoint) and owns the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair
 (`aria-expanded`, card `data-state`/`inert`), whose state is separate from the
 panel state machine and undone by `destroy()`; and `relocatePanels` in
-`index.ts` moves slot panels (authored inside their item) into the viewport
-once at init — a structural move, undone by the last entry of `cleanups`.
+`index.ts` moves slot panels (authored inside their item) into the viewport —
+a structural move, placed by `attachMobile` once at init and, with the opt-in
+`data-nav-mobile-panels="inline"` (resolved once into
+`ResolvedNavMenuOptions.inlineMobilePanels`, never re-read), again on every
+breakpoint crossing, where it also hides the moved panel (the menu is already
+closed) so a pending exit cannot leave it showing. Undone by the last entry of
+`cleanups`. Place panels in one move: at init `relocatePanels` moves nothing,
+or an iframe in a panel loads twice.
 
 Whether a viewport mount skips the size transition comes from the renderer's
 own `isViewportOpen` flag — **never** from reading back `style.display`, which only

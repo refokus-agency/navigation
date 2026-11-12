@@ -62,22 +62,23 @@ export function attachHoverEvents({
     });
   }
 
-  // A panel outside the viewport (no viewport, or moved back inline) needs its
-  // own hover target or the close timer runs on under the cursor. Every panel
-  // is wired; one currently inside the viewport defers to it, since both would
-  // fire for the same pointer.
-  const panels = [...refs.contentMap.values()];
-  const hoverTargets = refs.viewport ? [refs.viewport, ...panels] : panels;
+  // Without a viewport, panels live inside their item, and such a panel needs
+  // its own hover target or the close timer runs on under the cursor. (With
+  // one, init has already relocated every panel into it.)
+  const outsideViewport = [...refs.contentMap.values()].filter(
+    (content) => !refs.viewport?.contains(content),
+  );
+  const hoverTargets = refs.viewport
+    ? [refs.viewport, ...outsideViewport]
+    : outsideViewport;
 
   for (const target of hoverTargets) {
-    const isCovered = () =>
-      target !== refs.viewport && refs.viewport?.contains(target) === true;
     const onEnter = (event: PointerEvent) => {
-      if (isCovered() || !isMouseHover(event)) return;
+      if (!isMouseHover(event)) return;
       controller.contentPointerEnter();
     };
     const onLeave = (event: PointerEvent) => {
-      if (isCovered() || !isMouseHover(event)) return;
+      if (!isMouseHover(event)) return;
       controller.contentPointerLeave();
     };
 

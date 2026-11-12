@@ -492,4 +492,99 @@ describe('inline panels on mobile (data-nav-mobile-panels="inline")', () => {
     second?.destroy();
     expect(menu.content('a').parentElement).toBe(itemOf('a'));
   });
+
+  it('should not open or size the viewport for an inline panel among viewport-authored ones', () => {
+    stubMatchMedia(true);
+    document.body.innerHTML = `
+      <nav data-nav-menu data-nav-mobile-panels="inline">
+        <div data-nav-item="a">
+          <button type="button" data-nav-trigger>a</button>
+          <div data-nav-content id="slot"><a href="/a">a</a></div>
+        </div>
+        <div data-nav-item="b">
+          <button type="button" data-nav-trigger>b</button>
+        </div>
+        <div data-nav-viewport>
+          <div data-nav-content="b" id="authored"><a href="/b">b</a></div>
+        </div>
+      </nav>
+    `;
+    const viewport = document.querySelector<HTMLElement>(
+      '[data-nav-viewport]',
+    ) as HTMLElement;
+    const instance = initNavigationMenu();
+
+    instance?.open('a');
+
+    const slot = document.querySelector<HTMLElement>('#slot');
+    expect(slot?.parentElement?.getAttribute('data-nav-item')).toBe('a');
+    expect(slot?.dataset.state).toBe('open');
+    expect(viewport.style.display).toBe('none');
+    expect(viewport.dataset.state).toBe('closed');
+    expect(viewport.style.getPropertyValue('--nav-viewport-height')).toBe('');
+
+    // The authored panel keeps using the viewport.
+    instance?.open('b');
+    expect(viewport.style.display).toBe('');
+    expect(viewport.dataset.state).toBe('open');
+  });
+
+  it('should read the attribute once, ignoring later changes', () => {
+    stubMatchMedia(false);
+    const instance = initNavigationMenu();
+    document
+      .querySelector('[data-nav-menu]')
+      ?.setAttribute('data-nav-mobile-panels', 'inline');
+
+    setMobile(true);
+    expect(menu.content('a').parentElement).toBe(menu.viewport);
+    instance?.open('a');
+    expect(menu.viewport.dataset.state).toBe('open');
+    instance?.destroy();
+
+    stubMatchMedia(true);
+    const second = initNavigationMenu();
+    document
+      .querySelector('[data-nav-menu]')
+      ?.removeAttribute('data-nav-mobile-panels');
+    second?.open('b');
+
+    // Still inline, and the renderer agrees: no viewport sized for it.
+    expect(menu.content('b').parentElement).toBe(itemOf('b'));
+    expect(menu.viewport.style.display).toBe('none');
+  });
+
+  it('should not move any panel when starting in mobile mode', () => {
+    stubMatchMedia(true);
+    optIn();
+    const moves = vi.spyOn(Node.prototype, 'appendChild');
+    const inserts = vi.spyOn(Node.prototype, 'insertBefore');
+
+    initNavigationMenu();
+
+    const moved = (calls: unknown[][]) =>
+      calls.filter(([node]) =>
+        (node as Element).hasAttribute?.('data-nav-content'),
+      );
+    expect(moved(moves.mock.calls)).toHaveLength(0);
+    expect(moved(inserts.mock.calls)).toHaveLength(0);
+    moves.mockRestore();
+    inserts.mockRestore();
+  });
+
+  it('should hide a panel moved into the viewport while its exit was pending', () => {
+    stubMatchMedia(true);
+    optIn();
+    const instance = initNavigationMenu();
+    instance?.open('a');
+    const panel = menu.content('a');
+    // Mid-exit: closed in the accordion but still shown.
+    instance?.close();
+    panel.style.display = '';
+
+    setMobile(false);
+
+    expect(panel.parentElement).toBe(menu.viewport);
+    expect(panel.style.display).toBe('none');
+  });
 });

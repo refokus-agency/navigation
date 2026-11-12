@@ -11,7 +11,7 @@ import {
   readNumberAttr,
   resolveSetting,
 } from '../attributes.ts';
-import { NAV_MENU_CONFIG } from './config.ts';
+import { isInlineMobilePanels, NAV_MENU_CONFIG } from './config.ts';
 import { createController } from './controller.ts';
 import { attachKeyboardEvents } from './keyboard.ts';
 import { attachMobile } from './mobile.ts';
@@ -50,6 +50,7 @@ const DEFAULT_OPTIONS: ResolvedNavMenuOptions = {
   dir: 'ltr',
   interaction: 'hover',
   skipInWebflowEditor: true,
+  inlineMobilePanels: false,
 };
 
 export function initNavigationMenu(
@@ -214,6 +215,7 @@ function resolveMenuOptions(
       isValid: isOneOf(INTERACTIONS),
       fallback: DEFAULT_OPTIONS.interaction,
     }),
+    inlineMobilePanels: isInlineMobilePanels(root),
   };
 }
 
@@ -333,8 +335,8 @@ const relocated = new WeakMap<HTMLElement, PanelOrigin>();
  * its item. Panels already authored in the viewport are never moved, and
  * without a viewport nothing moves.
  *
- * Every panel starts in the viewport; `[data-nav-mobile-panels="inline"]` moves
- * them back in mobile mode via `panels.inline()`. The origin stays recorded
+ * `attachMobile` places them: in the viewport, or back in their item in mobile
+ * mode when `[data-nav-mobile-panels="inline"]` opts in. The origin stays recorded
  * while the instance owns the panel, wherever it currently sits, so a re-init
  * adopts it and a stale handle can touch neither. `restore` is the final undo:
  * it walks the moves backwards, so a recorded next sibling that was itself
@@ -374,13 +376,8 @@ function relocatePanels(refs: NavMenuRefs): {
     const { parent, nextSibling } = relocated.get(panel) as PanelOrigin;
     // Moved inside the panel since init: putting it back would be a cycle.
     if (panel.contains(parent)) return;
-    if (reset) {
-      resetRendererState(panel);
-    } else {
-      // Mid-session: the panel is closed, but its exit may still be pending.
-      panel.style.display = 'none';
-      delete panel.dataset.motion;
-    }
+    if (reset) resetRendererState(panel);
+    else hideMoved(panel);
     // The anchor may have been removed or moved since init: append instead.
     const anchor = nextSibling?.parentNode === parent ? nextSibling : null;
     parent.insertBefore(panel, anchor);
@@ -392,6 +389,8 @@ function relocatePanels(refs: NavMenuRefs): {
     if (!viewport) return;
     for (const panel of owned) {
       if (isMine(panel) && !viewport.contains(panel)) {
+        // Closed, but its exit may still be pending: it must not stay shown.
+        hideMoved(panel);
         viewport.appendChild(panel);
       }
     }
@@ -404,8 +403,8 @@ function relocatePanels(refs: NavMenuRefs): {
     }
   };
 
-  toViewport();
-
+  // No placement here: `attachMobile` places panels once, for the mode the menu
+  // starts in, so none is ever moved twice at init.
   return {
     panels: { toViewport, inline },
     restore: () => {
@@ -418,6 +417,16 @@ function relocatePanels(refs: NavMenuRefs): {
       }
     },
   };
+}
+
+/**
+ * A panel mid-session is closed (every crossing closes the menu first), but its
+ * exit animation may not have ended, so hide it now rather than let it show in
+ * its new home until the next render.
+ */
+function hideMoved(panel: HTMLElement): void {
+  panel.style.display = 'none';
+  delete panel.dataset.motion;
 }
 
 /**

@@ -33,6 +33,11 @@ export type NavMenuOptions = {
 export type ResolvedNavMenuOptions = NavMenuOptions & {
   closeDelay: number;
   interaction: NavMenuInteraction;
+  /**
+   * `data-nav-mobile-panels="inline"`, read once at init like the breakpoint:
+   * the renderer and the panel placement must never disagree on it.
+   */
+  inlineMobilePanels: boolean;
 };
 
 export type InitNavigationMenuOptions = Partial<NavMenuOptions>;
