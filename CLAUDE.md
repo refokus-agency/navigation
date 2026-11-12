@@ -51,7 +51,8 @@ relocated panels to their origin and owning instance, so a re-init on the same
 root adopts them and a stale handle's `destroy()` cannot pull them out.)
 
 **`render.ts` is the only module that writes *reactive* DOM state**, and it
-animates nothing. Three deliberate exceptions: `setupAria` in `index.ts` writes
+animates nothing. Three deliberate exceptions (`mobile.ts` also freezes page
+scroll via `scroll-lock.ts` while the card is open, undone by `destroy()`): `setupAria` in `index.ts` writes
 the ARIA wiring once at init; `mobile.ts` writes `[data-nav-mode]` (tracks the
 breakpoint) and owns the opt-in `[data-nav-toggle]`/`[data-nav-card]` pair
 (`aria-expanded`, card `data-state`/`inert`), whose state is separate from the

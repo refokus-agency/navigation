@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAV_ROOT_SELECTOR } from '../config.ts';
+import { NAV_CARD_SELECTOR, NAV_ROOT_SELECTOR } from '../config.ts';
 import { NAVBAR_CONFIG } from '../nav-anim/config.ts';
 import { NAV_MENU_CONFIG } from '../nav-menu/config.ts';
 
@@ -11,5 +11,10 @@ describe('nav root selector', () => {
 
   it('should be [data-nav-menu]', () => {
     expect(NAV_ROOT_SELECTOR).toBe('[data-nav-menu]');
+  });
+
+  it('should share one card selector between nav-anim and nav-menu', () => {
+    expect(NAVBAR_CONFIG.selectors.card).toBe(NAV_CARD_SELECTOR);
+    expect(NAV_MENU_CONFIG.selectors.card).toBe(NAV_CARD_SELECTOR);
   });
 });
