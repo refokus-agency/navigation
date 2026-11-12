@@ -9,10 +9,7 @@ import {
 } from '../attributes.ts';
 import { NAVBAR_CONFIG } from './config.ts';
 import { performInitialAnimation } from './initial-animation.ts';
-import {
-  cleanupNavbarAnimation,
-  initScrollBehavior,
-} from './scroll-behaviour.ts';
+import { initScrollBehavior } from './scroll-behaviour.ts';
 
 export type NavbarAnimationOptions = {
   animationDuration: number;
@@ -25,6 +22,14 @@ export type NavbarAnimationOptions = {
 
 export type InitNavbarAnimationOptions = Partial<NavbarAnimationOptions>;
 
+export type NavbarAnimationInstance = {
+  /**
+   * Removes the scroll and focus listeners, kills the navbar's `y` tweens and
+   * resets its `y` to 0. Safe to call more than once.
+   */
+  destroy: () => void;
+};
+
 const DEFAULT_OPTIONS: NavbarAnimationOptions = {
   animationDuration: 0.3,
   animationEasing: 'power2.inOut',
@@ -33,17 +38,27 @@ const DEFAULT_OPTIONS: NavbarAnimationOptions = {
 };
 
 /**
- * Initializes navbar animation system
- * @returns Whether initialization was successful
+ * The live instance. Every instance animates the same `[data-nav-menu]`
+ * roots, so only one may be live: a second init takes over from the first
+ * rather than stacking listeners or leaving two instances fighting over the
+ * nav's position.
+ */
+let current: NavbarAnimationInstance | null = null;
+
+/**
+ * Initializes navbar animation. A second call destroys the previous instance
+ * first, so re-initializing (e.g. after a page transition) never leaks
+ * listeners.
+ * @returns The handle, or `null` when no nav root is on the page
  */
 export function initNavbarAnimation(
   options: InitNavbarAnimationOptions = {},
-): boolean {
+): NavbarAnimationInstance | null {
   const navbarElements = document.querySelectorAll(
     NAVBAR_CONFIG.selectors.navbar,
   );
 
-  if (!navbarElements.length) return false;
+  if (!navbarElements.length) return null;
 
   const elements = Array.from(navbarElements);
   const resolvedOptions = resolveAnimOptions(elements[0] as Element, {
@@ -51,17 +66,31 @@ export function initNavbarAnimation(
     ...options,
   });
 
-  // A re-init must drop the previous singleton binding, even when it no
-  // longer hides on scroll and so never reaches initScrollBehavior.
-  cleanupNavbarAnimation();
+  current?.destroy();
 
   // The slide-in always runs, so the navbar appears even when it never hides.
   performInitialAnimation(elements, resolvedOptions);
-  if (resolvedOptions.hideOnScroll) {
-    initScrollBehavior(elements, resolvedOptions);
-  }
+  const removeScrollBehavior = resolvedOptions.hideOnScroll
+    ? initScrollBehavior(elements, resolvedOptions)
+    : undefined;
 
-  return true;
+  let destroyed = false;
+  const instance: NavbarAnimationInstance = {
+    destroy: () => {
+      if (destroyed) return;
+      destroyed = true;
+      if (current === instance) current = null;
+      removeScrollBehavior?.();
+      // Only the `y` this module drives: a consumer's own tweens and an
+      // authored transform (e.g. a centering `translateX`) are left alone.
+      // `clearProps` is not an option here: GSAP clears the whole transform
+      // for any transform prop, and `-100%` is stored as `yPercent`.
+      gsap.killTweensOf(elements, 'y');
+      gsap.set(elements, { y: 0, yPercent: 0 });
+    },
+  };
+  current = instance;
+  return instance;
 }
 
 /**
@@ -87,7 +116,7 @@ const readEaseAttr: AttributeReader<string> = (el, name) => {
 
 /**
  * The first root's attributes override the merged JS options; read once, at
- * init. Every root is animated, but the state is a singleton, so one root
+ * init. Every root is animated by one instance, so the first root
  * decides. Invalid values — attribute or JS — are skipped silently.
  */
 function resolveAnimOptions(

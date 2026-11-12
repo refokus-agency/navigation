@@ -252,6 +252,7 @@ describe('non-flat markup', () => {
     instance?.open('inner');
     expect(trigger?.dataset.state).toBe('open');
 
+    instance?.close();
     instance?.open('outer');
     expect(trigger?.dataset.state).toBe('closed');
   });

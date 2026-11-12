@@ -113,6 +113,12 @@ export type NavMenuContext = {
   options: ResolvedNavMenuOptions;
   /** Per-instance id prefix, so generated ids never collide across roots. */
   idPrefix: string;
+  /**
+   * Extra teardown run by the shared dismiss paths in pointer.ts: `outside` on a
+   * pointerdown/focusin beyond the root, `link` on a followed click on a link
+   * inside it. Lets the mobile card close with the panel without listening twice.
+   */
+  dismissHooks: { outside: Array<() => void>; link: Array<() => void> };
 };
 
 export type NavigationMenuInstance = {

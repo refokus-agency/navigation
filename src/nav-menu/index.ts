@@ -103,6 +103,7 @@ export function initNavigationMenu(
       panels,
       options: resolvedOptions,
       idPrefix,
+      dismissHooks: { outside: [], link: [] },
     };
 
     cleanups.push(() => controller.destroy());
@@ -112,7 +113,7 @@ export function initNavigationMenu(
     attachDismiss(context);
     attachLinkClicks(context);
     attachKeyboardEvents(context);
-    attachMobile(context);
+    const openPanel = attachMobile(context);
 
     cleanups.push(
       renderer.observeResize(
@@ -125,7 +126,14 @@ export function initNavigationMenu(
     renderer.applyState(null, null);
 
     return {
-      open: (value: string) => controller.open(value),
+      open: (value: string) => {
+        // An unknown value is a full no-op: it must not close the open panel
+        // or reveal the mobile card for nothing.
+        if (!refs.triggerByValue.has(value) && !refs.contentMap.has(value)) {
+          return;
+        }
+        openPanel(value);
+      },
       close: () => controller.close(),
       destroy() {
         // Drained, so a second call is a no-op instead of tearing down (or
