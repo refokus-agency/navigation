@@ -345,6 +345,7 @@ describe('dismiss hooks', () => {
     const hook = vi.fn();
     attachDismiss({
       root,
+      refs: { overlay: null },
       controller: {
         close: () => {
           throw new Error('boom');

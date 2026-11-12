@@ -53,6 +53,8 @@ export type NavMenuRefs = {
   triggerByValue: Map<string, HTMLElement>;
   valueByTrigger: Map<HTMLElement, string>;
   contentMap: Map<string, HTMLElement>;
+  /** Opt-in backdrop; inside or outside the root. */
+  overlay: HTMLElement | null;
 };
 
 export type NavMenuRenderer = {
@@ -61,6 +63,8 @@ export type NavMenuRenderer = {
     previousValue: string | null,
     activeTrigger?: HTMLElement | null,
   ): void;
+  /** Mobile card state, so the overlay covers it as well as the panels. */
+  setCardOpen(open: boolean): void;
   observeResize(
     getActiveValue: () => string | null,
     getActiveTrigger: () => HTMLElement | null,
@@ -100,6 +104,7 @@ export type NavMenuContext = {
   root: HTMLElement;
   refs: NavMenuRefs;
   controller: NavMenuController;
+  renderer: NavMenuRenderer;
   cleanups: NavMenuCleanup[];
   options: ResolvedNavMenuOptions;
   /** Per-instance id prefix, so generated ids never collide across roots. */

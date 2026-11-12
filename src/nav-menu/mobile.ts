@@ -150,7 +150,14 @@ export function attachMobile(context: NavMenuContext): (value: string) => void {
  * no-op when there is no toggle or no card.
  */
 function attachCard(
-  { controller, cleanups, root, idPrefix, dismissHooks }: NavMenuContext,
+  {
+    controller,
+    renderer,
+    cleanups,
+    root,
+    idPrefix,
+    dismissHooks,
+  }: NavMenuContext,
   isMobile: () => boolean,
 ): { openCard: () => boolean; closeCard: () => void } {
   const { selectors } = NAV_MENU_CONFIG;
@@ -174,6 +181,7 @@ function attachCard(
     for (const toggle of toggles) {
       toggle.setAttribute('aria-expanded', String(isOpen));
     }
+    renderer.setCardOpen(isOpen && isMobile());
     // Desktop never sees the card state: a consumer's natural
     // `[data-nav-card][data-state='closed'] { display: none }` would otherwise
     // hide the whole desktop menu. Crossing the breakpoint re-renders.
@@ -257,6 +265,7 @@ function attachCard(
     // the menu dead and unreachable after a re-init.
     card.removeAttribute('inert');
     delete card.dataset.state;
+    renderer.setCardOpen(false);
   });
 
   render();
