@@ -15,6 +15,7 @@ import { NAV_MENU_CONFIG } from './config.ts';
 import { createController } from './controller.ts';
 import { attachKeyboardEvents } from './keyboard.ts';
 import { attachMobile } from './mobile.ts';
+import { attachOverlay } from './overlay.ts';
 import {
   attachDismiss,
   attachHoverEvents,
@@ -40,6 +41,9 @@ import type {
 // one page (a desktop nav plus a mobile duplicate is the ordinary Webflow
 // shape), and positional fallback values collide across roots.
 let instanceCount = 0;
+
+// External overlays already owned by a live instance.
+const claimedOverlays = new WeakSet<HTMLElement>();
 
 const DEFAULT_OPTIONS: ResolvedNavMenuOptions = {
   delayDuration: 200,
@@ -78,9 +82,18 @@ export function initNavigationMenu(
 
   const refs = discoverRefs(root);
   const cleanups: NavMenuCleanup[] = [];
+  // Releases the overlay claim even if init fails below.
+  const { overlay } = refs;
+  if (overlay) cleanups.push(() => claimedOverlays.delete(overlay));
   // Kept out of `cleanups` until init succeeds, so it always runs last: panels
   // go back only after every other teardown has run.
-  const restorePanels = relocatePanels(refs);
+  let restorePanels: NavMenuCleanup;
+  try {
+    restorePanels = relocatePanels(refs);
+  } catch (error) {
+    drain(cleanups);
+    throw error;
+  }
 
   try {
     const idPrefix = `nav-${++instanceCount}`;
@@ -97,6 +110,7 @@ export function initNavigationMenu(
       root,
       refs,
       controller,
+      renderer,
       cleanups,
       escapeFallbacks: [],
       options: resolvedOptions,
@@ -112,6 +126,7 @@ export function initNavigationMenu(
     attachLinkClicks(context);
     attachKeyboardEvents(context);
     const openPanel = attachMobile(context);
+    attachOverlay(context);
 
     cleanups.push(
       renderer.observeResize(
@@ -304,7 +319,29 @@ function discoverRefs(root: HTMLElement): NavMenuRefs {
     triggerByValue,
     valueByTrigger,
     contentMap,
+    overlay: discoverOverlay(root),
   };
+}
+
+/**
+ * Inside the root first. Outside, the first overlay that no nav root contains
+ * and no other live instance has claimed: the first root to init owns it and
+ * releases it in `destroy()`, so two roots never write one backdrop.
+ */
+function discoverOverlay(root: HTMLElement): HTMLElement | null {
+  const { selectors } = NAV_MENU_CONFIG;
+  const inside = root.querySelector<HTMLElement>(selectors.overlay);
+  if (inside) {
+    // Claimed too, so another root's outside lookup skips it.
+    claimedOverlays.add(inside);
+    return inside;
+  }
+  for (const el of document.querySelectorAll<HTMLElement>(selectors.overlay)) {
+    if (el.closest(selectors.root) || claimedOverlays.has(el)) continue;
+    claimedOverlays.add(el);
+    return el;
+  }
+  return null;
 }
 
 /**

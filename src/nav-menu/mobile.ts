@@ -1,5 +1,6 @@
-import { isMobileMode, NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, NAV_MENU_CONFIG, NAV_MODE } from './config.ts';
 import { focusPanelContent } from './keyboard.ts';
+import { lockPageScroll } from './scroll-lock.ts';
 import type { NavMenuContext } from './types.ts';
 
 /**
@@ -40,7 +41,9 @@ export function attachMobile(context: NavMenuContext): (value: string) => void {
       : null;
 
   const applyMode = () => {
-    root.dataset.navMode = mediaQuery?.matches ? 'mobile' : 'desktop';
+    root.dataset.navMode = mediaQuery?.matches
+      ? NAV_MODE.mobile
+      : NAV_MODE.desktop;
   };
   applyMode();
 
@@ -118,6 +121,7 @@ export function attachMobile(context: NavMenuContext): (value: string) => void {
 function attachCard(
   {
     controller,
+    renderer,
     cleanups,
     root,
     idPrefix,
@@ -137,6 +141,8 @@ function attachCard(
   for (const toggle of toggles) toggle.setAttribute('aria-controls', card.id);
 
   let isOpen = false;
+  // Page scroll is frozen exactly while the card is open.
+  let unlockScroll: (() => void) | null = null;
   // The toggle that opened the card, so focus returns there on close — a close
   // button inside the card goes inert with it and cannot keep focus.
   let opener: HTMLElement | null = null;
@@ -145,6 +151,7 @@ function attachCard(
     for (const toggle of toggles) {
       toggle.setAttribute('aria-expanded', String(isOpen));
     }
+    renderer.setCardOpen(isOpen && isMobile());
     // Desktop never sees the card state: a consumer's natural
     // `[data-nav-card][data-state='closed'] { display: none }` would otherwise
     // hide the whole desktop menu. Crossing the breakpoint re-renders.
@@ -165,7 +172,13 @@ function attachCard(
       return;
     }
     isOpen = next;
-    if (!next) controller.close();
+    if (next) {
+      unlockScroll ??= lockPageScroll(root, card);
+    } else {
+      unlockScroll?.();
+      unlockScroll = null;
+      controller.close();
+    }
     render();
   };
 
@@ -215,6 +228,8 @@ function attachCard(
   }
   document.addEventListener('keydown', onKeyDown);
   cleanups.push(() => {
+    unlockScroll?.();
+    unlockScroll = null;
     for (const list of [dismissHooks.outside, dismissHooks.link]) {
       const index = list.indexOf(dismiss);
       if (index !== -1) list.splice(index, 1);
@@ -229,6 +244,7 @@ function attachCard(
     // the menu dead and unreachable after a re-init.
     card.removeAttribute('inert');
     delete card.dataset.state;
+    renderer.setCardOpen(false);
   });
 
   render();

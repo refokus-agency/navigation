@@ -26,6 +26,20 @@ export function initScrollBehavior(
     isNavbarVisible = false;
   };
 
+  /**
+   * Whether a dropdown panel (root `[data-state="open"]`) or the mobile card
+   * is open. Hiding the bar then would strand the panel or the burger toggle.
+   */
+  const isMenuOpen = (): boolean =>
+    elements.some(
+      (element) =>
+        element instanceof HTMLElement &&
+        (element.dataset.state === 'open' ||
+          element.querySelector(
+            `${NAVBAR_CONFIG.selectors.card}[data-state="open"]`,
+          ) !== null),
+    );
+
   /** Reveals a hidden navbar when focus moves into it. */
   const handleFocusIn = (event: FocusEvent): void => {
     const target = event.target;
@@ -40,7 +54,7 @@ export function initScrollBehavior(
     if (Math.abs(currentScrollY - lastScrollY) < threshold) return;
 
     if (currentScrollY > lastScrollY && currentScrollY > threshold) {
-      hideNavbar();
+      if (!isMenuOpen()) hideNavbar();
     } else {
       showNavbar();
     }

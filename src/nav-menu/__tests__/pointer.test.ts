@@ -145,6 +145,131 @@ describe('click behavior', () => {
     expect(menu.trigger('a').dataset.state).toBe('closed');
   });
 
+  describe('click on a hover-opened trigger', () => {
+    const openByHover = () => {
+      firePointer(menu.trigger('a'), 'pointerenter');
+      vi.advanceTimersByTime(delayDuration);
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    };
+    const click = (init: MouseEventInit & { pointerType?: string }) => {
+      const { pointerType, ...rest } = init;
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        ...rest,
+      });
+      if (pointerType) {
+        Object.defineProperty(event, 'pointerType', { value: pointerType });
+      }
+      menu.trigger('a').dispatchEvent(event);
+    };
+
+    it('should stay open on a mouse click', () => {
+      openByHover();
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+
+      // And must not block hover re-entry like a click-close does.
+      firePointer(menu.trigger('a'), 'pointerleave');
+      firePointer(menu.trigger('a'), 'pointerenter');
+      vi.advanceTimersByTime(delayDuration);
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    });
+
+    it('should ignore only the first mouse click after a hover-open', () => {
+      openByHover();
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should stay open on a click after leaving and re-entering a hover-opened trigger', () => {
+      openByHover();
+      firePointer(menu.trigger('a'), 'pointerleave');
+      firePointer(menu.trigger('a'), 'pointerenter');
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    });
+
+    it('should still close a click-opened panel after re-entering within the skip window', () => {
+      click({ detail: 1 });
+      firePointer(menu.trigger('a'), 'pointerleave');
+      firePointer(menu.trigger('a'), 'pointerenter');
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should still toggle a panel a mouse click opened', () => {
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should toggle once a click has taken over a hover-opened panel', () => {
+      openByHover();
+      click({ detail: 0 });
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should close on keyboard activation (detail 0)', () => {
+      openByHover();
+      click({ detail: 0 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should close on a touch tap', () => {
+      openByHover();
+      click({ detail: 1, pointerType: 'touch' });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+
+    it('should open a closed trigger on a mouse click', () => {
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('open');
+    });
+
+    it('should still toggle on a mouse click in mobile mode', () => {
+      document
+        .querySelector('[data-nav-menu]')
+        ?.setAttribute('data-nav-mode', 'mobile');
+      click({ detail: 1 });
+      click({ detail: 1 });
+      expect(menu.trigger('a').dataset.state).toBe('closed');
+    });
+  });
+
+  it('should keep toggling on a mouse click in click interaction mode', () => {
+    document.body.innerHTML = '';
+    menu = renderNavMenu();
+    document
+      .querySelector('[data-nav-menu]')
+      ?.setAttribute('data-nav-interaction', 'click');
+    initNavigationMenu();
+
+    const mouseClick = () =>
+      menu
+        .trigger('a')
+        .dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            detail: 1,
+          }),
+        );
+
+    mouseClick();
+    expect(menu.trigger('a').dataset.state).toBe('open');
+    mouseClick();
+    expect(menu.trigger('a').dataset.state).toBe('closed');
+  });
+
   it('should require leaving the trigger before hover can reopen it', () => {
     menu.trigger('a').click();
     menu.trigger('a').click();
@@ -220,6 +345,7 @@ describe('dismiss hooks', () => {
     const hook = vi.fn();
     attachDismiss({
       root,
+      refs: { overlay: null },
       controller: {
         close: () => {
           throw new Error('boom');

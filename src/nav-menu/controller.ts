@@ -30,6 +30,10 @@ export function createController({
   let openTimer: Timer;
   let closeTimer: Timer;
   let skipTimer: Timer;
+  // Whether the active panel was opened by pointer hover rather than a click,
+  // key or API call. A mouse click may only be swallowed on a hover-opened
+  // panel; on any other it must still toggle.
+  let openedByHover = false;
   // When false, opens are instant: a recent close skips delayDuration.
   let isOpenDelayed = true;
 
@@ -45,6 +49,7 @@ export function createController({
     if (activeValue === value) return;
     previousValue = activeValue;
     activeValue = value;
+    openedByHover = false;
     if (value === null) activeTrigger = null;
 
     if (value !== null) {
@@ -72,13 +77,23 @@ export function createController({
         clearTimeout(closeTimer);
       } else {
         openTimer = setTimeout(
-          () => open(value, trigger),
+          () => openFromHover(value, trigger),
           options.delayDuration,
         );
       }
     } else {
-      open(value, trigger);
+      openFromHover(value, trigger);
     }
+  }
+
+  function openFromHover(value: string, trigger: HTMLElement): void {
+    // Only a hover that opens a new panel counts: re-entering a panel a click
+    // opened is a no-op in open() and must not relabel it as hover-opened.
+    // open() clears the mark, so a re-entry keeps whatever it already was.
+    const wasHoverOpened = activeValue === value && openedByHover;
+    const isNewPanel = activeValue !== value;
+    open(value, trigger);
+    openedByHover = isNewPanel || wasHoverOpened;
   }
 
   function triggerPointerLeave(trigger: HTMLElement): void {
@@ -122,6 +137,7 @@ export function createController({
     clearTimeout(openTimer);
     clearTimeout(closeTimer);
     activeTrigger = trigger ?? refs.triggerByValue.get(value) ?? null;
+    openedByHover = false;
     setValue(value);
   }
 
@@ -166,6 +182,11 @@ export function createController({
     contentPointerLeave,
     handleEscape,
     getActiveValue: () => activeValue,
+    consumeHoverOpen: (value) => {
+      const hoverOpened = activeValue === value && openedByHover;
+      openedByHover = false;
+      return hoverOpened;
+    },
     getActiveTrigger: () => activeTrigger,
     destroy,
   };
