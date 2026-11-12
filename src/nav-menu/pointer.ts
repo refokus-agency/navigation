@@ -1,4 +1,5 @@
 import { isMobileMode, isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { focusOpenedPanelOnMobile } from './keyboard.ts';
 import type { NavMenuContext } from './types.ts';
 
 /**
@@ -12,6 +13,7 @@ function isMouseClick(event: MouseEvent): boolean {
 
 /** Trigger clicks toggle in both modes — touch always lands here. */
 export function attachTriggerClicks({
+  root,
   refs,
   controller,
   cleanups,
@@ -29,6 +31,7 @@ export function attachTriggerClicks({
       // close it. Never true in click mode (no hover opens) or mobile mode.
       if (isMouseClick(event) && controller.consumeHoverOpen(value)) return;
       controller.triggerClick(value, trigger);
+      focusOpenedPanelOnMobile(root, refs, controller, trigger);
     };
 
     trigger.addEventListener('click', onClick);

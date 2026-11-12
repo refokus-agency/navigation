@@ -1,5 +1,5 @@
 import { isMobileMode, NAV_MENU_CONFIG, NAV_MODE } from './config.ts';
-import { focusFirst, getTabbableCandidates } from './keyboard.ts';
+import { focusPanelContent } from './keyboard.ts';
 import { lockPageScroll } from './scroll-lock.ts';
 import type { NavMenuContext } from './types.ts';
 
@@ -49,37 +49,6 @@ export function attachMobile(context: NavMenuContext): (value: string) => void {
 
   const isMobile = () => isMobileMode(root);
   const { openCard, closeCard } = attachCard(context, isMobile);
-
-  const focusPanel = (value: string) => {
-    const content = refs.contentMap.get(value);
-    if (content) focusFirst(getTabbableCandidates(content));
-  };
-
-  // Accordion: land focus on the first link of the panel a user just opened.
-  // Tied to activation, not to state: arrow-key traversal and programmatic
-  // open() also change state and must not pull focus off the trigger. The one
-  // exception is open() on a closed card (see the returned function below).
-  const focusOpenedPanel = (trigger: HTMLElement) => {
-    if (!isMobile()) return;
-    const value = refs.valueByTrigger.get(trigger);
-    if (!value || controller.getActiveValue() !== value) return;
-    focusPanel(value);
-  };
-  // Registered after the pointer/keyboard modules, so state is already updated.
-  for (const trigger of refs.triggers) {
-    const onClick = () => focusOpenedPanel(trigger);
-    trigger.addEventListener('click', onClick);
-    cleanups.push(() => trigger.removeEventListener('click', onClick));
-  }
-  const onTriggerKey = (event: KeyboardEvent) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    const trigger = (event.target as Element | null)?.closest<HTMLElement>(
-      selectors.trigger,
-    );
-    if (trigger) focusOpenedPanel(trigger);
-  };
-  root.addEventListener('keydown', onTriggerKey);
-  cleanups.push(() => root.removeEventListener('keydown', onTriggerKey));
 
   if (mediaQuery) {
     const onMediaQueryChange = () => {
@@ -137,7 +106,7 @@ export function attachMobile(context: NavMenuContext): (value: string) => void {
   return (value) => {
     const cardOpened = isMobile() && openCard();
     controller.open(value);
-    if (cardOpened) focusPanel(value);
+    if (cardOpened) focusPanelContent(refs, value);
   };
 }
 
@@ -157,6 +126,7 @@ function attachCard(
     root,
     idPrefix,
     dismissHooks,
+    escapeFallbacks,
   }: NavMenuContext,
   isMobile: () => boolean,
 ): { openCard: () => boolean; closeCard: () => void } {
@@ -227,10 +197,19 @@ function attachCard(
     }
   };
 
+  // Escape inside the root is routed here by the keyboard module, after a
+  // panel has had its chance — no reliance on listener order.
+  escapeFallbacks.push(() => {
+    if (!isOpen || !isMobile()) return null;
+    setOpen(false);
+    return opener;
+  });
+
+  // Escape with focus outside the root never reaches the keyboard module.
   const onKeyDown = (event: KeyboardEvent) => {
-    // A panel's own Escape handling already prevented default.
     if (event.key !== 'Escape' || event.defaultPrevented) return;
     if (!isOpen || !isMobile()) return;
+    if (event.target instanceof Node && root.contains(event.target)) return;
     setOpen(false);
     opener?.focus();
   };

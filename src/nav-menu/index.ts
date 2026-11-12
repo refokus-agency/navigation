@@ -112,6 +112,7 @@ export function initNavigationMenu(
       controller,
       renderer,
       cleanups,
+      escapeFallbacks: [],
       options: resolvedOptions,
       idPrefix,
       dismissHooks: { outside: [], link: [] },

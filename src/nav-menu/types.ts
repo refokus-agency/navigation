@@ -106,6 +106,13 @@ export type NavMenuContext = {
   controller: NavMenuController;
   renderer: NavMenuRenderer;
   cleanups: NavMenuCleanup[];
+  /**
+   * Escape consumers tried, in order, when no panel is open. Each returns the
+   * element to refocus if it consumed the key, else null. Lets the keyboard
+   * module own Escape outright instead of others inferring from
+   * `defaultPrevented` which listener ran first.
+   */
+  escapeFallbacks: Array<() => HTMLElement | null>;
   options: ResolvedNavMenuOptions;
   /** Per-instance id prefix, so generated ids never collide across roots. */
   idPrefix: string;
