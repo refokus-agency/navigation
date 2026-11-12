@@ -1,4 +1,4 @@
-import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type {
   NavMenuContext,
   NavMenuController,
@@ -34,10 +34,11 @@ function handleKeyDown(
   if (!target) return;
 
   if (event.key === 'Escape') {
-    // A panel consumes Escape first; only then does anything else get it.
+    // A panel consumes Escape first; only then does anything else get it, and
+    // never an Escape something else (a field, a widget) already handled.
     let focusTarget = controller.handleEscape();
     for (const fallback of escapeFallbacks) {
-      if (focusTarget) break;
+      if (focusTarget || event.defaultPrevented) break;
       focusTarget = fallback();
     }
     if (focusTarget) {
@@ -143,7 +144,7 @@ export function focusOpenedPanelOnMobile(
   controller: NavMenuController,
   trigger: HTMLElement,
 ): void {
-  if (root.dataset.navMode !== 'mobile') return;
+  if (!isMobileMode(root)) return;
   const value = refs.valueByTrigger.get(trigger);
   if (!value || controller.getActiveValue() !== value) return;
   const content = refs.contentMap.get(value);

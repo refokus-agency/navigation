@@ -153,6 +153,46 @@ describe('mobile card', () => {
     expect(card.dataset.state).toBe('open');
   });
 
+  it('should close the card on Escape in the root with no panel open and focus the opener', () => {
+    const { menu } = setup();
+    toggle.click();
+    const event = fireKey(menu.trigger('a'), 'Escape');
+    expect(card.dataset.state).toBe('closed');
+    expect(document.activeElement).toBe(toggle);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('should leave the card alone on Escape at desktop width', () => {
+    const { menu } = setup(false);
+    toggle.click();
+    const event = fireKey(menu.trigger('a'), 'Escape');
+    expect(card.dataset.state).toBeUndefined();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('should not close the card on an Escape a field inside it handled', () => {
+    setup(true, '<input id="search" />');
+    const search = document.getElementById('search') as HTMLElement;
+    search.addEventListener('keydown', (event) => event.preventDefault());
+    toggle.click();
+    fireKey(search, 'Escape');
+    expect(card.dataset.state).toBe('open');
+  });
+
+  it('should not close the card on an Escape another document handler handled', () => {
+    const handle = (event: KeyboardEvent) => event.preventDefault();
+    document.addEventListener('keydown', handle);
+    try {
+      setup();
+      toggle.click();
+      fireKey(document.body, 'Escape');
+      expect(card.dataset.state).toBe('open');
+    } finally {
+      document.removeEventListener('keydown', handle);
+    }
+  });
+
   it('should do nothing on desktop and leave the card unmarked', () => {
     setup(false);
     toggle.click();

@@ -1,4 +1,4 @@
-import { NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, NAV_MENU_CONFIG } from './config.ts';
 import { isFollowedClick } from './pointer.ts';
 import type { NavMenuContext } from './types.ts';
 
@@ -41,7 +41,7 @@ export function attachMobile(context: NavMenuContext): void {
   };
   applyMode();
 
-  const isMobile = () => root.dataset.navMode === 'mobile';
+  const isMobile = () => isMobileMode(root);
   const closeCard = attachCard(context, isMobile);
 
   if (mediaQuery) {
@@ -168,7 +168,8 @@ function attachCard(
 
   // Escape with focus outside the root never reaches the keyboard module.
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || !isOpen || !isMobile()) return;
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    if (!isOpen || !isMobile()) return;
     if (event.target instanceof Node && root.contains(event.target)) return;
     setOpen(false);
     opener?.focus();

@@ -1,4 +1,4 @@
-import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import { focusOpenedPanelOnMobile } from './keyboard.ts';
 import type { NavMenuContext } from './types.ts';
 
@@ -42,7 +42,7 @@ export function attachHoverEvents({
   // unfiltered touch pointerenter would clear the close timer with no
   // pointerleave to follow it.
   const isMouseHover = (event: PointerEvent) =>
-    event.pointerType === 'mouse' && root.dataset.navMode !== 'mobile';
+    event.pointerType === 'mouse' && !isMobileMode(root);
 
   for (const { trigger, value } of refs.entries) {
     if (!refs.contentMap.has(value)) continue;

@@ -45,3 +45,8 @@ export function isNavigateTrigger(trigger: HTMLElement): boolean {
     trigger.getAttribute(NAV_MENU_CONFIG.attributes.triggerMode) === 'navigate'
   );
 }
+
+/** True while the root is in mobile mode ([data-nav-mode], set by mobile.ts). */
+export function isMobileMode(root: HTMLElement): boolean {
+  return root.dataset.navMode === 'mobile';
+}
