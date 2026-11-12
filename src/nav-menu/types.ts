@@ -83,6 +83,11 @@ export type NavMenuController = {
   /** Closes the menu and returns the trigger that should regain focus. */
   handleEscape(): HTMLElement | null;
   getActiveValue(): string | null;
+  /**
+   * Whether `value` is open because pointer hover opened it. Clears the
+   * mark, so only the first click after a hover-open is swallowed.
+   */
+  consumeHoverOpen(value: string): boolean;
   /** The trigger that opened the active panel, for focus return. */
   getActiveTrigger(): HTMLElement | null;
   destroy(): void;

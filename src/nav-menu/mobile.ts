@@ -1,4 +1,4 @@
-import { NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, NAV_MENU_CONFIG, NAV_MODE } from './config.ts';
 import { focusFirst, getTabbableCandidates } from './keyboard.ts';
 import { lockPageScroll } from './scroll-lock.ts';
 import type { NavMenuContext } from './types.ts';
@@ -30,9 +30,7 @@ function readBreakpoint(root: HTMLElement): number {
  * Returns the programmatic `open(value)` for the instance: in mobile mode it
  * opens the card first when it is closed, taking focus into the panel.
  */
-export function attachMobile(
-  context: NavMenuContext,
-): (value: string) => void {
+export function attachMobile(context: NavMenuContext): (value: string) => void {
   const { root, refs, controller, cleanups } = context;
   const { selectors } = NAV_MENU_CONFIG;
 
@@ -43,11 +41,13 @@ export function attachMobile(
       : null;
 
   const applyMode = () => {
-    root.dataset.navMode = mediaQuery?.matches ? 'mobile' : 'desktop';
+    root.dataset.navMode = mediaQuery?.matches
+      ? NAV_MODE.mobile
+      : NAV_MODE.desktop;
   };
   applyMode();
 
-  const isMobile = () => root.dataset.navMode === 'mobile';
+  const isMobile = () => isMobileMode(root);
   const { openCard, closeCard } = attachCard(context, isMobile);
 
   const focusPanel = (value: string) => {
