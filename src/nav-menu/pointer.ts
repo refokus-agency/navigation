@@ -1,5 +1,14 @@
-import { isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
+import { isMobileMode, isNavigateTrigger, NAV_MENU_CONFIG } from './config.ts';
 import type { NavMenuContext } from './types.ts';
+
+/**
+ * A click from a mouse, as opposed to keyboard activation (`detail === 0`) or
+ * a touch tap. Deliberately not `pointerType === 'mouse'`: engines that
+ * dispatch a plain MouseEvent leave it undefined.
+ */
+function isMouseClick(event: MouseEvent): boolean {
+  return event.detail > 0 && (event as PointerEvent).pointerType !== 'touch';
+}
 
 /** Trigger clicks toggle in both modes — touch always lands here. */
 export function attachTriggerClicks({
@@ -16,6 +25,9 @@ export function attachTriggerClicks({
       // hover (hover mode) or the keyboard.
       if (isNavigateTrigger(trigger)) return;
       event.preventDefault();
+      // Hover already opened this panel, so the first mouse click must not
+      // close it. Never true in click mode (no hover opens) or mobile mode.
+      if (isMouseClick(event) && controller.consumeHoverOpen(value)) return;
       controller.triggerClick(value, trigger);
     };
 
@@ -39,7 +51,7 @@ export function attachHoverEvents({
   // unfiltered touch pointerenter would clear the close timer with no
   // pointerleave to follow it.
   const isMouseHover = (event: PointerEvent) =>
-    event.pointerType === 'mouse' && root.dataset.navMode !== 'mobile';
+    event.pointerType === 'mouse' && !isMobileMode(root);
 
   for (const { trigger, value } of refs.entries) {
     if (!refs.contentMap.has(value)) continue;

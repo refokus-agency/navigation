@@ -1,3 +1,4 @@
+import { isMobileMode } from './config.ts';
 import type {
   NavMenuCleanup,
   NavMenuRefs,
@@ -172,7 +173,7 @@ export function createRenderer({
     // The panel must carry no imposed size: `inset: 0` or `height: 100%` makes
     // this circular and it settles on the tallest panel. See README, Sizing rule.
     // Mobile clamps the width, where the viewport spans the overlay.
-    const isMobile = root.dataset.navMode === 'mobile';
+    const isMobile = isMobileMode(root);
     viewport.style.setProperty(
       '--nav-viewport-width',
       isMobile ? '100%' : `${content.scrollWidth}px`,

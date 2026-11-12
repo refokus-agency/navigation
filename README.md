@@ -81,6 +81,10 @@ previous instance first, so re-initializing never stacks listeners.
 
 - **Initial Animation**: Navbar slides in smoothly on page load
 - **Scroll Down**: Navbar hides when scrolling down past `scrollThreshold` (50px by default)
+- **Open panel / mobile menu**: The navbar never hides while a dropdown panel
+  is open (root `[data-state="open"]`) or the mobile card is open
+  (`[data-nav-card][data-state="open"]`). Closing it changes nothing by itself;
+  the next scroll resumes the normal show/hide
 - **Scroll Up**: Navbar shows when scrolling up
 - **Focus**: A hidden navbar slides back in when focus moves into it, so
   tabbing back up to the nav never lands on an off-screen element
@@ -379,7 +383,11 @@ stays aligned however much sits before the list, such as a logo.
   `skipDelayDuration` of a close switches instantly
 - **Pointer** over the viewport keeps the menu open; leaving closes it after 150ms
 - **Click** a trigger to toggle it — after a click-to-close the cursor must
-  leave and re-enter before hover reopens it
+  leave and re-enter before hover reopens it. Exception: the first **mouse**
+  click on a panel that hover just opened is ignored (the user already opened
+  it), and the next click toggles as usual. Keyboard activation
+  (`Enter`/`Space`, `event.detail === 0`) and touch taps always toggle, and
+  mobile mode has no hover, so it always toggles
 - **Click** a trigger with `data-nav-trigger-mode="navigate"` follows its link
   instead of toggling (see "Trigger mode" below)
 - **Click** a link inside a panel closes the menu; ⌘/Ctrl-click keeps it open
@@ -499,7 +507,16 @@ In `[data-nav-mode="mobile"]`:
   Escape closes the panel first;
 - triggers behave as an accordion — one panel open at a time, `data-state` on
   the item and the content, and focus moves to the first link on open;
-- closing the card, or crossing the breakpoint, closes any open panel.
+- closing the card, or crossing the breakpoint, closes any open panel;
+- while the card is open the page does not scroll (`overflow: hidden` on
+  `<html>` and `<body>`, restored on close, so the scroll position is
+  unchanged); panels stay scrollable. If the site uses Lenis and exposes it as
+  `window.lenis`, it is stopped while the card is open and restarted after,
+  and the card and panels get `data-lenis-prevent` so they keep native scroll.
+  Call `lenis.stop()` yourself only after the card has closed, not while it is
+  open: the library cannot tell your stop from its own, so closing the card
+  would start Lenis again.
+  nav-anim also never hides the navbar while the card is open.
 
 On desktop none of this applies and existing behavior is unchanged. CSS owns
 all visuals; hide `[data-nav-toggle]` above the breakpoint yourself.
@@ -532,7 +549,8 @@ then:
 }
 ```
 
-There is no scroll lock. `destroy()` removes the listener, `data-state` and the
+The overlay adds no scroll lock of its own; the mobile card already freezes
+page scroll (see above). `destroy()` removes the listener, `data-state` and the
 `aria-hidden` it added.
 
 ## Development

@@ -1,4 +1,4 @@
-import { NAV_ROOT_SELECTOR } from '../config.ts';
+import { NAV_CARD_SELECTOR, NAV_ROOT_SELECTOR } from '../config.ts';
 
 export const NAVBAR_CONFIG = {
   position: {
@@ -10,6 +10,7 @@ export const NAVBAR_CONFIG = {
   },
   selectors: {
     navbar: NAV_ROOT_SELECTOR,
+    card: NAV_CARD_SELECTOR,
   },
   attributes: {
     hideOnScroll: 'data-nav-hide-on-scroll',
