@@ -38,6 +38,27 @@ export function createRenderer({
     applyOverlay();
   }
 
+  /**
+   * The viewport, unless it is idle: opted into inline panels, in mobile mode,
+   * and the panel in question is not inside it. Then that panel animates in
+   * place like a viewport-less menu, and the viewport stays out of the way.
+   * With no panel in question (closing), any panel left in the viewport keeps
+   * it active. Panels authored in the viewport never move, so they may mix
+   * with inline ones.
+   */
+  function activeViewport(value: string | null): HTMLElement | null {
+    const { viewport } = refs;
+    if (!viewport) return null;
+    if (!options.inlineMobilePanels || !isMobileMode(root)) return viewport;
+    const panels = value
+      ? [refs.contentMap.get(value)]
+      : refs.contentMap.values();
+    for (const panel of panels) {
+      if (panel && viewport.contains(panel)) return viewport;
+    }
+    return null;
+  }
+
   // `dir` is fixed for the instance, so order it once rather than per render.
   const ordered =
     options.dir === 'rtl' ? [...refs.itemValues].reverse() : refs.itemValues;
@@ -47,7 +68,7 @@ export function createRenderer({
     previousValue: string | null,
     activeTrigger: HTMLElement | null = null,
   ): void {
-    const { viewport } = refs;
+    const viewport = activeViewport(value);
     const prevIdx = previousValue ? ordered.indexOf(previousValue) : -1;
     const currIdx = value ? ordered.indexOf(value) : -1;
 
@@ -80,10 +101,12 @@ export function createRenderer({
         // Switching panels — animate this content out independently
         hideAfterAnimation(content, () => hideContent(content));
       } else if (wasActive && !value) {
-        // With a viewport, stay visible so its exit animation has something to
-        // render and let its callback below clean up. Without one, this panel
-        // owns its own exit, exactly as it does when switching.
-        if (!viewport) hideAfterAnimation(content, () => hideContent(content));
+        // A panel in the viewport stays visible so its exit animation has
+        // something to render, and the viewport's callback below cleans up.
+        // Any other panel owns its own exit, exactly as it does when switching.
+        if (!viewport?.contains(content)) {
+          hideAfterAnimation(content, () => hideContent(content));
+        }
       } else {
         hideContent(content);
       }
@@ -128,6 +151,14 @@ export function createRenderer({
       }
     }
 
+    // An idle viewport (panels inline) stays hidden and empty.
+    if (refs.viewport && !viewport) {
+      refs.viewport.dataset.state = 'closed';
+      refs.viewport.style.pointerEvents = 'none';
+      hide(refs.viewport);
+      isViewportOpen = false;
+    }
+
     // Without a viewport nothing sizes the panel, but a pill still needs the
     // trigger's geometry.
     if (!viewport && value) positionViewport(value, activeTrigger, null);
@@ -167,7 +198,7 @@ export function createRenderer({
     activeTrigger: HTMLElement | null,
   ): void {
     const content = refs.contentMap.get(value);
-    const { viewport } = refs;
+    const viewport = activeViewport(value);
     if (!content || !viewport) return;
 
     // The panel must carry no imposed size: `inset: 0` or `height: 100%` makes
@@ -201,7 +232,7 @@ export function createRenderer({
     activeTrigger: HTMLElement | null,
     panelWidth: number | null,
   ): void {
-    const { viewport } = refs;
+    const viewport = activeViewport(value);
     // The trigger that opened the panel, not the item's first: items may own several.
     const trigger = activeTrigger ?? refs.triggerByValue.get(value);
     if (!trigger) return;
@@ -249,7 +280,7 @@ export function createRenderer({
     const remeasure = () => {
       const value = getActiveValue();
       if (!value) return;
-      if (refs.viewport) sizeViewport(value, getActiveTrigger());
+      if (activeViewport(value)) sizeViewport(value, getActiveTrigger());
       else positionViewport(value, getActiveTrigger(), null);
     };
     // Trigger geometry moves with the window even when no panel resizes.

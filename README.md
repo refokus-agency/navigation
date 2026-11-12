@@ -208,6 +208,7 @@ then exposes data attributes and custom properties for your CSS to animate.
 | `data-nav-toggle`      | Mobile menu button; repeat it for a close button inside the card. Each gets `aria-expanded` and `aria-controls`; Escape and outside click close the card |
 | `data-nav-card`        | Mobile menu container (inside the root). Gets `[data-state]` and `inert` while closed, in mobile mode only                                               |
 | `data-nav-breakpoint`  | Mobile breakpoint in px, an integer from 1 to 4000 (`991`); invalid values warn and use the 767 default. Read once at init, later changes are ignored. Match your CSS |
+| `data-nav-mobile-panels` | Root attribute. `inline` moves slot panels back into their items in mobile mode (accordion) while desktop keeps the shared viewport. Read once at init; absent keeps panels in the viewport on every breakpoint |
 | `data-nav-overlay`     | Optional backdrop, inside or outside the root. Gets `[data-state]` and `aria-hidden`; a press closes the menu                                           |
 
 Panels may be authored inside a shared `[data-nav-viewport]` or inside their
@@ -226,6 +227,12 @@ sizes, so when one exists, every panel ends up in it:
   `data-state`, no `inert` and no hiding, so it stays visible and tabbable.
   Treat it as an authoring error and remove it.
 - Without a viewport, nothing moves and panels work in place.
+- **Accordion on mobile, viewport on desktop.** Add `data-nav-mobile-panels="inline"`
+  to the root and slot panels follow `[data-nav-mode]`: in the viewport on
+  desktop, back under their item on mobile, re-placed on each breakpoint
+  crossing (which already closes the menu). While panels are inline the
+  viewport is hidden and empty, and no `--nav-viewport-*` is written. Panels
+  authored in the viewport are never moved.
 - Inside the Webflow Designer (`skipInWebflowEditor`), nothing moves, so the
   panel stays editable inside its item.
 

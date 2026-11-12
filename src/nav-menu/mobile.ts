@@ -31,7 +31,7 @@ function readBreakpoint(root: HTMLElement): number {
  * opens the card first when it is closed, taking focus into the panel.
  */
 export function attachMobile(context: NavMenuContext): (value: string) => void {
-  const { root, refs, controller, cleanups } = context;
+  const { root, refs, controller, cleanups, panels, options } = context;
   const { selectors } = NAV_MENU_CONFIG;
 
   // Absent in SSR/jsdom — assume desktop rather than failing init.
@@ -50,11 +50,24 @@ export function attachMobile(context: NavMenuContext): (value: string) => void {
   const isMobile = () => isMobileMode(root);
   const { openCard, closeCard } = attachCard(context, isMobile);
 
+  // The one placement of slot panels, at init and on every crossing, so a
+  // panel that starts inline is never moved into the viewport first (moving a
+  // node reloads any iframe inside it). Opt-in: mobile is an inline accordion
+  // while desktop keeps the shared viewport.
+  const syncPanels = () => {
+    if (options.inlineMobilePanels && isMobile()) panels.inline();
+    else panels.toViewport();
+  };
+  syncPanels();
+
   if (mediaQuery) {
     const onMediaQueryChange = () => {
-      applyMode();
-      closeCard();
+      // Close before the mode flips, so the exit runs where the panel still
+      // is; then move panels; the card last, since it reads the new mode.
       controller.close();
+      applyMode();
+      syncPanels();
+      closeCard();
     };
     mediaQuery.addEventListener('change', onMediaQueryChange);
     cleanups.push(() =>

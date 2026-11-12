@@ -33,6 +33,7 @@ export const NAV_MENU_CONFIG = {
     interaction: 'data-nav-interaction',
     triggerMode: 'data-nav-trigger-mode',
     breakpoint: 'data-nav-breakpoint',
+    mobilePanels: 'data-nav-mobile-panels',
   },
   timing: {
     closeDelay: 150,
@@ -45,6 +46,16 @@ export const NAV_MENU_CONFIG = {
   },
   editorClass: 'w-editor',
 };
+
+/**
+ * True when the root opts in (`data-nav-mobile-panels="inline"`) to slot panels
+ * sitting back inside their item in mobile mode, instead of in the viewport.
+ */
+export function isInlineMobilePanels(root: HTMLElement): boolean {
+  return (
+    root.getAttribute(NAV_MENU_CONFIG.attributes.mobilePanels) === 'inline'
+  );
+}
 
 /** True when a trigger is a link that should navigate instead of toggling. */
 export function isNavigateTrigger(trigger: HTMLElement): boolean {

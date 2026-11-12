@@ -33,6 +33,11 @@ export type NavMenuOptions = {
 export type ResolvedNavMenuOptions = NavMenuOptions & {
   closeDelay: number;
   interaction: NavMenuInteraction;
+  /**
+   * `data-nav-mobile-panels="inline"`, read once at init like the breakpoint:
+   * the renderer and the panel placement must never disagree on it.
+   */
+  inlineMobilePanels: boolean;
 };
 
 export type InitNavigationMenuOptions = Partial<NavMenuOptions>;
@@ -99,6 +104,14 @@ export type NavMenuController = {
 
 export type NavMenuCleanup = () => void;
 
+/** Where slot panels currently sit; moves are structural, never animated. */
+export type NavMenuPanels = {
+  /** Moves slot panels into the shared viewport (desktop placement). */
+  toViewport(): void;
+  /** Moves slot panels back into their item, hidden until the next open. */
+  inline(): void;
+};
+
 /** Shared argument bag for the event-attaching modules. */
 export type NavMenuContext = {
   root: HTMLElement;
@@ -106,6 +119,7 @@ export type NavMenuContext = {
   controller: NavMenuController;
   renderer: NavMenuRenderer;
   cleanups: NavMenuCleanup[];
+  panels: NavMenuPanels;
   /**
    * Escape consumers tried, in order, when no panel is open. Each returns the
    * element to refocus if it consumed the key, else null. Lets the keyboard
