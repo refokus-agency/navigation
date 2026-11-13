@@ -71,6 +71,9 @@ export function initNavigationMenu(
   const resolvedOptions = resolveMenuOptions(root, {
     ...DEFAULT_OPTIONS,
     ...options,
+    // Keep "unset" distinguishable from an explicit `'ltr'` so the document
+    // direction can fill in only when nothing was authored.
+    dir: options.dir,
   });
 
   if (
@@ -198,7 +201,7 @@ const readInteraction = readEnumAttr<NavMenuInteraction>(INTERACTIONS);
  */
 function resolveMenuOptions(
   root: HTMLElement,
-  merged: NavMenuOptions,
+  merged: Omit<NavMenuOptions, 'dir'> & { dir?: NavMenuDirection },
 ): ResolvedNavMenuOptions {
   const { attributes } = NAV_MENU_CONFIG;
 
@@ -232,7 +235,7 @@ function resolveMenuOptions(
       attribute: readDirection(root, attributes.dir),
       js: merged.dir,
       isValid: isOneOf(DIRECTIONS),
-      fallback: DEFAULT_OPTIONS.dir,
+      fallback: inheritedDirection(root),
     }),
     interaction: resolveSetting({
       attribute: readInteraction(root, attributes.interaction),
@@ -242,6 +245,17 @@ function resolveMenuOptions(
     }),
     inlineMobilePanels: isInlineMobilePanels(root),
   };
+}
+
+/** Document direction as seen by the root; `ltr` when none is declared. */
+function inheritedDirection(root: HTMLElement): NavMenuDirection {
+  const computed = root.ownerDocument.defaultView
+    ?.getComputedStyle(root)
+    .direction.toLowerCase();
+  if (computed === 'rtl') return 'rtl';
+  if (computed === 'ltr') return 'ltr';
+  const declared = root.closest('[dir]')?.getAttribute('dir')?.toLowerCase();
+  return declared === 'rtl' ? 'rtl' : DEFAULT_OPTIONS.dir;
 }
 
 /**
