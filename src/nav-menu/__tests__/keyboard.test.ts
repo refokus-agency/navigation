@@ -220,3 +220,27 @@ describe('keyboard navigation (vertical)', () => {
     expect(document.activeElement).toBe(menu.content('a').querySelector('a'));
   });
 });
+
+describe('keyboard navigation (inherited document direction)', () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute('dir');
+  });
+
+  it('should treat an rtl document as rtl when no dir is set', () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+    initNavigationMenu();
+    menu.trigger('a').focus();
+
+    fireKey(menu.trigger('a'), 'ArrowLeft');
+    expect(document.activeElement).toBe(menu.trigger('b'));
+  });
+
+  it('should let an explicit dir: ltr win over an rtl document', () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+    initNavigationMenu(undefined, { dir: 'ltr' });
+    menu.trigger('a').focus();
+
+    fireKey(menu.trigger('a'), 'ArrowRight');
+    expect(document.activeElement).toBe(menu.trigger('b'));
+  });
+});

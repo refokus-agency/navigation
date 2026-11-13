@@ -291,7 +291,7 @@ Designer (see `skipInWebflowEditor`).
 | `skipDelayDuration`   | `number`                       | `300`          | Window after a close during which the next hover opens instantly            |
 | `closeDelay`          | `number`                       | `150`          | Grace period after the pointer leaves before the panel closes, in ms        |
 | `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
-| `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction and swaps the `←` `→` keys            |
+| `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction and swaps the `←` `→` keys. Precedence: `data-nav-dir` > `dir` option > document direction (`dir` on the root or an ancestor, read once at init) > `ltr` |
 | `interaction`         | `'hover' \| 'click'`           | `'hover'`      | What opens a panel with the mouse. `data-nav-interaction` on the root wins  |
 | `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
 | `onValueChange`       | `(value: string \| null) => void` | —          | Called with the open item's value, or `null` when the menu closes           |
