@@ -220,3 +220,60 @@ describe('keyboard navigation (vertical)', () => {
     expect(document.activeElement).toBe(menu.content('a').querySelector('a'));
   });
 });
+
+describe('keyboard navigation (inherited document direction)', () => {
+  let instance: ReturnType<typeof initNavigationMenu>;
+
+  afterEach(() => {
+    instance?.destroy();
+    document.documentElement.removeAttribute('dir');
+  });
+
+  it('should treat an rtl document as rtl when no dir is set', () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+    instance = initNavigationMenu();
+    menu.trigger('a').focus();
+
+    fireKey(menu.trigger('a'), 'ArrowLeft');
+    expect(document.activeElement).toBe(menu.trigger('b'));
+  });
+
+  it('should let an explicit dir: ltr win over an rtl document', () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+    instance = initNavigationMenu(undefined, { dir: 'ltr' });
+    menu.trigger('a').focus();
+
+    fireKey(menu.trigger('a'), 'ArrowRight');
+    expect(document.activeElement).toBe(menu.trigger('b'));
+  });
+
+  it('should let data-nav-dir="ltr" win over an rtl document', () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+    menu.root.setAttribute('data-nav-dir', 'ltr');
+    instance = initNavigationMenu();
+    menu.trigger('a').focus();
+
+    fireKey(menu.trigger('a'), 'ArrowRight');
+    expect(document.activeElement).toBe(menu.trigger('b'));
+  });
+
+  it('should use the root dir attribute when it has no computed style', () => {
+    const detached = menu.root;
+    detached.remove();
+    detached.setAttribute('dir', 'rtl');
+    document.body.append(detached);
+    detached.remove();
+    const trigger = (value: string) =>
+      detached.querySelector<HTMLElement>(
+        `[data-nav-item="${value}"] [data-nav-trigger]`,
+      ) as HTMLElement;
+    instance = initNavigationMenu(detached);
+
+    // Focus is unavailable off-document: assert on what the keyboard handler
+    // does once attached.
+    document.body.append(detached);
+    trigger('a').focus();
+    fireKey(trigger('a'), 'ArrowLeft');
+    expect(document.activeElement).toBe(trigger('b'));
+  });
+});

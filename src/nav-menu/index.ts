@@ -71,6 +71,9 @@ export function initNavigationMenu(
   const resolvedOptions = resolveMenuOptions(root, {
     ...DEFAULT_OPTIONS,
     ...options,
+    // Keep "unset" distinguishable from an explicit `'ltr'` so the document
+    // direction can fill in only when nothing was authored.
+    dir: options.dir,
   });
 
   if (
@@ -194,11 +197,12 @@ const readInteraction = readEnumAttr<NavMenuInteraction>(INTERACTIONS);
 
 /**
  * Root attributes override the merged JS options; read once, at init. Invalid
- * values — attribute or JS — are skipped silently, down to the default.
+ * values — attribute or JS — are skipped silently, down to the default. For
+ * `dir` the "default" is the direction computed at the root, else `ltr`.
  */
 function resolveMenuOptions(
   root: HTMLElement,
-  merged: NavMenuOptions,
+  merged: Omit<NavMenuOptions, 'dir'> & { dir?: NavMenuDirection },
 ): ResolvedNavMenuOptions {
   const { attributes } = NAV_MENU_CONFIG;
 
@@ -228,12 +232,7 @@ function resolveMenuOptions(
       isValid: isOneOf(ORIENTATIONS),
       fallback: DEFAULT_OPTIONS.orientation,
     }),
-    dir: resolveSetting({
-      attribute: readDirection(root, attributes.dir),
-      js: merged.dir,
-      isValid: isOneOf(DIRECTIONS),
-      fallback: DEFAULT_OPTIONS.dir,
-    }),
+    dir: resolveDirection(root, merged.dir),
     interaction: resolveSetting({
       attribute: readInteraction(root, attributes.interaction),
       js: merged.interaction,
@@ -242,6 +241,27 @@ function resolveMenuOptions(
     }),
     inlineMobilePanels: isInlineMobilePanels(root),
   };
+}
+
+/**
+ * `data-nav-dir` > `dir` option > computed direction at the root > `ltr`. The
+ * computed lookup runs lazily, only when nothing was authored.
+ */
+function resolveDirection(root: HTMLElement, js: unknown): NavMenuDirection {
+  const attribute = readDirection(root, NAV_MENU_CONFIG.attributes.dir);
+  if (attribute !== undefined) return attribute;
+  return isOneOf(DIRECTIONS)(js) ? js : inheritedDirection(root);
+}
+
+/** Document direction as seen by the root; `ltr` when none is declared. */
+function inheritedDirection(root: HTMLElement): NavMenuDirection {
+  const computed = root.ownerDocument.defaultView
+    ?.getComputedStyle(root)
+    .direction.toLowerCase();
+  if (computed === 'rtl') return 'rtl';
+  if (computed === 'ltr') return 'ltr';
+  const declared = root.closest('[dir]')?.getAttribute('dir')?.toLowerCase();
+  return declared === 'rtl' ? 'rtl' : DEFAULT_OPTIONS.dir;
 }
 
 /**
