@@ -130,7 +130,7 @@ any custom code:
 | `data-nav-skip-delay`       | nav-menu | number, in ms                   | `skipDelayDuration`  | `300`            |
 | `data-nav-close-delay`      | nav-menu | number, in ms                   | `closeDelay`         | `150`            |
 | `data-nav-orientation`      | nav-menu | `horizontal` \| `vertical`      | `orientation`        | `horizontal`     |
-| `data-nav-dir`              | nav-menu | `ltr` \| `rtl`                  | `dir`                | `ltr`            |
+| `data-nav-dir`              | nav-menu | `ltr` \| `rtl`                  | `dir`                | document direction, else `ltr` |
 | `data-nav-interaction`      | nav-menu | `hover` \| `click`              | `interaction`        | `hover`          |
 | `data-nav-hide-on-scroll`   | nav-anim | `true` \| `false`               | `hideOnScroll`       | `true`           |
 | `data-nav-scroll-threshold` | nav-anim | number, in px                   | `scrollThreshold`    | `50`             |
@@ -291,7 +291,7 @@ Designer (see `skipInWebflowEditor`).
 | `skipDelayDuration`   | `number`                       | `300`          | Window after a close during which the next hover opens instantly            |
 | `closeDelay`          | `number`                       | `150`          | Grace period after the pointer leaves before the panel closes, in ms        |
 | `orientation`         | `'horizontal' \| 'vertical'`   | `'horizontal'` | Drives `[data-orientation]` and which arrow keys navigate                    |
-| `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction and swaps the `←` `→` keys. Precedence: `data-nav-dir` > `dir` option > document direction (`dir` on the root or an ancestor, read once at init) > `ltr` |
+| `dir`                 | `'ltr' \| 'rtl'`               | `'ltr'`        | Mirrors the `[data-motion]` direction and swaps the `←` `→` keys. Precedence: `data-nav-dir` > `dir` option > computed CSS `direction` of the root (so `dir` on an ancestor, or `direction` in CSS, decides; read once at init) > `ltr` |
 | `interaction`         | `'hover' \| 'click'`           | `'hover'`      | What opens a panel with the mouse. `data-nav-interaction` on the root wins  |
 | `skipInWebflowEditor` | `boolean`                      | `true`         | No-op when `html.w-editor` is present, so panels stay editable in canvas    |
 | `onValueChange`       | `(value: string \| null) => void` | —          | Called with the open item's value, or `null` when the menu closes           |

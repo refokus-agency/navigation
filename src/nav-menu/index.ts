@@ -197,7 +197,8 @@ const readInteraction = readEnumAttr<NavMenuInteraction>(INTERACTIONS);
 
 /**
  * Root attributes override the merged JS options; read once, at init. Invalid
- * values — attribute or JS — are skipped silently, down to the default.
+ * values — attribute or JS — are skipped silently, down to the default. For
+ * `dir` the "default" is the direction computed at the root, else `ltr`.
  */
 function resolveMenuOptions(
   root: HTMLElement,
@@ -231,12 +232,7 @@ function resolveMenuOptions(
       isValid: isOneOf(ORIENTATIONS),
       fallback: DEFAULT_OPTIONS.orientation,
     }),
-    dir: resolveSetting({
-      attribute: readDirection(root, attributes.dir),
-      js: merged.dir,
-      isValid: isOneOf(DIRECTIONS),
-      fallback: inheritedDirection(root),
-    }),
+    dir: resolveDirection(root, merged.dir),
     interaction: resolveSetting({
       attribute: readInteraction(root, attributes.interaction),
       js: merged.interaction,
@@ -245,6 +241,16 @@ function resolveMenuOptions(
     }),
     inlineMobilePanels: isInlineMobilePanels(root),
   };
+}
+
+/**
+ * `data-nav-dir` > `dir` option > computed direction at the root > `ltr`. The
+ * computed lookup runs lazily, only when nothing was authored.
+ */
+function resolveDirection(root: HTMLElement, js: unknown): NavMenuDirection {
+  const attribute = readDirection(root, NAV_MENU_CONFIG.attributes.dir);
+  if (attribute !== undefined) return attribute;
+  return isOneOf(DIRECTIONS)(js) ? js : inheritedDirection(root);
 }
 
 /** Document direction as seen by the root; `ltr` when none is declared. */

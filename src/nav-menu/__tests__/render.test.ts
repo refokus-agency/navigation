@@ -203,6 +203,19 @@ describe('motion direction hooks', () => {
     expect(menu.content('a').dataset.motion).toBe('to-end');
   });
 
+  it('should mirror the direction inherited from an rtl document', () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+    const instance = initNavigationMenu();
+    instance?.open('a');
+    instance?.open('b');
+
+    expect(menu.content('b').dataset.motion).toBe('from-start');
+    expect(menu.content('a').dataset.motion).toBe('to-end');
+
+    instance?.destroy();
+    document.documentElement.removeAttribute('dir');
+  });
+
   it('should publish a stable position on every panel relative to the active one', () => {
     const instance = initNavigationMenu();
     instance?.open('b');
